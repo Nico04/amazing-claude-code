@@ -9,6 +9,10 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.29] - 2026-10-11
+
+- Fixed: on Linux, Ctrl+V in the panel could type a "v" instead of pasting, and Ctrl+Shift+V a "V" (reported on Ubuntu with Wayland and GNOME). The key reached the panel's browser without its Ctrl, while pasting from the right-click menu worked. On Linux the IDE now takes the paste shortcuts from your keymap itself while the panel has focus and pastes from the IDE clipboard. Ctrl+Shift+V pastes too.
+
 ## [0.13.28] - 2026-10-08
 
 - Fixed: a scenario run kept working on the account it was started on after you chose another account in the panel, and went on spending the account you had left until its limit ran out. A run now follows your choice the way open chats do: the work in progress is interrupted, the main thread and the card come up again on the chosen account over their own conversations, and the run carries on where it stood.
@@ -950,7 +954,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.28...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.29...HEAD
+[0.13.29]: https://github.com/crmapache/amazing-claude-code/compare/0.13.28...0.13.29
 [0.13.28]: https://github.com/crmapache/amazing-claude-code/compare/0.13.27...0.13.28
 [0.13.27]: https://github.com/crmapache/amazing-claude-code/compare/0.13.26...0.13.27
 [0.13.26]: https://github.com/crmapache/amazing-claude-code/compare/0.13.25...0.13.26
