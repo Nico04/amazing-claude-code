@@ -1,6 +1,6 @@
 import { isInsideIde, send } from './bridge'
 import { EMPTY_CLIPBOARD, isEmptyClipboard, pickPasted, type ClipboardContent } from './clipboardContent'
-import { isPasteShortcut, isTyping, servesPaste, typedNothing, type LastKey } from './clipboardKeys'
+import { isLeak, isPasteShortcut, isTyping, servesPaste, typedNothing, type LastKey, type OwnedPress } from './clipboardKeys'
 import type { ShellMessage } from './protocol'
 
 /**
@@ -220,11 +220,10 @@ const restoreTyped = (last: LastKey | null, event: ClipboardEvent): void => {
 }
 
 /**
- * Whether we are waiting for a paste that has been pressed but has not arrived as an event yet.
+ * Whether we are waiting to paste for a shortcut that has been pressed.
  *
- * Needed because the event may not arrive at all: a browser that got no system clipboard is free to
- * consider a paste impossible and never wake the page. Then we do it on its behalf - but only after
- * making sure it genuinely did not arrive by its own route.
+ * The keydown is cancelled, so the browser should raise no paste of its own; if it does anyway, that
+ * paste is served instead and this one stands down, so the clipboard never lands twice.
  */
 let awaitingPaste = false
 
@@ -234,8 +233,18 @@ let lastKey: LastKey | null = null
 /** When the keyboard last typed a character into a field - see typedNothing. */
 let typedAt: number | null = null
 
+/** The paste shortcut taken from the browser, until its letter can no longer leak - see isLeak. */
+let owned: OwnedPress | null = null
+
 const onBeforeInput = (event: InputEvent): void => {
   if (!bridged() || !isTyping(event.inputType)) return
+
+  if (isLeak(owned, event.data, Date.now())) {
+    owned = null
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    return
+  }
 
   typedAt = Date.now()
 }
@@ -243,6 +252,8 @@ const onBeforeInput = (event: InputEvent): void => {
 const onKeyDown = (event: KeyboardEvent): void => {
   if (!bridged()) return
 
+  // A leak comes with no press of its own: any new press means the letter after it is somebody's.
+  owned = null
   const shortcut = isPasteShortcut(event)
   const at = Date.now()
   // A single character is what a press writes; "Shift", "Enter" and the rest name themselves and write
@@ -252,22 +263,42 @@ const onKeyDown = (event: KeyboardEvent): void => {
 
   const target = document.activeElement
   if (!isEditable(target)) return
+  // While a character is being composed, the keyboard belongs to the input method.
+  if (event.isComposing) return
 
+  // From here the paste is ours alone. Left to the browser, the press does nothing useful on the bridge:
+  // its own paste reads a clipboard connected to nothing, and on some setups the press it does nothing
+  // with types its letter instead. Cancelling the keydown stops both, and the letter, should it come
+  // down another road anyway, is swallowed in onBeforeInput.
+  event.preventDefault()
+  owned = { at, text: lastKey.text }
   awaitingPaste = true
-  // The browser will dispatch its own event inside this same task, right after the key handlers - so
-  // checking makes sense already in the next one.
+  // Should the browser raise its own paste all the same, it does so inside this task, and onPaste serves
+  // that one instead - so this side checks in the next task.
   setTimeout(() => {
     if (!awaitingPaste) return
     awaitingPaste = false
-    // The press typed a character, so it was typing: the modifiers it claimed to carry were not the
-    // ones held down, and this is the same misreading servesPaste refuses above.
-    if (!typedNothing(at, typedAt)) return
 
-    void readClipboard().then((content) => {
-      if (!typedNothing(at, typedAt)) return
-      deliverPaste(target, content)
-    })
+    void readClipboard().then((content) => deliverPaste(target, content))
   }, 0)
+}
+
+/**
+ * A paste shortcut the IDE caught before the browser saw it (Linux only, see PasteKeys.kt).
+ *
+ * On the report's machine (Ubuntu, Wayland, GNOME) the page never saw a Ctrl+V: a bare "v" arrived in its
+ * place, while the context menu's Paste worked. The IDE does see the shortcut whole, so it takes it there
+ * and hands it here. `letter` is what the key writes on its own, so that a leaked copy of it is swallowed
+ * (see isLeak).
+ */
+export const pasteFromKeys = (letter: string): void => {
+  if (!bridged()) return
+
+  owned = { at: Date.now(), text: letter }
+  const target = document.activeElement
+  if (!isEditable(target)) return
+
+  void readClipboard().then((content) => deliverPaste(target, content))
 }
 
 /**

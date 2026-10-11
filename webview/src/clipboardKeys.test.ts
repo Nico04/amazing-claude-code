@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TYPING_WINDOW_MS, isPasteShortcut, isTyping, servesPaste, typedNothing } from './clipboardKeys'
+import { TYPING_WINDOW_MS, isLeak, isPasteShortcut, isTyping, servesPaste, typedNothing } from './clipboardKeys'
 
 const key = (over: Partial<Parameters<typeof isPasteShortcut>[0]> = {}) => ({
   code: 'KeyV',
@@ -20,13 +20,17 @@ describe('isPasteShortcut', () => {
     expect(isPasteShortcut(key({ code: 'Insert', shiftKey: true }))).toBe(true)
   })
 
+  it("takes Ctrl+Shift+V, the terminal's paste", () => {
+    // It used to be refused, and on Linux it typed a capital V instead of pasting.
+    expect(isPasteShortcut(key({ ctrlKey: true, shiftKey: true }))).toBe(true)
+  })
+
   it('leaves a plain letter alone', () => {
     expect(isPasteShortcut(key())).toBe(false)
     expect(isPasteShortcut(key({ shiftKey: true }))).toBe(false)
   })
 
   it('leaves the shortcuts that mean something else alone', () => {
-    expect(isPasteShortcut(key({ ctrlKey: true, shiftKey: true }))).toBe(false)
     expect(isPasteShortcut(key({ ctrlKey: true, altKey: true }))).toBe(false)
     expect(isPasteShortcut(key({ code: 'Insert', shiftKey: true, ctrlKey: true }))).toBe(false)
   })
@@ -64,6 +68,32 @@ describe('typedNothing', () => {
 
   it('ignores typing that comes long after the press', () => {
     expect(typedNothing(1_000, 1_000 + TYPING_WINDOW_MS + 1)).toBe(true)
+  })
+})
+
+describe('isLeak', () => {
+  const owned = { at: 1_000, text: 'v' }
+
+  it("swallows the paste shortcut's own letter right after the press", () => {
+    // Ubuntu, Wayland, German layout: Ctrl+V also typed a "v", and the "v" cost the paste.
+    expect(isLeak(owned, 'v', 1_005)).toBe(true)
+    expect(isLeak({ at: 1_000, text: 'V' }, 'V', 1_005)).toBe(true)
+    expect(isLeak(owned, 'V', 1_005)).toBe(true)
+  })
+
+  it('lets any other text through', () => {
+    expect(isLeak(owned, 'x', 1_005)).toBe(false)
+    expect(isLeak(owned, 'vv', 1_005)).toBe(false)
+    expect(isLeak(owned, null, 1_005)).toBe(false)
+  })
+
+  it('lets the letter through once the press is long past', () => {
+    expect(isLeak(owned, 'v', 1_000 + TYPING_WINDOW_MS + 1)).toBe(false)
+  })
+
+  it('has nothing to swallow without a press, or for a key that writes nothing', () => {
+    expect(isLeak(null, 'v', 1_005)).toBe(false)
+    expect(isLeak({ at: 1_000, text: '' }, 'v', 1_005)).toBe(false)
   })
 })
 

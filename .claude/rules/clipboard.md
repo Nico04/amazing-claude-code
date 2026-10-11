@@ -2,6 +2,8 @@
 paths:
   - "src/main/kotlin/io/github/crmapache/amazingclaudecode/webview/PastedFiles.kt"
   - "src/main/kotlin/io/github/crmapache/amazingclaudecode/webview/WebviewClipboard.kt"
+  - "src/main/kotlin/io/github/crmapache/amazingclaudecode/webview/PasteKeys.kt"
+  - "src/test/kotlin/io/github/crmapache/amazingclaudecode/webview/PasteKeysTest.kt"
   - "src/test/kotlin/io/github/crmapache/amazingclaudecode/webview/PastedFilesTest.kt"
   - "webview/src/pasted.ts"
   - "webview/src/clipboard.ts"
@@ -78,6 +80,27 @@ paths:
 - **Ложную вставку теперь ловят и с непустым буфером.** `servesPaste` (Shift+V, который на Linux
   приезжает командой вставки - см. `clipboardKeys.ts`) проверялся только у пустых событий, а с полным
   приватным буфером такое событие молча вставляло вчерашнюю копию посреди слова.
+- **На Linux сочетания вставки ловит IDE, а не браузер** (`PasteKeys.kt`, `pasteFromKeys` в `clipboard.ts`).
+  Отчёт с Ubuntu 26.04 (Wayland, GNOME, немецкая раскладка, 0.13.20): Ctrl+V в поле печатал «v», Ctrl+Shift+V -
+  «V», а вставка из контекстного меню и Ctrl+V в редакторе работали. Страница не видела Ctrl+V вообще: до неё
+  доходила голая «v», и чинить на странице было нечего. Первая попытка (страница забирает keydown Ctrl+V себе)
+  у него не изменила ничего - этим и доказано. IDE же видит сочетание целым, поэтому панель держит сочетания
+  вставки своим действием: шорткаты компонента главнее раскладки, пока фокус внутри. Действие шлёт странице
+  `pasteKeys`, и она вставляет из буфера IDE той же дорогой, что вставка из меню. Подтверждено у автора отчёта
+  тестовой сборкой; в той сборке стояла и диагностика клавиш, в релиз она не пошла. Следующий за обработанным
+  нажатием `KEY_TYPED` IDE гасит сама (`IdeKeyEventDispatcher`, состояние «processed»), а букву, пришедшую
+  другой дорогой (коммит метода ввода), страница глотает (`isLeak`). Сочетания - `$Paste` из раскладки
+  человека плюс Ctrl+Shift+V. Mac и Windows не трогаются.
+- **Компонент браузера в IDE передаёт в Chromium всё, что до него дошло, без фильтров**
+  (`JBCefOsrComponent.processKeyEvent` вызывает `sendKeyEvent` всегда). Поэтому потерянный Ctrl - дело того, что
+  дошло до компонента, а не нашего кода в нём.
+- **Страничная защита осталась запасной.** Если сочетание всё же дошло до страницы (своя раскладка без `$Paste`
+  на Ctrl+V), keydown отменяется, вставка идёт из буфера IDE, протёкшая буква глотается. Защита от заглавной V
+  не тронута: она стоит на событии вставки после нажатия, которое сочетанием не было.
+- Воспроизвести без Linux: харнесс в режиме Linux. Дорога IDE - `__accReceive({ type: 'pasteKeys', letter: 'v' })`
+  и следом `keyboard.insertText('v')`: вставлен ровно буфер. Его симптом - через протокол отладки Chromium
+  `rawKeyDown` Control, затем `rawKeyDown` и `char` «v» без модификаторов: печатается «v», и так и должно быть -
+  на странице это не чинится, чинит дорога IDE.
 - Проверить без IDE: харнесс - плеер играет системный буфер оболочки (`clipboardWrite`/`clipboardRead`,
   он же `window.__accHarnessClipboard`), и это единственный способ увидеть расхождение без Linux: в
   обычном браузере оба буфера - один и тот же. В консоли объявить страницу линуксовой

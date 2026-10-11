@@ -208,6 +208,11 @@ internal class WebviewHost(
         browser.component.addMouseMotionListener(mouse)
         browser.component.addMouseListener(mouse)
 
+        // Linux only: Ctrl+V can reach the browser without its Ctrl, so the IDE takes it first (see PasteKeys).
+        PasteKeys.install(browser.component, lifetime) { letter ->
+            send("""{"type":"pasteKeys","letter":${literal(letter)}}""")
+        }
+
         fromWebview.addHandler { payload: String ->
             onMessage(payload)
             null

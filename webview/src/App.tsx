@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { send, subscribe } from './bridge'
-import { copyToClipboard, installClipboardBridge, resolveClipboard } from './clipboard'
+import { copyToClipboard, installClipboardBridge, pasteFromKeys, resolveClipboard } from './clipboard'
 import { resolvePastedFile } from './pasted'
 import {
   ADD_MODEL,
@@ -3404,6 +3404,10 @@ export const App = () => {
 
           case 'clipboard':
             resolveClipboard(message)
+            break
+
+          case 'pasteKeys':
+            pasteFromKeys(message.letter)
             break
 
           // Where the shell put something pasted into the panel - whoever pasted it is waiting for the

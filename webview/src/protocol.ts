@@ -1625,6 +1625,11 @@ type ShellMessageBody =
    * one the request carried: several of them may be in flight at once.
    */
   | { type: 'clipboard'; id: string; text: string; html: string; image: string }
+  /**
+   * A paste shortcut the IDE caught before the browser saw it (Linux only, see PasteKeys.kt): paste from
+   * the IDE clipboard into the focused field. `letter` is what the key writes by itself, see isLeak.
+   */
+  | { type: 'pasteKeys'; letter: string }
   /** Where a pasted file was written - the answer to `savePastedFile`. */
   | { type: 'pastedFile'; id: string; path: string }
   /** The answer to mcpList - and to mcpAdd/mcpRemove, so that the list refreshes at once. */
