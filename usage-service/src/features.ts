@@ -15,8 +15,8 @@ import { owns, type Product } from './products.js'
  * the side menu opened, and "setting:<name>" for a setting changed.
  *
  * The two plugins share the panel, so most of every list is shared; what is left is the agent underneath.
- * ACX (the Codex fork) has no stopping of one background task (`app-server` has no such request), no rewind,
- * no Claude Design sign-in, no Claude Code settings screens, and has Codex's project trust and settings instead.
+ * ACX (the Codex fork) has no stopping of one background task (`app-server` has no such request), no Claude
+ * Design sign-in, no Claude Code settings screens, and has Codex's project trust and settings instead.
  */
 
 export interface FeatureLabel {
@@ -94,23 +94,20 @@ const SHARED_FEATURES: Record<string, FeatureLabel> = {
   mcp_manage: { group: 'manage', label: 'Add, remove or sign in to an MCP server' },
 
   feedback_sent: { group: 'feedback', label: 'Send feedback' },
+  // Claude Code's rewind requests in ACC; Codex's thread/revert and its own patches undone in ACX (0.3.0).
+  rewind: { group: 'conversation', label: 'Rewind a conversation to an earlier message' },
+  scenario_tell: { group: 'scenarios', label: "Write to a run's main thread" },
+  send_path: { group: 'editor', label: 'Send a file or folder from the project tree or the editor menu' },
 }
 
 export const FEATURES: Record<Product, Record<string, FeatureLabel>> = {
   acc: {
     ...SHARED_FEATURES,
     stop_task: { group: 'conversation', label: 'Stop a background task' },
-    // Claude Code's rewind_conversation/rewind_files - Codex's app-server has nothing like them yet.
-    rewind: { group: 'conversation', label: 'Rewind a conversation to an earlier message' },
     plugins_manage: { group: 'manage', label: 'Install or manage a Claude Code plugin' },
     account_add: { group: 'manage', label: 'Add a Claude account' },
     account_switch: { group: 'manage', label: 'Switch Claude account' },
     design_login: { group: 'manage', label: 'Claude Design sign-in' },
-    // Writing to the main thread of a going run - the Codex fork's scenarios have no such conversation yet.
-    scenario_tell: { group: 'scenarios', label: "Write to a run's main thread" },
-    // Not about the agent: the project tree's menu came to ACC first, and moves to the shared list once the
-    // fork has it.
-    send_path: { group: 'editor', label: 'Send a file or folder from the project tree or the editor menu' },
   },
   acx: {
     ...SHARED_FEATURES,
