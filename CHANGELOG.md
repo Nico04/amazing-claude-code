@@ -9,6 +9,10 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.31] - 2026-10-12
+
+- Fixed: after switching to another tab you had to click in the message field before you could type. A click on a tab changed the conversation but left the keyboard where it was, so coming from the editor or from reading the feed your typing went nowhere. Now the field of the tab you switch to takes the keyboard: by a click on the tab, by the tab keys, after closing the open tab, and when you open a conversation from the history or the search. A message you had started continues from its end.
+
 ## [0.13.30] - 2026-10-11
 
 - Added: keyboard shortcuts for the panel's tabs and for Queue. While the focus is in the panel, the keys that switch and close editor tabs in your IDE keymap do the same to the panel's tabs: Cmd+Shift+] and Cmd+Shift+[ and Cmd+W on a Mac, Alt+Right, Alt+Left and Ctrl+F4 elsewhere. Cmd+T (Ctrl+Shift+T on Windows and Linux) opens a new tab, the same key that opens one in the terminal. Option+Enter (Alt+Enter) puts the message in the queue while the agent works and sends it when the agent is free. In the editor these keys keep doing what they did before.
@@ -961,7 +965,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.30...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.31...HEAD
+[0.13.31]: https://github.com/crmapache/amazing-claude-code/compare/0.13.30...0.13.31
 [0.13.30]: https://github.com/crmapache/amazing-claude-code/compare/0.13.29...0.13.30
 [0.13.29]: https://github.com/crmapache/amazing-claude-code/compare/0.13.28...0.13.29
 [0.13.28]: https://github.com/crmapache/amazing-claude-code/compare/0.13.27...0.13.28
