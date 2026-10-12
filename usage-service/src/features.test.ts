@@ -42,11 +42,13 @@ describe('the two plugins', () => {
 
   it('differ in their features only where the agent underneath does', () => {
     expect(apart(FEATURES.acc, FEATURES.acx)).toEqual({
-      missingHere: ['design_login', 'stop_task'],
+      // panel_keys is the one that is not about the agent: the panel's keys came to ACC first, and wait for
+      // the fork until they are ported there - the cheat sheet's screen below with them.
+      missingHere: ['design_login', 'panel_keys', 'stop_task'],
       notInPlugin: ['project_trust'],
     })
     expect(apart(SCREENS.acc, SCREENS.acx)).toEqual({
-      missingHere: ['claudeConfig', 'settingSources'],
+      missingHere: ['claudeConfig', 'keys', 'settingSources'],
       notInPlugin: ['codexConfig', 'newChatContext'],
     })
     expect(apart(SETTINGS.acc, SETTINGS.acx)).toEqual({

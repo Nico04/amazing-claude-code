@@ -9,6 +9,8 @@ import com.intellij.openapi.application.ModalityState
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.editor.colors.EditorColorsListener
 import com.intellij.openapi.editor.colors.EditorColorsManager
+import com.intellij.openapi.keymap.Keymap
+import com.intellij.openapi.keymap.KeymapManagerListener
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VirtualFile
@@ -214,6 +216,45 @@ internal class ClaudePanel(
         watchTypography()
         watchIdeActivation()
         watchEditor()
+        watchKeymap()
+    }
+
+    /**
+     * One of the panel's keys was pressed with the focus in it (see PanelKeys). What it does to the tabs
+     * and the field is the page's business: only the page knows the strip's order, which tab is working,
+     * and what stands in the field.
+     */
+    private fun pressPanelKey(command: PanelKeys.Command) {
+        hub.stats.noteFeature("panel_keys")
+        webview?.send(
+            buildJsonObject {
+                put("type", "panelKey")
+                put("command", command.wire)
+            }.toString(),
+        )
+    }
+
+    /** The keys the panel's actions answer to, for the page to draw them (see PanelKeys.message). */
+    private fun sendPanelKeys() {
+        webview?.send(PanelKeys.message())
+    }
+
+    /**
+     * A key rebound in Settings | Keymap, or another keymap chosen: the hints and the cheat sheet must name
+     * the key that works now. Any change at all is answered - the three tab keys follow the IDE's own tab
+     * actions, so a change to Close Tab is a change to ours without our id being named in it.
+     */
+    private fun watchKeymap() {
+        if (webview == null) return
+        ApplicationManager.getApplication().messageBus.connect(parentDisposable).subscribe(
+            KeymapManagerListener.TOPIC,
+            object : KeymapManagerListener {
+                override fun activeKeymapChanged(keymap: Keymap?) = sendPanelKeys()
+
+                override fun shortcutsChanged(keymap: Keymap, actionIds: Collection<String>, fromSettings: Boolean) =
+                    sendPanelKeys()
+            },
+        )
     }
 
     /**
@@ -261,6 +302,10 @@ internal class ClaudePanel(
             onDragging = ::sendFileDrag,
             onDropped = ::attachDropped,
         )
+
+        // The tab keys and Queue: the IDE has the keyboard before the browser does, so they are its
+        // actions, held by the browser while the focus is in it (see PanelKeys).
+        PanelKeys.install(host.component, parentDisposable, ::pressPanelKey)
 
         val frame = JBPanel<JBPanel<*>>(BorderLayout()).apply { add(host.component, BorderLayout.CENTER) }
         this.frame = frame
@@ -379,6 +424,7 @@ internal class ClaudePanel(
                 sendTypography()
                 sendTheme()
                 sendEditorContext()
+                sendPanelKeys()
                 // The menu's row carries the account in force, so the list has to be there before anybody
                 // opens the screen behind it - otherwise that row sits blank next to a full one for
                 // remote access, and the screen it opens jumps from a skeleton to its content mid-slide.
@@ -601,6 +647,11 @@ internal class ClaudePanel(
             }
 
             "openDevTools" -> webview?.openDevTools()
+
+            // The cheat sheet's "change them": Settings | Keymap, filtered to the plugin's own actions.
+            "openKeymap" -> ApplicationManager.getApplication().invokeLater {
+                if (!project.isDisposed) PanelKeys.openKeymap(project)
+            }
 
             // The cursor is set by the shell: an offscreen browser does not carry its own as far as the
             // IDE's window.

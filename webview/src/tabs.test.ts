@@ -14,6 +14,7 @@ import {
   STATISTICS_GROUP,
   tabAfterClosing,
   tabAfterElsewhere,
+  tabBeside,
   type PanelTabPlace,
 } from './tabs'
 
@@ -213,6 +214,31 @@ describe('the tab to look at once one is closed', () => {
   it('says nothing when the strip is left empty', () => {
     const only = [tab('main', 'main')]
     expect(tabAfterClosing(only, [], 'main')).toBe('')
+  })
+})
+
+describe("the panel's next- and previous-tab keys", () => {
+  const strip = stripTabs(sessions, panel(STATISTICS_GROUP))
+
+  it('step through the strip as it is drawn, forks and the panel\'s own tabs included', () => {
+    expect(tabBeside(strip, 'main', 1)).toBe('fork-1')
+    expect(tabBeside(strip, 'third', 1)).toBe(STATISTICS_GROUP)
+    expect(tabBeside(strip, 'second', -1)).toBe('fork-2')
+  })
+
+  it('go round from the last tab to the first and back', () => {
+    expect(tabBeside(strip, STATISTICS_GROUP, 1)).toBe('main')
+    expect(tabBeside(strip, 'main', -1)).toBe(STATISTICS_GROUP)
+  })
+
+  it('start at an end when the screen shows no tab of the strip', () => {
+    expect(tabBeside(strip, 'gone', 1)).toBe('main')
+    expect(tabBeside(strip, 'gone', -1)).toBe(STATISTICS_GROUP)
+  })
+
+  it('stay put on a strip of one, and go nowhere on an empty one', () => {
+    expect(tabBeside(['main'], 'main', 1)).toBe('main')
+    expect(tabBeside([], 'main', 1)).toBe('')
   })
 })
 

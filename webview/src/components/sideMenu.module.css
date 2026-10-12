@@ -337,6 +337,12 @@
   color: var(--acc-fg-dim);
 }
 
+/* The keys take the same neutral as the send key beside them: both are about the keyboard. */
+.rowIconKeys {
+  background: var(--acc-neutral-12);
+  color: var(--acc-fg-dim);
+}
+
 /* Not the neutral of the three rows above it: those are about the shape of the input field, while this
    one decides what the AGENT runs with - which account is billed, which address answers. So it takes the
    agent's own tint, the way the improve row below does. */
@@ -2088,6 +2094,91 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--acc-fg-ghost);
+}
+
+/* --- The cheat sheet of keys (see KeysScreen) ----------------------------- */
+
+/*
+ * One group of keys, as one card: the same frame the voice hotkeys stand in, because the caps inside are
+ * the same caps - a key drawn in two kinds of box on two screens would read as two kinds of key.
+ */
+.keysGroup {
+  --acc-hotkey-h: 22px;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 6px;
+  border: 1px solid var(--acc-line);
+  border-radius: var(--acc-r-2xl);
+  background: var(--acc-bg-card);
+}
+
+.keysGroupTitle {
+  padding: 0 10px 4px;
+  font: 500 12.5px var(--acc-font);
+  color: var(--acc-fg);
+}
+
+/* What it does on the left, the keys on the right - the keys never give way, the words do. */
+.keysRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+  padding: 3px 10px;
+}
+
+.keysText {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.keysLabel,
+.keysWhen {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keysLabel {
+  font: 12px var(--acc-font);
+  color: var(--acc-fg-body);
+}
+
+/* When the key works, where that needs saying: "while the agent works", "in an empty field". */
+.keysWhen {
+  font-size: 10.5px;
+  color: var(--acc-fg-faint);
+}
+
+/* A chord cut short is not a shorter key, it is a different one - so this half never shrinks. */
+.keysCaps {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Between two alternatives ("/"), or between the two strokes of one shortcut (","). */
+.keysBetween {
+  padding: 0 2px;
+  font: 11px var(--acc-mono);
+  color: var(--acc-fg-ghost);
+}
+
+/* A key of the IDE's that nobody has bound - said in words, in the place a key would stand. */
+.keysUnset {
+  font-size: 11px;
+  color: var(--acc-fg-ghost);
+}
+
+.keysFoot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .hotkeyClear {

@@ -55,6 +55,7 @@ export const en = {
       composerLayout: { title: 'COMPOSER LAYOUT', hint: 'where the input sits' },
       pasteCollapse: { title: 'PASTED TEXT', hint: 'when a paste folds into a chip' },
       sendKey: { title: 'SENDING A MESSAGE', hint: 'which key sends it' },
+      keys: { title: 'KEYBOARD SHORTCUTS', hint: 'every key the panel answers to' },
       settingSources: { title: 'WHERE SETTINGS COME FROM', hint: 'which layers Claude Code loads' },
       claudeConfig: { title: 'CLAUDE CODE SETTINGS', hint: 'what /config changes' },
       improvePrompt: { title: 'IMPROVE PROMPT', hint: 'what the sparkle button asks for' },
@@ -107,6 +108,7 @@ export const en = {
       composerLayout: { label: 'Composer layout', sub: 'Where the input sits' },
       pasteCollapse: { label: 'Pasted text', sub: 'When a paste folds into a chip' },
       sendKey: { label: 'Sending a message', sub: 'Which key sends it' },
+      keys: { label: 'Keyboard shortcuts', sub: 'Tabs, queue, search and the rest' },
       settingSources: { label: 'Settings sources', sub: "Which of Claude Code's layers load here" },
       claudeConfig: { label: 'Claude Code settings', sub: 'Its own - what /config changes' },
       improvePrompt: { label: 'Improve prompt', sub: 'What the sparkle button asks for' },
@@ -950,6 +952,48 @@ export const en = {
     modEnterSub: 'Enter breaks the line',
   },
 
+  /**
+   * The cheat sheet of every key the panel answers to (see KeysScreen). The keys themselves are not
+   * words: they are drawn as caps, by the IDE for its own actions and by the page for the rest.
+   */
+  keys: {
+    note: 'The keys work while the focus is in the panel. The tab keys are the ones that switch and close editor tabs in your IDE keymap.',
+    notSet: 'Not set',
+    keymapNote: 'The tab keys, Queue and opening the panel are IDE actions - rebind them in Settings | Keymap.',
+    openKeymap: 'Change in Keymap',
+    groups: { tabs: 'Tabs', message: 'Message field', agent: 'Agent', panel: 'Panel' },
+    rows: {
+      nextTab: 'Next tab',
+      previousTab: 'Previous tab',
+      newTab: 'New tab',
+      closeTab: 'Close tab',
+      closeTabWhen: 'asks first if the agent is working',
+      openPanel: 'Open the panel',
+      openPanelWhen: 'from anywhere in the IDE',
+      send: 'Send',
+      newLine: 'New line',
+      queue: 'Queue',
+      queueWhen: 'sent once the agent finishes',
+      history: 'Browse sent messages',
+      historyWhen: 'in an empty field',
+      commands: 'Commands',
+      files: 'Files',
+      shell: 'Shell command',
+      shellWhen: 'at the start of a message',
+      deleteWord: 'Delete a word',
+      undo: 'Undo',
+      redo: 'Redo',
+      stop: 'Stop',
+      stopWhen: 'while the agent works',
+      mode: 'Next permission mode',
+      answer: 'Answer by number',
+      answerWhen: 'a permission or a question, with the field empty',
+      search: 'Search conversations',
+      fork: 'Fork from the selection',
+      forkWhen: 'with text selected in the feed',
+    },
+  },
+
   settingSources: {
     note: "Claude Code reads its settings from several files, and a repository's own win over yours: an env block committed to it decides the address and the key every request goes out with. Leaving a layer out drops its permissions, hooks and MCP servers along with it. Managed settings from your organization apply either way.",
     all: 'Everything',
@@ -1683,7 +1727,15 @@ export const en = {
       stopCommand: 'Stop this command',
       stopCommandTitle: 'Stop this command?',
     },
-    confirm: { cancel: 'Cancel', stop: 'Stop' },
+    confirm: {
+      cancel: 'Cancel',
+      stop: 'Stop',
+      /** The panel's close key over a tab whose agent is still working - see closingWorking in App. */
+      close: 'Close',
+      closeWorking: 'Close a tab that is still working?',
+      closeWorkingNote:
+        'The agent stops, and messages waiting in its queue are dropped. The conversation itself stays in History.',
+    },
     noChats: { title: 'Excited to work together!', button: "Let's start" },
     crash: {
       title: 'The panel hit an error',

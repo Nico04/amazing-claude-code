@@ -507,6 +507,8 @@ internal object RemoteCommands {
         "pick",
         "dropped",
         "openDevTools",
+        // The IDE's own settings dialog, raised over somebody's desk, about keys a phone has none of.
+        "openKeymap",
         "openExternal",
         /**
          * Opening a file in the editor at the desk. It reaches the machine's own surfaces exactly as

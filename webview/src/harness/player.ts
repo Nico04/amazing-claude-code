@@ -1,11 +1,14 @@
 import type {
   ClaudeConfigSetting,
   PaintedTerm,
+  PanelKeyCommand,
+  PanelKeyName,
   QueuedMessage,
   RewindCode,
   SearchHit,
   ShellMessage,
   VoiceHotkey,
+  VoiceHotkeyCap,
   VoiceHotkeySlot,
   WebviewMessage,
 } from '../protocol'
@@ -1189,6 +1192,87 @@ const answerSound = (message: WebviewMessage): void => {
 }
 
 /**
+ * The panel's own keys, played the way the IDE plays them (see PanelKeys.kt): their keymap told once the
+ * page is up, and the presses caught before the page sees them, then handed over as commands. The IDE's
+ * default keymap of this machine's kind - a Mac's or everyone else's - is what stands in for a person's.
+ */
+// In the order the IDE draws them (see HotkeyBinding.caps): Ctrl, Option, Shift, then Cmd.
+const PANEL_KEYS = ((): {
+  keys: Partial<Record<PanelKeyName, VoiceHotkeyCap[][]>>
+  press: (event: KeyboardEvent) => PanelKeyCommand | null
+} => {
+  const cap = (text: string, glyph: VoiceHotkeyCap['glyph'] = ''): VoiceHotkeyCap => ({ glyph, text, side: '' })
+  const mac = /mac/i.test(navigator.userAgent)
+  const alt = mac ? cap('', 'option') : cap('Alt')
+  const enter = cap('Enter')
+
+  if (mac) {
+    const cmd = cap('', 'command')
+    return {
+      keys: {
+        nextTab: [[cap('Shift'), cmd, cap(']')]],
+        previousTab: [[cap('Shift'), cmd, cap('[')]],
+        newTab: [[cmd, cap('T')]],
+        closeTab: [[cmd, cap('W')]],
+        queue: [[alt, enter]],
+        openPanel: [],
+      },
+      press: (event) => {
+        if (event.metaKey && event.shiftKey && event.code === 'BracketRight') return 'nextTab'
+        if (event.metaKey && event.shiftKey && event.code === 'BracketLeft') return 'previousTab'
+        if (event.metaKey && !event.shiftKey && event.code === 'KeyT') return 'newTab'
+        if (event.metaKey && !event.shiftKey && event.code === 'KeyW') return 'closeTab'
+        if (event.altKey && event.key === 'Enter') return 'queue'
+        return null
+      },
+    }
+  }
+
+  return {
+    keys: {
+      nextTab: [[alt, cap('', 'right')]],
+      previousTab: [[alt, cap('', 'left')]],
+      newTab: [[cap('Ctrl'), cap('Shift'), cap('T')]],
+      closeTab: [[cap('Ctrl'), cap('F4')]],
+      queue: [[alt, enter]],
+      openPanel: [],
+    },
+    press: (event) => {
+      if (event.altKey && event.key === 'ArrowRight') return 'nextTab'
+      if (event.altKey && event.key === 'ArrowLeft') return 'previousTab'
+      if (event.ctrlKey && event.shiftKey && event.code === 'KeyT') return 'newTab'
+      if (event.ctrlKey && event.key === 'F4') return 'closeTab'
+      if (event.altKey && event.key === 'Enter') return 'queue'
+      return null
+    },
+  }
+})()
+
+let panelKeysCaught = false
+
+const answerPanelKeys = (message: WebviewMessage): void => {
+  if (message.type !== 'ready') return
+
+  // A beat later, for the reason the voice settings wait (see sendVoiceConfig).
+  setTimeout(() => window.__accReceive?.({ type: 'panelKeys', keys: PANEL_KEYS.keys }), 60)
+
+  if (panelKeysCaught) return
+  panelKeysCaught = true
+  // Capturing, and on the window: the IDE has the keyboard before anything in the page does.
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      const command = PANEL_KEYS.press(event)
+      if (!command) return
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      window.__accReceive?.({ type: 'panelKey', command })
+    },
+    true,
+  )
+}
+
+/**
  * Queue, the cross, a drag and the pencil, answered the way ClaudeSessionHub answers them - so the queue
  * above the field can be worked by hand here. Nothing is ever fired out of it: the harness has no turn
  * that ends by itself, and a scenario that wants one plays it.
@@ -1501,6 +1585,7 @@ const listenToPanel = () => {
     if (message) answerQueue(message)
     if (message) answerSound(message)
     if (message) answerRewind(message)
+    if (message) answerPanelKeys(message)
   }
 
   window.dispatchEvent(new Event('acc:ready'))

@@ -121,6 +121,23 @@ export const stripTabs = (sessions: Session[], panels: PanelTabPlace[]): string[
 }
 
 /**
+ * The tab the panel's next- or previous-tab key moves to (see PanelKeys.kt): the neighbour in the strip as
+ * it is drawn, forks and the panel's own tabs included, and round from the last one to the first.
+ *
+ * Round, the way the IDE's own tab keys go through editor tabs, since those are the keys that do this:
+ * the strip has no "end" a person would want to stop at, and a key that goes dead on the last tab reads
+ * as a key that does not work. A tab that is not in the strip (the screen with no tabs) starts at the
+ * first one, or the last going backwards; an empty strip has nowhere to go.
+ */
+export const tabBeside = (order: string[], current: string, step: 1 | -1): string => {
+  if (order.length === 0) return ''
+
+  const at = order.indexOf(current)
+  if (at < 0) return step > 0 ? order[0]! : order[order.length - 1]!
+  return order[(at + step + order.length) % order.length]!
+}
+
+/**
  * The tab to look at once this one is closed, or an empty string when the strip is left empty.
  *
  * The neighbour on the right, and the one on the left when the closed tab stood last - the answer every

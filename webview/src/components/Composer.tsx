@@ -442,6 +442,13 @@ interface ComposerProps {
    */
   keyQueues?: boolean
   /**
+   * The panel's queue key was pressed (Alt+Enter unless rebound, see PanelKeys.kt). The IDE catches it
+   * before the browser does, so it arrives as a count going up rather than as a key - see pressQueueKey.
+   */
+  queueToken?: number
+  /** That key as a hint names it - "Option+Enter" - or empty while the IDE has not said (see keyText). */
+  queueKey?: string
+  /**
    * What the editor beside the panel shows, and whether it goes with this message (see EditorChip). Null
    * with nothing to show, or with the setting off - then there is no chip at all.
    */
@@ -549,6 +556,8 @@ export const Composer = ({
   onSubmit,
   onQueue,
   keyQueues = false,
+  queueToken = 0,
+  queueKey = '',
   editor = null,
   onToggleEditor,
   canSubmit,
@@ -1508,6 +1517,33 @@ export const Composer = ({
   }
 
   /**
+   * The queue key: Queue while there is one to press, and the field's ordinary Send when there is not -
+   * with the agent free there is nothing to wait for, and a key that does nothing then would only teach
+   * people not to press it. A shell command and a side question have no queue, and their Send is what
+   * the key presses too.
+   *
+   * Not while another field has the focus: the IDE takes the key from anywhere in the panel, and Alt+Enter
+   * typed into the search or into an answer to the agent's question must not send this field's draft.
+   * Held in a ref, so the effect below runs on the count alone and finds the draft as it stands.
+   */
+  const pressQueueKey = useRef(() => {})
+  pressQueueKey.current = () => {
+    const focused = document.activeElement as HTMLElement | null
+    const typing = focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.isContentEditable)
+    if (typing && focused !== input.current) return
+    letGo(!bash && !aside && forConversation && streaming ? onQueue : onSubmit)
+  }
+
+  // A new press, never the count the field was born with: the field is built anew for another tab or a
+  // run, and a press made before that must not send the draft that tab happens to hold.
+  const seenQueueToken = useRef(queueToken)
+  useEffect(() => {
+    if (queueToken === seenQueueToken.current) return
+    seenQueueToken.current = queueToken
+    pressQueueKey.current()
+  }, [queueToken])
+
+  /**
    * A file or a folder dropped into the field we take for ourselves: without that the embedded browser
    * would simply open the file in place of the panel's page. The contents themselves we do not need - only
    * the path, out of which the shell assembles the chip.
@@ -1929,8 +1965,10 @@ export const Composer = ({
       className={`${s.send} ${s.sendQueued}`}
       onClick={() => letGo(onQueue)}
       disabled={!canSubmit || !streaming}
-      /* The key follows the button it presses: while a queued message is being edited that is this one. */
-      data-tooltip={keyQueues ? sendKeyCap(sendKey) : t.composer.queueHint}
+      /* The key follows the button it presses: while a queued message is being edited that is this one.
+         Otherwise the hint says what Queue does, and the panel's queue key beside it when the IDE has
+         named one (see PanelKeys.kt). */
+      data-tooltip={keyQueues ? sendKeyCap(sendKey) : queueKey ? `${t.composer.queueHint} (${queueKey})` : t.composer.queueHint}
       data-tooltip-at="top"
       aria-label={t.composer.queue}
     >

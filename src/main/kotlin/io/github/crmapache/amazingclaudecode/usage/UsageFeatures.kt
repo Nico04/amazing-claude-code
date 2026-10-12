@@ -25,6 +25,7 @@ internal object UsageFeatures {
     /** The features with a name of their own - every id the service words one by one. */
     val NAMED: Set<String> = setOf(
         "new_tab",
+        "panel_keys",
         "fork",
         "tab_rename",
         "tab_reorder",
@@ -101,6 +102,7 @@ internal object UsageFeatures {
         "composerLayout",
         "pasteCollapse",
         "sendKey",
+        "keys",
         "settingSources",
         "claudeConfig",
         "improvePrompt",

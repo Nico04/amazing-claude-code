@@ -104,6 +104,8 @@ export const FEATURES: Record<Product, Record<string, FeatureLabel>> = {
   acc: {
     ...SHARED_FEATURES,
     stop_task: { group: 'conversation', label: 'Stop a background task' },
+    // The panel's keys came to ACC first, and wait for the fork until they are ported there.
+    panel_keys: { group: 'conversation', label: 'Switch, open or close tabs, or queue, by a key' },
     plugins_manage: { group: 'manage', label: 'Install or manage a Claude Code plugin' },
     account_add: { group: 'manage', label: 'Add a Claude account' },
     account_switch: { group: 'manage', label: 'Switch Claude account' },
@@ -159,6 +161,8 @@ export const SCREENS: Record<Product, Record<string, string>> = {
   acc: {
     ...SHARED_SCREENS,
     accounts: 'Claude accounts',
+    // The cheat sheet of keys, ACC's alone until the fork ports the panel's keys.
+    keys: 'Keyboard shortcuts',
     settingSources: 'Claude Code settings sources',
     claudeConfig: 'Claude Code settings',
   },

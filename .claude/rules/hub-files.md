@@ -69,6 +69,7 @@ paths:
 - `usageStats`, `answerUsageStats`, `UsageConsentCard` в `dockCards`, `stat` с `feature` в `openScreen`/`openMenu` - usage-stats
 - `claudeConfig*` состояние, `openClaudeConfig`, `case 'claudeConfig'`, `config` в `runLocal` - claude-config
 - хоткеи поверх панели, пока собирается иероглиф - composer-field
+- `pressPanelKey`, `pressPanelKeyRef`, `closeSession`, `closingWorking`, `queueToken`, `panelKeys`, `stillWorking`, `case 'panelKey'`/`'panelKeys'` - panel-keys
 - `sideThreads`, `askAside`, `forgetSide`, `case 'sideAnswer'`/`'sideProgress'`, Esc над карточкой вопроса сбоку, `SideQuestionCard` в `dockCards` - btw
 - только в `mobile/App.tsx`: `PhoneRewind`, `refills`, `RewindSheet` - rewind; `forkFrom`/`forkWhole` (`kind: 'branch'`, `before`) - fork-tabs;
   `openMachineScreen`, `openRepository`, `Door`/`from`, `edit.home`/`edit.origin` -
@@ -83,6 +84,7 @@ paths:
 - `toolUseResult` у `AgentUserEvent`, `text` у `askAnswer` - permissions; `origin` у `AgentUserEvent` - history
 - `settingSources` в `init`, `setSettingSources`, `askSettingSources`, `accountOutranked`, `api_error_status` - setting-sources
 - `sideQuestion`, `sideQuestionCancel`, `sideAnswer`, `sideProgress` - btw
+- `panelKey`, `panelKeys`, `openKeymap`, `PanelKeyCommand`, `PanelKeyName`, `PanelKeyStroke` - panel-keys
 - `theme`, `setTheme`, `setTextSize`, размеры в `typography` - appearance
 - `claudeConfig`, `askClaudeConfig`, `setClaudeConfig`, `ClaudeConfigSetting` - claude-config
 - `activeTab`, `drafts`, `restoreTabs`, `saveDraft`, `tabShown`, `setRestoreTabs` - restore-tabs
@@ -126,7 +128,8 @@ paths:
 **`webview/src/components/Composer.tsx`**: `keyQueues` - queue-edit; чип `editor` и шаг `editorName` в
 `droppable` - editor-context; `registerApply`, `fillField` - prompt-improver; хвост диктовки
 `data-voice` - voice; `ContextMeter` - composer-field, calm-colors и indicators (`bar`/`figure`); проп
-`indicators` и пустые контейнеры на рельсе и в compact - indicators; сворачивание вставки - paste.
+`indicators` и пустые контейнеры на рельсе и в compact - indicators; сворачивание вставки - paste;
+`queueToken`, `queueKey`, `pressQueueKey`, `seenQueueToken` - panel-keys.
 
 **`webview/src/components/feed.module.css`**: `.userActions` - message-reuse; `.taskLog` - subagents;
 `.toolHead` и его распорка `::before` - tool-cards; `.pins`, `.pinOn`, `.textPinnable` - pins;
@@ -146,7 +149,8 @@ paths:
 `answerModel` (ответ обязан быть отложенным) и `setEffort` - models; переписывание - prompt-improver;
 диктовка - voice; `savePastedFile`, `clipboardWrite`/`clipboardRead` - clipboard; `saveImage` - stats;
 фидбэк - feedback; поиск - search; вход в аккаунт - expired-sign-in и accounts; транскрипт агента - subagents;
-`answerFork` (история и шов нового форка) - fork-tabs.
+`answerFork` (история и шов нового форка) - fork-tabs; `answerPanelKeys` (раскладка и перехват клавиш панели) -
+panel-keys.
 
 **`ClaudeSessionHub.kt`** (сам по себе подгружает remote-access):
 - `prompt`: сохранение буферов - editor-sync; `sendStatus`, очередь, команда в идущий ход - turn-lifecycle
@@ -187,7 +191,8 @@ models; `openFile` - open-in-editor; фидбэк и лог незнакомог
 `setHiddenIndicators` - indicators; `setTheme`, `setTextSize`, `sendTheme`, `appearanceChanged` - appearance;
 `saveDraft`, `tabShown`, `setRestoreTabs`, `sendDrafts` - restore-tabs; `watchEditor`, `sendEditorContext`,
 `setShareEditor` - editor-context; счёт фич `UsageFeatures.ofMessage` у двери окна, `setUsageStats`,
-`usageStatsPreview`, `usageChanged` - usage-stats.
+`usageStatsPreview`, `usageChanged` - usage-stats; `PanelKeys.install`, `pressPanelKey`, `sendPanelKeys`,
+`watchKeymap`, `openKeymap` - panel-keys.
 
 **`ClaudeCli.kt`**: всё написанное человеком - в stdin (аргументы запуска в CLAUDE.md, prompt-improver);
 `run`/`onStarted` и отмена - search; `--tools ""` у разовых запусков - task-list.

@@ -1630,6 +1630,17 @@ type ShellMessageBody =
    * the IDE clipboard into the focused field. `letter` is what the key writes by itself, see isLeak.
    */
   | { type: 'pasteKeys'; letter: string }
+  /**
+   * One of the panel's own keys, pressed with the focus in the panel (see PanelKeys.kt). The IDE has the
+   * keyboard before the browser, so these arrive as commands rather than as key presses - and which tab
+   * is next, which one is working and what stands in the field is this page's to know.
+   */
+  | { type: 'panelKey'; command: PanelKeyCommand }
+  /**
+   * The keys those commands answer to right now, as Settings | Keymap binds them - sent when the page
+   * opens and again on every change to the keymap. A command with no key at all has an empty list.
+   */
+  | { type: 'panelKeys'; keys: Partial<Record<PanelKeyName, PanelKeyStroke[]>> }
   /** Where a pasted file was written - the answer to `savePastedFile`. */
   | { type: 'pastedFile'; id: string; path: string }
   /** The answer to mcpList - and to mcpAdd/mcpRemove, so that the list refreshes at once. */
@@ -2444,6 +2455,8 @@ export type WebviewMessage =
   | { type: 'setLanguage'; language: string }
   | { type: 'refreshUsage' }
   | { type: 'openDevTools' }
+  /** Settings | Keymap, filtered down to the panel's own actions - the cheat sheet's "change them". */
+  | { type: 'openKeymap' }
   /**
    * Which cursor the CSS under the mouse asks for.
    *
@@ -2985,7 +2998,22 @@ export interface VoiceHotkeyCap {
 }
 
 /** The keys the panel draws rather than spells: the two a Mac prints, the Windows key, and a mouse. */
-export type VoiceHotkeyGlyph = '' | 'option' | 'command' | 'win' | 'mouse'
+export type VoiceHotkeyGlyph = '' | 'option' | 'command' | 'win' | 'mouse' | 'left' | 'right' | 'up' | 'down'
+
+/**
+ * The panel's own keys (see PanelKeys.kt): the IDE's actions, named the way the page is told about them.
+ * The ids are the wire's - the Kotlin enum spells them the same.
+ */
+export type PanelKeyCommand = 'nextTab' | 'previousTab' | 'newTab' | 'closeTab' | 'queue'
+
+/**
+ * Every key the IDE names for the page: the commands above, and the IDE's own action that brings the panel
+ * up from anywhere - not a command, nothing for the page to do, but the way in that the cheat sheet names.
+ */
+export type PanelKeyName = PanelKeyCommand | 'openPanel'
+
+/** One keystroke of a panel key, key by key - the same caps a voice binding is drawn with. */
+export type PanelKeyStroke = VoiceHotkeyCap[]
 
 /** A language nova-3 will listen in. Both names travel untranslated - a language names itself. */
 export interface VoiceLanguage {

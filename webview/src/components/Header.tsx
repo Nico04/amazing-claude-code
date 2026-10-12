@@ -175,6 +175,12 @@ interface HeaderProps {
   onPickPanelTab?: (id: string) => void
   onClosePanelTab?: (id: string) => void
   /**
+   * The panel's keys for a new tab and for closing the open one, as hover hints name them (see keyText) -
+   * empty while the IDE has not said, and then the hints say only what they always said.
+   */
+  newTabKey?: string
+  closeTabKey?: string
+  /**
    * The conversations that called the person with a sound and have not been opened since, by tab. Each
    * glows in the colour of what it called about until it is opened (see TabGlow): the sound says that
    * something happened, and with a dozen tabs open only this says where.
@@ -497,6 +503,8 @@ export const Header = ({
   onPickPanelTab,
   onClosePanelTab,
   calls = NO_CALLS,
+  newTabKey = '',
+  closeTabKey = '',
 }: HeaderProps) => {
   const t = useT()
   const compact = layout === 'compact' || isSideComposerLayout(layout)
@@ -980,6 +988,9 @@ export const Header = ({
           type="button"
           className={s.tabClose}
           aria-label={`Close ${session.title}`}
+          /* The key and nothing else, as on Send: the cross says "close" by itself. Only on the open tab -
+             the key closes that one, and named on another tab's cross it would promise to close that. */
+          data-tooltip={session.id === activeSession && closeTabKey ? closeTabKey : undefined}
           onClick={(event) => {
             event.stopPropagation()
             onCloseSession(session.id)
@@ -1035,6 +1046,7 @@ export const Header = ({
         type="button"
         className={s.tabClose}
         aria-label={tab.closeLabel}
+        data-tooltip={tab.active && closeTabKey ? closeTabKey : undefined}
         onClick={(event) => {
           event.stopPropagation()
           onClosePanelTab?.(tab.id)
@@ -1069,7 +1081,12 @@ export const Header = ({
         ))}
         {panels.filter((tab) => tab.at >= groups.length).map(panelTab)}
 
-        <button type="button" className={s.tabAdd} data-tooltip={t.header.newSession} onClick={onNewSession}>
+        <button
+          type="button"
+          className={s.tabAdd}
+          data-tooltip={newTabKey ? `${t.header.newSession} (${newTabKey})` : t.header.newSession}
+          onClick={onNewSession}
+        >
           +
         </button>
       </div>

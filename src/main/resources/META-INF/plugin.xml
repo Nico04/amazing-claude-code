@@ -87,5 +87,44 @@
                  (see SendAbsolutePathAction.offeredIn). -->
             <add-to-group group-id="CutCopyPasteGroup" anchor="after" relative-to-action="CopyReferencePopupGroup"/>
         </action>
+
+        <!-- The panel's own keys (see PanelKeys). In no menu: they live in Settings | Keymap under the
+             plugin, and in Find Action. Each works only while the focus is in the panel - everywhere else
+             the same key stays with whatever owns it. The ids are filed in people's keymaps once rebound:
+             do not rename them. -->
+        <!-- The tab keys are the IDE's own, by reference: the keys that move between and close editor tabs
+             in this person's keymap do it to the panel's tabs, and follow when the keymap changes. -->
+        <action id="AmazingClaudeCode.NextTab"
+                class="io.github.crmapache.amazingclaudecode.toolwindow.NextTabAction"
+                text="Amazing Claude Code GUI: Next Tab"
+                description="Show the next tab of the Claude panel"
+                use-shortcut-of="NextTab"/>
+        <action id="AmazingClaudeCode.PreviousTab"
+                class="io.github.crmapache.amazingclaudecode.toolwindow.PreviousTabAction"
+                text="Amazing Claude Code GUI: Previous Tab"
+                description="Show the previous tab of the Claude panel"
+                use-shortcut-of="PreviousTab"/>
+        <action id="AmazingClaudeCode.CloseTab"
+                class="io.github.crmapache.amazingclaudecode.toolwindow.CloseTabAction"
+                text="Amazing Claude Code GUI: Close Tab"
+                description="Close the tab the Claude panel shows"
+                use-shortcut-of="CloseContent"/>
+        <!-- The terminal's keys for a new tab, the other tool window with tabs: one habit for both. -->
+        <action id="AmazingClaudeCode.NewTab"
+                class="io.github.crmapache.amazingclaudecode.toolwindow.NewTabAction"
+                text="Amazing Claude Code GUI: New Tab"
+                description="Start a new conversation in the Claude panel">
+            <keyboard-shortcut first-keystroke="control shift T" keymap="$default"/>
+            <keyboard-shortcut first-keystroke="meta T" keymap="Mac OS X" replace-all="true"/>
+            <keyboard-shortcut first-keystroke="meta T" keymap="Mac OS X 10.5+" replace-all="true"/>
+        </action>
+        <!-- Alt+Enter beside Enter: Enter sends into the running turn, this waits for it to finish. In the
+             editor Alt+Enter stays the intentions' - the action is disabled there. -->
+        <action id="AmazingClaudeCode.QueueMessage"
+                class="io.github.crmapache.amazingclaudecode.toolwindow.QueueMessageAction"
+                text="Amazing Claude Code GUI: Queue Message"
+                description="Send the message after the agent finishes its current work">
+            <keyboard-shortcut first-keystroke="alt ENTER" keymap="$default"/>
+        </action>
     </actions>
 </idea-plugin>

@@ -116,6 +116,10 @@ const SHARED_WITH_ENGLISH: Record<string, Locale[]> = {
   // "Mods" is the word the Latin languages use for them as well.
   'feed.mods.label': ['es', 'pt-BR', 'de', 'fr'],
   'mobile.sessions.agent.offline': ['pt-BR', 'de'],
+  // The cheat sheet's group titles: German says Tabs and Panel, German and French say Agent.
+  'keys.groups.tabs': ['de'],
+  'keys.groups.agent': ['de', 'fr'],
+  'keys.groups.panel': ['de', 'es'],
   // The phone's own screens, where the Latin languages happen to spell a word exactly as English does.
   'mobile.sessions.kind.permission': ['fr'],
   'mobile.sessions.kind.question': ['fr'],

@@ -59,6 +59,7 @@ import {
   type MenuScreen,
   type MenuSummary,
 } from './components/SideMenu'
+import { KeysScreen } from './components/KeysScreen'
 import { Language } from './components/Language'
 import { LocaleProvider, activeLocale, nativeName, useDict } from './i18n'
 import type { Dict } from './i18n/en'
@@ -194,7 +195,9 @@ import type {
   RewindRefusal,
   ShellMessage,
   UsageStatsConsent,
+  PanelKeyCommand,
 } from './protocol'
+import { keyText, type PanelKeys } from './panelKeys'
 import {
   NO_SOUND_PREFS,
   SOUND_IDS,
@@ -234,8 +237,11 @@ import {
   runTabId,
   SCENARIOS_GROUP,
   STATISTICS_GROUP,
+  isPanelTab,
+  stripTabs,
   tabAfterClosing,
   tabAfterElsewhere,
+  tabBeside,
   type PanelTabPlace,
 } from './tabs'
 import {
@@ -806,6 +812,18 @@ export const App = () => {
   const [loginProblem, setLoginProblem] = useState<'no-drawer' | 'no-terminal' | ''>('')
   /** Grows whenever the input field has to be given the focus back: after a link from the editor, say. */
   const [focusToken, setFocusToken] = useState(0)
+  /** Grows with every press of the panel's queue key - the field presses Queue on it (see Composer). */
+  const [queueToken, setQueueToken] = useState(0)
+  /**
+   * The panel's own keys as Settings | Keymap binds them now (see PanelKeys.kt) - for the hover hints and
+   * the cheat sheet. Empty until the IDE says: the harness never does, and nothing is guessed meanwhile.
+   */
+  const [panelKeys, setPanelKeys] = useState<PanelKeys>({})
+  /**
+   * What a press of one of those keys does, as of the last render (see pressPanelKey). A ref because the
+   * message handler is built once, and the strip, the open tab and the field all change under it.
+   */
+  const pressPanelKeyRef = useRef<(command: PanelKeyCommand) => void>(() => {})
   /**
    * The usage figures of every account, not just one set.
    *
@@ -1081,6 +1099,12 @@ export const App = () => {
    * background command a live process such as a server.
    */
   const [stopping, setStopping] = useState<{ id: string; title: string; subject: string } | null>(null)
+  /**
+   * A tab the close key was pressed on while its agent was at work - asked about before it goes (see
+   * pressPanelKey). The cross on the tab does not ask: a click is aimed at that tab, while the key is
+   * pressed by a hand that may well believe it is closing a file in the editor.
+   */
+  const [closingWorking, setClosingWorking] = useState<string | null>(null)
 
   /**
    * The rewind dialog over one of the person's messages, while it is open (see RewindDialog). `code` is the
@@ -3410,6 +3434,16 @@ export const App = () => {
             pasteFromKeys(message.letter)
             break
 
+          // The panel's own keys: the IDE caught the press (see PanelKeys.kt), the page decides what it
+          // does - through a ref, because this handler is built once and the strip changes under it.
+          case 'panelKey':
+            pressPanelKeyRef.current(message.command)
+            break
+
+          case 'panelKeys':
+            setPanelKeys(message.keys)
+            break
+
           // Where the shell put something pasted into the panel - whoever pasted it is waiting for the
           // path (see savePastedFile).
           case 'pastedFile':
@@ -5491,6 +5525,9 @@ export const App = () => {
   // Without a login the input field is meaningless: the agent answers any question with a line about
   // /login, and that command itself is out of reach in streaming mode.
   if (!auth || !auth.loggedIn) {
+    // No tabs and no field behind the sign-in, so the panel's keys do nothing here - rather than whatever
+    // the last signed-in draw left in the ref (see pressPanelKey, which is set further down).
+    pressPanelKeyRef.current = () => {}
     return (
       <LocaleProvider locale={locale}>
         <div className={s.panel} data-anchor={dockAnchor}>
@@ -5923,49 +5960,99 @@ export const App = () => {
       .map((session) => session.id),
   )
 
+  /**
+   * Closing a conversation's tab - the cross on the tab and the panel's close key both come here.
+   *
+   * Any tab closes like an ordinary one, the last one included - then there is nothing to show, but the
+   * header and its buttons (history, MCP, plugins) stay: they are not tied to whether a conversation is
+   * open.
+   */
+  const closeSession = (id: string) => {
+    send({ type: 'closeSession', sessionId: id })
+    delete soundMemory.current[id]
+    // Both the collected output and what is still running: without the second, a later answer from
+    // the shell would start the record up again - for a conversation that no longer exists.
+    forgetShellCommands(id)
+    forgetSide(id)
+    setShellRuns((current) => {
+      if (!(id in current)) return current
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+    // The draft of a conversation that no longer exists, and what its rewrites were about: both are
+    // about a field nobody can open again, and both hold on to whatever was attached to that draft.
+    setDrafts((current) => {
+      if (!(id in current)) return current
+
+      const next = { ...current }
+      delete next[id]
+      return next
+    })
+    forgetImproveSource(id)
+    // And what was being answered to a question of that conversation - see askDrafts.
+    forgetAskDrafts(id)
+    // Where a feed nobody can open again was left standing.
+    feedPlaces.current.delete(id)
+    dispatchPanel({ session: id, closed: true })
+    const next = sessions.filter((session) => session.id !== id)
+    setSessions(next)
+    // The neighbour in the strip, and one of this panel's own tabs just as readily as a chat: the
+    // empty screen is for an empty strip (see tabAfterClosing).
+    if (active === id) setActive(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
+  }
+
+  /**
+   * One of the panel's own keys (see PanelKeys.kt). They are the IDE's actions, so they never arrive here
+   * as key presses - the IDE caught the press with the focus in the panel and says which command it was.
+   *
+   * A key does what the mouse could do from where it is: with a question or the menu open over the strip,
+   * the tabs are out of the mouse's reach, and they are out of the keys' too.
+   */
+  const pressPanelKey = (command: PanelKeyCommand) => {
+    if (sideMenu.open || document.querySelector('[aria-modal="true"]')) return
+
+    switch (command) {
+      case 'nextTab':
+      case 'previousTab': {
+        const target = tabBeside(stripTabs(sessions, panelTabs), active, command === 'nextTab' ? 1 : -1)
+        if (!target || target === active) return
+        setActive(target)
+        // Straight into the field, the way a new tab and a fork land there: the hand that switched tabs
+        // with a key is on the keyboard, and the next thing it does is type. The panel's own tabs have no
+        // field.
+        if (!isPanelTab(target)) setFocusToken((current) => current + 1)
+        return
+      }
+
+      case 'newTab':
+        startSession(`session-${Date.now()}`)
+        return
+
+      case 'closeTab':
+        if (isPanelTab(active)) {
+          closePanelTab(active)
+          return
+        }
+        if (!sessions.some((session) => session.id === active)) return
+        if (stillWorking(panels[active])) setClosingWorking(active)
+        else closeSession(active)
+        return
+
+      case 'queue':
+        setQueueToken((current) => current + 1)
+        return
+    }
+  }
+  pressPanelKeyRef.current = pressPanelKey
+
   const header = (
     <Header
         sessions={tabs}
         layout={composerLayout}
         activeSession={active}
         onPickSession={setActive}
-        onCloseSession={(id) => {
-          // Any tab closes like an ordinary one, the last one included - then there is nothing to show,
-          // but the header and its buttons (history, MCP, plugins) stay: they are not tied to whether a
-          // conversation is open.
-          send({ type: 'closeSession', sessionId: id })
-          delete soundMemory.current[id]
-          // Both the collected output and what is still running: without the second, a later answer from
-          // the shell would start the record up again - for a conversation that no longer exists.
-          forgetShellCommands(id)
-          forgetSide(id)
-          setShellRuns((current) => {
-            if (!(id in current)) return current
-            const next = { ...current }
-            delete next[id]
-            return next
-          })
-          // The draft of a conversation that no longer exists, and what its rewrites were about: both are
-          // about a field nobody can open again, and both hold on to whatever was attached to that draft.
-          setDrafts((current) => {
-            if (!(id in current)) return current
-
-            const next = { ...current }
-            delete next[id]
-            return next
-          })
-          forgetImproveSource(id)
-          // And what was being answered to a question of that conversation - see askDrafts.
-          forgetAskDrafts(id)
-          // Where a feed nobody can open again was left standing.
-          feedPlaces.current.delete(id)
-          dispatchPanel({ session: id, closed: true })
-          const next = sessions.filter((session) => session.id !== id)
-          setSessions(next)
-          // The neighbour in the strip, and one of this panel's own tabs just as readily as a chat: the
-          // empty screen is for an empty strip (see tabAfterClosing).
-          if (active === id) setActive(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
-        }}
+        onCloseSession={closeSession}
         onNewSession={() => startSession(`session-${Date.now()}`)}
         onFork={forkWhole}
         forkable={forkable}
@@ -5979,6 +6066,8 @@ export const App = () => {
         panelTabs={headerPanelTabs}
         onPickPanelTab={setActive}
         onClosePanelTab={closePanelTab}
+        newTabKey={keyText(panelKeys.newTab)}
+        closeTabKey={keyText(panelKeys.closeTab)}
         calls={calls}
         watchers={watchers}
         gitBranch={branch.gitBranch}
@@ -6120,6 +6209,26 @@ export const App = () => {
           onConfirm={() => {
             send({ type: 'stopTask', sessionId: active, taskId: stopping.id })
             setStopping(null)
+          }}
+        />
+      ) : null}
+
+      {/* The close key over a tab whose agent is working: closing stops the work and drops the tab's queue,
+          and the key may have been meant for the editor. Enter closes, as asked; Escape keeps the tab. */}
+      {closingWorking && sessions.some((session) => session.id === closingWorking) ? (
+        <Confirm
+          title={t.chrome.confirm.closeWorking}
+          subject={sessions.find((session) => session.id === closingWorking)?.title ?? ''}
+          note={t.chrome.confirm.closeWorkingNote}
+          confirmLabel={t.chrome.confirm.close}
+          onCancel={() => {
+            setClosingWorking(null)
+            setFocusToken((current) => current + 1)
+          }}
+          onConfirm={() => {
+            const id = closingWorking
+            setClosingWorking(null)
+            closeSession(id)
           }}
         />
       ) : null}
@@ -6336,6 +6445,8 @@ export const App = () => {
               files={files}
               imageBaseCount={tellImageBase}
               focusToken={focusToken}
+              // No queue here: the queue key is this field's Send (see Composer.pressQueueKey).
+              queueToken={queueToken}
               // Its own place at the foot of the run, whatever the chat's layout: the side rail of left/right
               // belongs to a conversation's screen.
               layout={composerLayout === 'compact' ? 'compact' : 'bottom'}
@@ -6509,6 +6620,8 @@ export const App = () => {
             files={files}
             imageBaseCount={imageBaseCount}
             focusToken={focusToken}
+            queueToken={queueToken}
+            queueKey={keyText(panelKeys.queue)}
             layout={composerLayout}
             model={model}
             switchedFrom={panel.switchedFrom}
@@ -6902,6 +7015,15 @@ export const App = () => {
           />
         ) : null}
 
+        {sideMenu.open && sideMenu.screen === 'keys' ? (
+          <KeysScreen
+            keys={panelKeys}
+            sendKey={sendKey}
+            voice={voice.enabled ? { push: voice.hotkeys.push.caps, hold: voice.hotkeys.hold.caps } : null}
+            onOpenKeymap={() => send({ type: 'openKeymap' })}
+          />
+        ) : null}
+
         {sideMenu.open && sideMenu.screen === 'claudeConfig' ? (
           <ClaudeConfig
             state={claudeConfig}
@@ -7103,6 +7225,18 @@ const panelsReducer = (state: PanelsState, event: PanelsAction): PanelsState => 
 }
 
 /**
+ * Whether the agent is still at work in this conversation - what the tab's dot calls "running", and what
+ * the panel's close key asks about before it closes the tab (see pressPanelKey in App).
+ *
+ * The main turn can end while a skill's background subagent (launched outside the ordinary turn cycle,
+ * e.g. by /code-review) keeps going - streamStatus already knows to say "Waiting for N subagents" for the
+ * same reason. The dot has to agree, or it calls a conversation done while work is still visibly running.
+ */
+const stillWorking = (panel: PanelState | undefined): boolean =>
+  panel !== undefined &&
+  (panel.status === 'running' || panel.items.some((item) => item.kind === 'task' && item.pending))
+
+/**
  * What a tab's dot shows. A crashed process matters most: the turn was cut short against its will, and even
  * a tab nobody is looking at has to say so. Next comes waiting for the person, and only then ordinary work.
  */
@@ -7129,12 +7263,7 @@ const sessionState = (panel: PanelState | undefined, active: boolean, cards: Car
   const last = [...panel.items].reverse().find((item) => item.kind !== 'meta')
   if (!active && last?.kind === 'error') return 'attention'
 
-  if (panel.status === 'running') return 'running'
-
-  // The main turn can end while a skill's background subagent (launched outside the ordinary turn cycle,
-  // e.g. by /code-review) keeps going - streamStatus already knows to say "Waiting for N subagents" for the
-  // same reason. The dot has to agree, or it calls a conversation done while work is still visibly running.
-  if (panel.items.some((item) => item.kind === 'task' && item.pending)) return 'running'
+  if (stillWorking(panel)) return 'running'
 
   // We count as finished a conversation in which the agent brought a turn to its end at least once: a fork
   // marker by itself is not work yet.
