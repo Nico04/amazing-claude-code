@@ -1,8 +1,9 @@
-import type { AgentEvent, AgentStatus, AgentUsage, EditorRef, QueuedMessage } from '../protocol'
+import type { AgentEvent, AgentStatus, AgentUsage, EditorRef, QueuedMessage, RevertOutcome } from '../protocol'
 import type {
   BackgroundTask,
   CheckpointItem,
   FeedItem,
+  FileChange,
   ModPane,
   ModToast,
   PermDecision,
@@ -247,6 +248,15 @@ export interface PanelState {
    */
   queue: QueuedMessage[]
   /**
+   * The files the turn going on now has changed so far - laid into the feed as one row when it ends (see
+   * closeChanges in feed/changes.ts), and empty again after that.
+   *
+   * Gathered as the results come rather than read back out of the feed at the end, because a subagent's
+   * edits never become cards of this feed: its calls are lines in its own log, and the result's diff is
+   * the one moment its changes can be counted.
+   */
+  turnChanges: FileChange[]
+  /**
    * A subagent's card by the tool_use_id of the Task/Agent call that spawned it - out of the task_started
    * system event. The subagent's own messages carry only a tool_use_id in parent_tool_use_id, while the
    * card may live under a task_id: without this map there is nothing to tie them together with.
@@ -413,6 +423,8 @@ export type PanelAction =
    * after it, which the client works out from the journal numbers (see lastHeld in mobile/feed.ts).
    */
   | { kind: 'rewound'; uuid: string; all?: boolean }
+  /** The IDE's answer to putting back a turn's files - see changesReverted in protocol.ts. */
+  | { kind: 'changesReverted'; id: string; files: { path: string; outcome: RevertOutcome }[]; restore?: boolean }
   /**
    * replay marks an event of a past conversation's replay rather than a live turn: it lands in the feed
    * the same way but tells nothing about the conversation right now (see 'assistant').
@@ -568,6 +580,7 @@ export const initialPanelState: PanelState = {
   pendingTasks: {},
   pausedMs: 0,
   queue: [],
+  turnChanges: [],
   reachedStart: false,
   earlierPages: 0,
   lastPageRows: 0,

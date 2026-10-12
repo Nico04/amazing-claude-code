@@ -32,6 +32,7 @@ import {
 import { CALM_VIVID_FULL, calmColorsSummary, calmVividOf } from './calmColors'
 import { pasteCollapseSummary } from './pasteCollapse'
 import { Confirm } from './components/Confirm'
+import type { RevertChanges } from './components/items/ChangesRow'
 import { RewindDialog } from './components/RewindDialog'
 import { Feed } from './components/Feed'
 import type { FeedMemory, FeedPlace } from './feed/place'
@@ -169,7 +170,7 @@ import {
 } from './feed/improve'
 import { voiceAppend, voiceGhost, voiceMessage } from './feed/voice'
 import { composePrompt, countSessionImages, imageAttachments, tokensText, trimTrailingSpace } from './feed/tokens'
-import type { DraftEdit, FeedItem, TaskItem, TodoItem, UserItem, UserToken } from './feed/types'
+import type { DraftEdit, FeedItem, FileChange, TaskItem, TodoItem, UserItem, UserToken } from './feed/types'
 import { emptyUsageBook, mergeUsageBook, usageOf, type UsageBook } from './feed/usage'
 import type {
   AvailablePluginInfo,
@@ -226,7 +227,7 @@ import { planDecisionOf, useCardState, type CardState } from './hooks/useCardSta
 import { useEarlierPages } from './hooks/useEarlierPages'
 import { Search, type SearchTab } from './components/Search'
 import { SearchCapsule, type CapsuleNote } from './components/SearchCapsule'
-import { KnownFilesContext, OpenFileContext, type OpenFileRequest } from './hooks/useOpenFile'
+import { KnownFilesContext, MissingFilesContext, OpenFileContext, type OpenFileRequest } from './hooks/useOpenFile'
 import { knownFiles } from './feed/paths'
 import {
   groupOrder,
@@ -2274,6 +2275,7 @@ export const App = () => {
                 project: { name: message.projectName, workingDirectory: message.workingDirectory },
               },
             })
+            if (message.workingDirectory) setProjectRoot(message.workingDirectory)
             break
 
           /**
@@ -3128,6 +3130,17 @@ export const App = () => {
             break
           }
 
+          case 'fileMissing':
+            setMissingFiles((current) => (current.has(message.path) ? current : new Set([...current, message.path])))
+            break
+
+          case 'changesReverted':
+            feed({
+              session: message.sessionId,
+              action: { kind: 'changesReverted', id: message.id, files: message.files, restore: message.restore },
+            })
+            break
+
           case 'sideAnswer':
             sideStep(message.sessionId, {
               kind: 'end',
@@ -3642,6 +3655,29 @@ export const App = () => {
     setSideMenu({ open: true, screen: 'settingSources' })
   }, [])
 
+  /**
+   * The files a turn changed, put back by the IDE (see ChangesRow and ChangeRevert) - or brought back after that.
+   * Nothing asks first, the whole list included: every revert has its way back on the same row. What came of it
+   * arrives as changesReverted, to every window.
+   */
+
+  /**
+   * The project's folder as the IDE names it - the list of changed files shows a file inside it from there,
+   * and any other in full. The IDE's word rather than the agent's working directory: a tab learns that only
+   * when its process says it, and until then every path on its list stood in full.
+   */
+  const [projectRoot, setProjectRoot] = useState<string | undefined>(undefined)
+
+  const sendRevert = useCallback((session: string, id: string, files: FileChange[], restore = false) => {
+    const asked = files.flatMap((file) => (file.edits ? [{ path: file.path, edits: file.edits }] : []))
+    if (asked.length > 0) send({ type: 'revertChanges', sessionId: session, id, files: asked, ...(restore ? { restore } : {}) })
+  }, [])
+
+  const revertChanges = useCallback<RevertChanges>(
+    (id, files, restore) => sendRevert(active, id, files, restore),
+    [active, sendRevert],
+  )
+
   /** The lists sent and not yet heard back - see the 'indicators' case above. */
   const indicatorsSent = useRef<HiddenIndicators[]>([])
 
@@ -3849,10 +3885,19 @@ export const App = () => {
    */
   const known = useMemo(() => knownFiles(files), [files])
 
-  const openFile = useCallback(
-    (request: OpenFileRequest) => send({ type: 'openFile', ...request }),
-    [],
-  )
+  /** Paths a press found no file at - see MissingFilesContext. */
+  const [missingFiles, setMissingFiles] = useState<ReadonlySet<string>>(new Set())
+
+  const openFile = useCallback((request: OpenFileRequest) => {
+    // Pressed again, the disk answers again: the file may be back.
+    setMissingFiles((current) => {
+      if (!current.has(request.path)) return current
+      const next = new Set(current)
+      next.delete(request.path)
+      return next
+    })
+    send({ type: 'openFile', ...request })
+  }, [])
 
   /**
    * What the fleet's agents said, for the lines that show them (see useAgentTranscript).
@@ -6237,6 +6282,7 @@ export const App = () => {
     <LocaleProvider locale={locale}>
     <OpenFileContext.Provider value={openFile}>
     <KnownFilesContext.Provider value={known}>
+    <MissingFilesContext.Provider value={missingFiles}>
     <AgentTranscriptContext.Provider value={transcripts}>
     <OpenAgentContext.Provider value={openAgent}>
     <div
@@ -6603,6 +6649,8 @@ export const App = () => {
               onOpenLink={openLink}
               signIn={signInOffer}
               onSettingSources={openSettingSources}
+              onRevertChanges={revertChanges}
+              projectRoot={projectRoot}
               onReuse={reuseMessage}
               onRewind={openRewind}
               onLoadEarlier={loadEarlier}
@@ -7216,6 +7264,7 @@ export const App = () => {
     </div>
     </OpenAgentContext.Provider>
     </AgentTranscriptContext.Provider>
+    </MissingFilesContext.Provider>
     </KnownFilesContext.Provider>
     </OpenFileContext.Provider>
     </LocaleProvider>

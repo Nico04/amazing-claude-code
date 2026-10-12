@@ -231,6 +231,15 @@ export const metaFor = (name: string, input: unknown, result: string, isError: b
   if (name === 'Grep' || name === 'Glob') return { kind: 'matches', count: countLines(result) }
 
   if (isEditTool(name)) {
+    // The lines the diff under the head shows, rather than every line of both texts: the old and the new
+    // text share their first and last lines as a rule, and counted whole they read "+2 -1" over a diff of
+    // one added line - right beside the turn's list of changes, which says "+1 -0" (see feed/changes.ts).
+    const lines = hunksFor('meta', name, input, result).flatMap((hunk) => hunk.lines)
+    if (lines.length > 0) {
+      const added = lines.filter((line) => line.kind === 'add').length
+      const removed = lines.filter((line) => line.kind === 'del').length
+      return { kind: 'diff', added, removed }
+    }
     const before = countLines(str(data.old_string))
     const after = countLines(str(data.new_string))
     return { kind: 'diff', added: Math.max(after - before, 0) + Math.min(before, after), removed: before }

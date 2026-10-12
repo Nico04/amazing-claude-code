@@ -1269,7 +1269,21 @@ export const pt: Dict = {
       unconfirmed: 'não confirmado',
     },
 
-    copy: { copied: 'Copiado', click: 'Clique para copiar', openFile: 'Abrir no editor', openFolder: 'Mostrar a pasta' },
+    copy: { copied: 'Copiado', click: 'Clique para copiar', openFile: 'Abrir no editor', openFolder: 'Mostrar a pasta', missing: 'Esse arquivo não está no disco - clique para verificar de novo' },
+    changes: {
+      all: (n) => `Mostrar todos (${n})`,
+      fewer: 'Mostrar menos',
+      revert: 'Reverter este arquivo',
+      revertAll: 'Reverter tudo',
+      reverting: 'Revertendo…',
+      restore: 'Trazer as alterações de volta',
+      restoreAll: 'Trazer tudo de volta',
+      restoring: 'Trazendo de volta…',
+      reverted: 'Revertido',
+      changed: 'Alterado depois, deixado como está',
+      missing: 'O arquivo não existe mais',
+      failed: 'Não foi possível gravar o arquivo',
+    },
   },
 
   chrome: {

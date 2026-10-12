@@ -6,6 +6,7 @@ import {
   filePathOf,
   formatDuration,
   hunksFor,
+  metaFor,
   targetFor,
 } from './tools'
 
@@ -194,5 +195,13 @@ describe('where an edit opens the file', () => {
   it('is nothing when the change has nothing to be found by', () => {
     expect(editAnchor(hunksOf('a', 'b'))).toBe('')
     expect(editAnchor([])).toBe('')
+  })
+})
+
+describe('the figures on an edit card head', () => {
+  // The old and the new text share their edge lines, and the head used to count both texts whole.
+  it('counts the lines the diff under it shows', () => {
+    const input = { file_path: '/p/a.js', old_string: 'const a = 1\nconst b = 2', new_string: 'const a = 1\nconst c = 3\nconst b = 2' }
+    expect(metaFor('Edit', input, 'The file has been updated successfully.', false)).toEqual({ kind: 'diff', added: 1, removed: 0 })
   })
 })

@@ -3,6 +3,7 @@ package io.github.crmapache.amazingclaudecode.claude
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import io.github.crmapache.amazingclaudecode.claude.ClaudeSessions.Companion.MAIN_SESSION
+import io.github.crmapache.amazingclaudecode.editor.ChangeRevert
 import io.github.crmapache.amazingclaudecode.feedback.DiagnosticsLog
 import io.github.crmapache.amazingclaudecode.remote.RemoteAgent
 import io.github.crmapache.amazingclaudecode.remote.RemoteCommands
@@ -204,6 +205,15 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
                 conversation = flag(payload, "conversation"),
                 files = flag(payload, "files"),
                 asker = asker,
+            )
+
+            // The buttons on the list of files a turn changed: one file or all of them, put back - or brought back
+            // after that (see ChangeRevert).
+            "revertChanges" -> hub.revertChanges(
+                sessionId,
+                field("id"),
+                ChangeRevert.requestsOf(payload["files"]),
+                restore = flag(payload, "restore"),
             )
 
             "stop" -> hub.interrupt(sessionId)

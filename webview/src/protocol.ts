@@ -1227,6 +1227,16 @@ type ShellMessageBody =
    */
   | { type: 'rewound'; sessionId: string; uuid: string; fromSeq?: number }
   /**
+   * What putting back a turn's files came to, file by file (see revertChanges) - or, with `restore`, bringing
+   * them back. Kept in the journal, so a reloaded panel, a second window and the phone show the same rows.
+   */
+  | { type: 'changesReverted'; sessionId: string; id: string; files: { path: string; outcome: RevertOutcome }[]; restore?: boolean }
+  /**
+   * A path this panel asked to open leads to no file - deleted since, or never there (see OpenInEditor). Said to
+   * the panel that pressed and nobody else, so the link can say it rather than doing nothing.
+   */
+  | { type: 'fileMissing'; path: string }
+  /**
    * The tabs as the shell keeps them. It is the shell that owns this list now: the interface makes the
    * identifiers up (a "+" has to answer instantly) but the order, the grouping and the names live on
    * the other side, where a second client can see them too.
@@ -2216,6 +2226,13 @@ export type WebviewMessage =
    * one sent since from somewhere else stops the rewind instead of being dropped unread.
    */
   | { type: 'rewind'; sessionId: string; uuid: string; lastSeen?: string; conversation: boolean; files: boolean }
+  /**
+   * Put back what a turn changed in these files - a row's button on the list of changed files at the turn's
+   * end, or the list's "revert all" (see ChangesRow and ChangeRevert in the IDE). With `restore`, bring the
+   * changes back after a revert. `id` names the list, and the answer comes back to everyone as
+   * `changesReverted`.
+   */
+  | { type: 'revertChanges'; sessionId: string; id: string; files: { path: string; edits: FileEdit[] }[]; restore?: boolean }
   | { type: 'stop'; sessionId: string }
   /** The ordinary Stop went unconfirmed - the user asked outright to kill the process. */
   | { type: 'kill'; sessionId: string }
@@ -3318,14 +3335,56 @@ export interface AgentUserEvent {
   timestamp?: string
   /**
    * What the tool handed back, in the shape it handed it back - the transcript keeps it beside the text
-   * form of the same result, and only a saved conversation has it.
+   * form of the same result. A live stream carries the same thing under its own name, [tool_use_result].
    *
-   * The panel reads one thing out of it: the options a question was closed with (see addReplayedAnswers
-   * in build.ts). The text form of that same result is an English sentence the CLI composes ("Your
-   * questions have been answered: …"), and reading the pairs back out of a sentence would be a parser
-   * for wording nobody promised to keep.
+   * The panel reads two things out of it. The options a question was closed with (see addReplayedAnswers
+   * in build.ts): the text form of that result is an English sentence the CLI composes ("Your questions
+   * have been answered: …"), and reading the pairs back out of a sentence would be a parser for wording
+   * nobody promised to keep. And what an edit changed (see feed/changes.ts): the diff the CLI applied and
+   * whether a file was created - the text form says only that the file "has been updated".
    */
-  toolUseResult?: { answers?: Record<string, string> }
+  toolUseResult?: ToolUseResult
+  /** [toolUseResult] as the live stream names it - checked on 2.1.293, for Edit and both kinds of Write. */
+  tool_use_result?: ToolUseResult
+}
+
+/**
+ * One change a turn made to a file, as the IDE needs it to put the change back: the text a Write created the
+ * file with, or the hunks the CLI applied (starts 1-based, lines marked `+`, `-` or ` `).
+ */
+export type FileEdit =
+  | { kind: 'create'; content: string }
+  | { kind: 'patch'; hunks: { oldStart: number; newStart: number; lines: string[] }[] }
+
+/**
+ * What putting a file back - or bringing it back after that - came to: done either way, refused because the
+ * lines were changed since, refused because the file is gone, or the IDE could not write it.
+ */
+export type RevertOutcome = 'reverted' | 'restored' | 'changed' | 'missing' | 'failed'
+
+/**
+ * The structured half of a tool's result - only the fields the panel reads.
+ *
+ * Kept loose on purpose: it is a different shape for every tool, the CLI adds to it as it pleases, and
+ * whatever a field turns out to hold is checked where it is read.
+ */
+export interface ToolUseResult {
+  answers?: Record<string, string>
+  /** An edit's and a write's file. */
+  filePath?: unknown
+  /** `create` for a file a Write brought into being, `update` for one it wrote over. */
+  type?: unknown
+  /** The written file's text, for a Write. */
+  content?: unknown
+  /** The hunks the CLI applied, each with its lines marked `+`, `-` or ` `. */
+  structuredPatch?: unknown
+  /** The file's text before the edit - left out (empty) by the CLI for a big file, with the diff. */
+  originalFile?: unknown
+  /**
+   * The counts of a diff the IDE worked out for a big edit the CLI reported without one (see UndiffedEdits) -
+   * all a phone is sent of it; the panel at the desk has the hunks themselves in [structuredPatch].
+   */
+  accCounts?: unknown
 }
 
 export interface AgentUsage {

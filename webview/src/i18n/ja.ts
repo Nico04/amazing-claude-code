@@ -1263,7 +1263,21 @@ export const ja: Dict = {
       unconfirmed: '未確認',
     },
 
-    copy: { copied: 'コピーしました', click: 'クリックでコピー', openFile: 'エディタで開く', openFolder: 'フォルダーを表示' },
+    copy: { copied: 'コピーしました', click: 'クリックでコピー', openFile: 'エディタで開く', openFolder: 'フォルダーを表示', missing: 'そのファイルはディスクにありません - クリックで再確認' },
+    changes: {
+      all: (n) => `すべて表示（${n}）`,
+      fewer: '折りたたむ',
+      revert: 'このファイルを元に戻す',
+      revertAll: 'すべて元に戻す',
+      reverting: '元に戻しています…',
+      restore: '変更を戻す',
+      restoreAll: 'すべて戻す',
+      restoring: '戻しています…',
+      reverted: '元に戻しました',
+      changed: 'その後に変更されたため、そのままです',
+      missing: 'ファイルがもうありません',
+      failed: 'ファイルを書き込めませんでした',
+    },
   },
 
   chrome: {

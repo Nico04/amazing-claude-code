@@ -54,3 +54,13 @@ export const KnownFilesContext = createContext<KnownFiles>(NOTHING_KNOWN)
 
 /** What the project is known to have - see [KnownFilesContext]. */
 export const useKnownFiles = (): KnownFiles => useContext(KnownFilesContext)
+
+/**
+ * The paths a press found no file at, as this panel asked them (see the fileMissing message) - so a link that
+ * leads nowhere says so rather than doing nothing. A path leaves the set the moment it is pressed again: the
+ * file may be back, and the disk answers anew.
+ */
+export const MissingFilesContext = createContext<ReadonlySet<string>>(new Set())
+
+/** The paths a press found no file at - see [MissingFilesContext]. */
+export const useMissingFiles = (): ReadonlySet<string> => useContext(MissingFilesContext)

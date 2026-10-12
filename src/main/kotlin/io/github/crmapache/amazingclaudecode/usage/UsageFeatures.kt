@@ -47,6 +47,7 @@ internal object UsageFeatures {
         "rewind",
         "pin",
         "open_in_editor",
+        "revert_changes",
         "send_selection",
         "send_path",
         "attach_file",
@@ -266,6 +267,7 @@ internal object UsageFeatures {
         "askAnswer" -> "ask_answer"
         "agentTranscript" -> "subagent_window"
         "openFile" -> "open_in_editor"
+        "revertChanges" -> "revert_changes"
         "clipboardWrite" -> "copy"
         "pick", "dropped" -> "attach_file"
         "savePastedFile" -> "paste_file"

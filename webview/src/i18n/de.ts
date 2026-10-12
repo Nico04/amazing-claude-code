@@ -1272,7 +1272,21 @@ export const de: Dict = {
       unconfirmed: 'unbestätigt',
     },
 
-    copy: { copied: 'Kopiert', click: 'Zum Kopieren klicken', openFile: 'Im Editor öffnen', openFolder: 'Ordner anzeigen' },
+    copy: { copied: 'Kopiert', click: 'Zum Kopieren klicken', openFile: 'Im Editor öffnen', openFolder: 'Ordner anzeigen', missing: 'Diese Datei gibt es nicht - klicken, um erneut nachzusehen' },
+    changes: {
+      all: (n) => `Alle anzeigen (${n})`,
+      fewer: 'Weniger anzeigen',
+      revert: 'Diese Datei zurücksetzen',
+      revertAll: 'Alle zurücksetzen',
+      reverting: 'Wird zurückgesetzt…',
+      restore: 'Änderungen wiederherstellen',
+      restoreAll: 'Alle wiederherstellen',
+      restoring: 'Wird wiederhergestellt…',
+      reverted: 'Zurückgesetzt',
+      changed: 'Seitdem geändert, so gelassen',
+      missing: 'Die Datei gibt es nicht mehr',
+      failed: 'Die Datei ließ sich nicht schreiben',
+    },
   },
 
   chrome: {

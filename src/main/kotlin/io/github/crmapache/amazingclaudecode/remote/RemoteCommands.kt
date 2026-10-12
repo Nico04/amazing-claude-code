@@ -459,6 +459,12 @@ internal object RemoteCommands {
          */
         "setSpellcheck",
         /**
+         * Putting back the files a turn changed. The phone draws the list and nothing on it to press: a revert
+         * is decided looking at the file, and the file is on the desk. The rows show there as put back all the
+         * same, because the outcome is said to every client.
+         */
+        "revertChanges",
+        /**
          * The sparkle button beside the paperclip and the text it asks by.
          *
          * `setImproveInstructions` writes a machine-wide setting, and belongs with `setDefaultMode` above

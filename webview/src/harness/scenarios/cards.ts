@@ -243,6 +243,147 @@ export const scenariosCards: Scenario[] = [
    * the press that leaves it out of one message, the line under a sent message, and the same line read back
    * out of a past conversation's transcript. The player plays the IDE's half by the message it would send.
    */
+  /**
+   * The list of files a turn changed, at its end (see ChangesItem): one row a file, the lines added in green
+   * and removed in red, a created file with only its plus. A click on a row opens the file - the console
+   * prints the full path the IDE was asked for.
+   *
+   * The results carry the diff the CLI applied, as the live stream does (see feed/changes.ts). The second
+   * turn creates a file and then edits it, so its row adds the two up rather than standing twice.
+   */
+  scenario('changed-files', 'The files a turn changed', 'cards', [
+    checkpoint('Four files changed - the list stands under the answer, one created', [
+      user('Add the home screen and make the release build keep the Moshi adapters'),
+      wait(300),
+      toolUse(
+        'Edit',
+        {
+          file_path: '/Users/you/demo-project/app/proguard-rules.pro',
+          old_string: '-keepattributes Signature',
+          new_string: '-keepattributes Signature\n-keep class com.example.api.** { *; }',
+        },
+        'cf-1',
+      ),
+      toolResult('cf-1', 'The file /Users/you/demo-project/app/proguard-rules.pro has been updated successfully.', false, {
+        filePath: '/Users/you/demo-project/app/proguard-rules.pro',
+        structuredPatch: [
+          { oldStart: 3, oldLines: 2, newStart: 3, newLines: 3, lines: [' -dontwarn okio.**', ' -keepattributes Signature', '+-keep class com.example.api.** { *; }'] },
+        ],
+      }),
+      toolUse(
+        'Edit',
+        {
+          file_path: '/Users/you/demo-project/app/build.gradle.kts',
+          old_string: '        isMinifyEnabled = false',
+          new_string: '        isMinifyEnabled = true\n        isShrinkResources = true',
+        },
+        'cf-2',
+      ),
+      toolResult('cf-2', 'The file /Users/you/demo-project/app/build.gradle.kts has been updated successfully.', false, {
+        filePath: '/Users/you/demo-project/app/build.gradle.kts',
+        structuredPatch: [
+          {
+            oldStart: 21,
+            oldLines: 3,
+            newStart: 21,
+            newLines: 4,
+            lines: ['     release {', '-        isMinifyEnabled = false', '+        isMinifyEnabled = true', '+        isShrinkResources = true', '         proguardFiles('],
+          },
+        ],
+      }),
+      toolUse(
+        'Write',
+        {
+          file_path: '/Users/you/demo-project/app/src/main/java/com/example/home/HomeScreen.kt',
+          content: [
+            'package com.example.home',
+            '',
+            'import androidx.compose.material3.Text',
+            'import androidx.compose.runtime.Composable',
+            '',
+            '@Composable',
+            'fun HomeScreen(name: String) {',
+            '    Text(text = "Hello, $name")',
+            '}',
+          ].join('\n'),
+        },
+        'cf-3',
+      ),
+      toolResult('cf-3', 'File created successfully at: /Users/you/demo-project/app/src/main/java/com/example/home/HomeScreen.kt', false, {
+        type: 'create',
+        filePath: '/Users/you/demo-project/app/src/main/java/com/example/home/HomeScreen.kt',
+        structuredPatch: [],
+      }),
+      toolUse(
+        'Edit',
+        {
+          file_path: '/Users/you/demo-project/app/src/main/AndroidManifest.xml',
+          old_string: '<activity android:name=".MainActivity" />',
+          new_string: '<activity android:name=".MainActivity" />\n<activity android:name=".home.HomeActivity" />',
+        },
+        'cf-4',
+      ),
+      toolResult('cf-4', 'The file /Users/you/demo-project/app/src/main/AndroidManifest.xml has been updated successfully.', false, {
+        filePath: '/Users/you/demo-project/app/src/main/AndroidManifest.xml',
+        structuredPatch: [
+          { oldStart: 14, oldLines: 1, newStart: 14, newLines: 2, lines: ['         <activity android:name=".MainActivity" />', '+        <activity android:name=".home.HomeActivity" />'] },
+        ],
+      }),
+      ...textReply('Done. The release build keeps the API models for Moshi now, and the home screen has its activity.'),
+      turnResult(5200),
+    ]),
+    checkpoint('A file of the last turn edited again, and one created then edited - its figures add up', [
+      wait(400),
+      user('Greet by the first name only, and add a preview'),
+      wait(300),
+      toolUse(
+        'Edit',
+        {
+          file_path: '/Users/you/demo-project/app/src/main/java/com/example/home/HomeScreen.kt',
+          old_string: '    Text(text = "Hello, $name")',
+          new_string: '    Text(text = "Hello, ${name.substringBefore(\' \')}")',
+        },
+        'cf-5',
+      ),
+      toolResult('cf-5', 'The file has been updated successfully.', false, {
+        filePath: '/Users/you/demo-project/app/src/main/java/com/example/home/HomeScreen.kt',
+        structuredPatch: [
+          { oldStart: 8, oldLines: 1, newStart: 8, newLines: 1, lines: ['-    Text(text = "Hello, $name")', '+    Text(text = "Hello, ${name.substringBefore(\' \')}")'] },
+        ],
+      }),
+      toolUse(
+        'Write',
+        {
+          file_path: '/Users/you/demo-project/app/src/main/java/com/example/home/HomePreview.kt',
+          content: 'package com.example.home\n\n@Preview\n@Composable\nfun HomePreview() = HomeScreen("Ada Lovelace")\n',
+        },
+        'cf-6',
+      ),
+      toolResult('cf-6', 'File created successfully at: /Users/you/demo-project/app/src/main/java/com/example/home/HomePreview.kt', false, {
+        type: 'create',
+        filePath: '/Users/you/demo-project/app/src/main/java/com/example/home/HomePreview.kt',
+        structuredPatch: [],
+      }),
+      toolUse(
+        'Edit',
+        {
+          file_path: '/Users/you/demo-project/app/src/main/java/com/example/home/HomePreview.kt',
+          old_string: 'package com.example.home\n',
+          new_string: 'package com.example.home\n\nimport androidx.compose.ui.tooling.preview.Preview\n',
+        },
+        'cf-7',
+      ),
+      toolResult('cf-7', 'The file has been updated successfully.', false, {
+        filePath: '/Users/you/demo-project/app/src/main/java/com/example/home/HomePreview.kt',
+        structuredPatch: [
+          { oldStart: 1, oldLines: 2, newStart: 1, newLines: 4, lines: [' package com.example.home', '+', '+import androidx.compose.ui.tooling.preview.Preview', ' '] },
+        ],
+      }),
+      ...textReply('The greeting takes the first name, and the preview shows it.'),
+      turnResult(3900),
+    ]),
+  ]),
+
   scenario('editor-context', 'The editor beside the panel', 'cards', [
     checkpoint('A file open in the editor: its chip beside the paperclip', [
       shell({

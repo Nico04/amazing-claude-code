@@ -277,6 +277,10 @@ export const applyMessage = (feed: MobileFeed, message: ShellMessage, now: numbe
         all: message.fromSeq !== undefined && feed.lastHeld !== undefined && feed.lastHeld >= message.fromSeq,
       })
 
+    // Files of a turn put back from the desk - the rows on this screen show it too (see changesReverted).
+    case 'changesReverted':
+      return collect({ kind: 'changesReverted', id: message.id, files: message.files, restore: message.restore })
+
     case 'status':
       return collect({ kind: 'status', status: message.state })
 

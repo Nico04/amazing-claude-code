@@ -80,7 +80,12 @@ internal object OpenInEditor {
      * file chooser and the clipboard beside this one step aside for the same reason. The index is slower
      * still when it is being built: the lookup waits for it, and nothing else does.
      */
-    fun open(project: Project, path: String, place: Place) {
+    /**
+     * [missing] is told when the path leads to nothing on this disk - a file deleted since the agent named it,
+     * a link written by memory. A click that does nothing at all is the one thing a link may not do, so the
+     * panel says so where it was pressed (see the fileMissing message).
+     */
+    fun open(project: Project, path: String, place: Place, missing: () -> Unit = {}) {
         if (path.isBlank()) return
 
         AppExecutorUtil.getAppExecutorService().execute {
@@ -91,6 +96,7 @@ internal object OpenInEditor {
                     // Never with the path: this buffer travels outwards inside a bug report (see
                     // DiagnosticsLog), and the ordinary log is enough for a link that led nowhere.
                     thisLogger().info("A file link from the panel pointed at nothing")
+                    missing()
                 }
 
                 1 -> files.single().let { file ->

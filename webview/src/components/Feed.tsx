@@ -22,6 +22,7 @@ import type { FeedItem, FeedRowItem, ToolItem, UserItem } from '../feed/types'
 import type { CardState } from '../hooks/useCardState'
 import s from './feed.module.css'
 import { BashCard } from './items/BashCard'
+import { ChangesRow, type RevertChanges } from './items/ChangesRow'
 import { FindingsCard } from './items/FindingsCard'
 import { PlanCard } from './items/PlanCard'
 import { TaskCard } from './items/TaskCard'
@@ -114,6 +115,18 @@ interface FeedProps {
    * there. Hand in a STABLE function, for the same reason.
    */
   onSettingSources?: () => void
+  /**
+   * Put back what a turn changed - the buttons on the list of changed files (see ChangesRow).
+   *
+   * Absent on the phone and in a step log: a revert is decided looking at the file, and the file is in the
+   * editor at the desk. Hand in a STABLE function, for the same reason as above.
+   */
+  onRevertChanges?: RevertChanges
+  /**
+   * The project's folder as the IDE names it, for the paths on the list of changed files (see ChangesRow).
+   * Absent on the phone - it is never told the path.
+   */
+  projectRoot?: string
   /**
    * Take a sent message back into the input field, to be corrected and sent again (see feed/reuse.ts).
    * Absent on the phone: the field there is its own and holds plain text rather than the panel's tokens.
@@ -215,6 +228,8 @@ export const Feed = ({
   onOpenLink,
   signIn,
   onSettingSources,
+  onRevertChanges,
+  projectRoot,
   onReuse,
   onRewind,
   onLoadEarlier,
@@ -302,6 +317,23 @@ export const Feed = ({
         ]
       : []),
   ]
+
+  /**
+   * The lists of changed files a message has been written after. They stay as a record - the rows still open
+   * the files - but lose their buttons: once the conversation has moved on, putting a turn's files back from
+   * under the next request would leave the agent working on code that is no longer there, and two live lists
+   * one above the other read as two things to decide. Only the list after the last message acts.
+   */
+  const closedChanges = useMemo(() => {
+    const closed = new Set<string>()
+    let messageAfter = false
+    for (let index = settled.length - 1; index >= 0; index--) {
+      const item = settled[index]!
+      if (item.kind === 'user') messageAfter = true
+      else if (item.kind === 'changes' && messageAfter) closed.add(item.id)
+    }
+    return closed
+  }, [settled])
 
   /**
    * While an unanswered permission request of the MAIN stream is open somewhere in the feed (not a
@@ -844,6 +876,8 @@ export const Feed = ({
               onOpenLink={onOpenLink}
               signIn={signIn}
               onSettingSources={onSettingSources}
+              onRevertChanges={closedChanges.has(item.id) ? undefined : onRevertChanges}
+              projectRoot={projectRoot}
               onReuse={onReuse}
               onRewind={onRewind}
               onLoadEarlier={onLoadEarlier}
@@ -915,6 +949,10 @@ interface ItemViewProps {
   signIn?: SignInOffer
   /** The settings-sources screen - see FeedProps.onSettingSources. */
   onSettingSources?: () => void
+  /** See FeedProps.onRevertChanges. */
+  onRevertChanges?: RevertChanges
+  /** See FeedProps.projectRoot. */
+  projectRoot?: string
   onReuse?: (item: UserItem) => void
   onRewind?: (item: UserItem) => void
   onLoadEarlier?: () => void
@@ -953,6 +991,8 @@ const ItemView = memo(({
   onOpenLink,
   signIn,
   onSettingSources,
+  onRevertChanges,
+  projectRoot,
   onReuse,
   onRewind,
   onLoadEarlier,
@@ -1046,6 +1086,9 @@ const ItemView = memo(({
 
     case 'modelStuck':
       return <ModelStuckRow item={item} />
+
+    case 'changes':
+      return <ChangesRow item={item} root={projectRoot} onRevert={onRevertChanges} />
 
     case 'meta':
       return <MetaRow item={item} />

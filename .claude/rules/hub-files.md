@@ -72,6 +72,8 @@ paths:
 - `claudeConfig*` состояние, `openClaudeConfig`, `case 'claudeConfig'`, `config` в `runLocal` - claude-config
 - хоткеи поверх панели, пока собирается иероглиф - composer-field
 - `pressPanelKey`, `pressPanelKeyRef`, `closeSession`, `closingWorking`, `queueToken`, `panelKeys`, `stillWorking`, `case 'panelKey'`/`'panelKeys'` - panel-keys
+- `revertChanges`, `sendRevert`, `case 'changesReverted'` - changed-files
+- `missingFiles`, `case 'fileMissing'`, очистка в `openFile` - open-in-editor
 - `sideThreads`, `askAside`, `forgetSide`, `case 'sideAnswer'`/`'sideProgress'`, Esc над карточкой вопроса сбоку, `SideQuestionCard` в `dockCards` - btw
 - только в `mobile/App.tsx`: `PhoneRewind`, `refills`, `RewindSheet` - rewind; `forkFrom`/`forkWhole` (`kind: 'branch'`, `before`) - fork-tabs;
   `openMachineScreen`, `openRepository`, `Door`/`from`, `edit.home`/`edit.origin` -
@@ -92,6 +94,8 @@ paths:
 - `claudeConfig`, `askClaudeConfig`, `setClaudeConfig`, `ClaudeConfigSetting` - claude-config
 - `activeTab`, `drafts`, `restoreTabs`, `saveDraft`, `tabShown`, `setRestoreTabs` - restore-tabs
 - `takeQueued`, `queuedTaken`, `before` у `queuePrompt` - queue-edit
+- `tool_use_result`, `ToolUseResult` (дифф правки и `type: 'create'`), `FileEdit`, `RevertOutcome`, `revertChanges`,
+  `changesReverted` - changed-files; `fileMissing` - open-in-editor
 - `EditorRef`, `editorContext`, `shareEditor`, `setShareEditor`, `editor` у `prompt`/`queuePrompt`/`promptEcho` - editor-context
 - `TitleSource` (`'user'`), `nameSession`, `titleSource` у `SearchHit` - tab-names
 - `usageStats`, `usageStatsReport`, `setUsageStats`, `usageStatsPreview`, `stat` с `kind: 'feature'` - usage-stats
@@ -113,6 +117,9 @@ paths:
 - `editorOfBlocks` в `addReplayedPrompt`, `editor` у действия `prompt` - editor-context
 - `applyRewound`, `case 'rewound'`, `uuid`/`steering` у действия `prompt` - rewind
 - `case 'fork_seam'` (шов форка, `CheckpointItem.source`) - fork-tabs
+- `noteChanges` в `case 'user'`, `closeChanges` в `result`, тихой остановке, смерти и подмене процесса, `prompt`,
+  `addReplayedPrompt`, `applyReplayFinished`; `turnChanges` в `/clear` - changed-files
+- `case 'changesReverted'` (итог отката файлов хода) - changed-files
 
 **`webview/src/feed/types.ts`** и **`webview/src/feed/panelState.ts`**:
 - `DraftEdit` - prompt-improver; `ErrorItem.signIn` - expired-sign-in; `ErrorItem.sampling` - setting-sources;
@@ -123,8 +130,9 @@ paths:
 - `AskItem.historic`/`answered`/`reopened`, `PlanItem.historic` - permissions
 - `PanelState.tasks`, `pendingTasks`, `tasksCarried` - task-list; `pins` - pins
 - `earlierPages`, `oldestEventUuid`, `reachedStart` - history; `ownSwapDue`, `stuckPick` - models
+- `ChangesItem`, `FileChange`, `PanelState.turnChanges` - changed-files
 
-**`webview/src/components/Feed.tsx`**: `holdPressed` - paste; `pinsHeight` - pins; поправка прокрутки на
+**`webview/src/components/Feed.tsx`**: `holdPressed` - paste; `case 'changes'`, `closedChanges`, `projectRoot` - changed-files; `pinsHeight` - pins; поправка прокрутки на
 `earlierPages` - history; `paint`, `PAINT_INTERVAL_MS`, `goToRow`, фокус находки - search;
 `onCopy` - clipboard и markdown (формулы уносятся исходником).
 
@@ -136,7 +144,7 @@ paths:
 
 **`webview/src/components/feed.module.css`**: `.userActions` - message-reuse; `.taskLog` - subagents;
 `.toolHead` и его распорка `::before` - tool-cards; `.pins`, `.pinOn`, `.textPinnable` - pins;
-`.chipPasteCopy` - paste; `.rowLit` - search.
+`.chipPasteCopy` - paste; `.rowLit` - search; `.changes`, `.change*` - changed-files.
 
 **Слои (z-index)**: лестница записана в `holiday.module.css`. Полка пинов 19, кнопка «вниз» 20, вуаль 21,
 капсула поиска 22 - pins и search; чипы MODEL/EFFORT/MODE 41, окно поиска 44/45 - search; подтверждение
@@ -147,6 +155,8 @@ paths:
 `color-scheme` - appearance; `--acc-group-deep`/`--acc-group-depth` - active-tab.
 
 **`webview/src/catalog.ts`**: `panelCommands` (`/design-login`) - accounts.
+
+**`webview/src/harness/events.ts`**: `toolResult` со структурной половиной - changed-files.
 
 **`webview/src/harness/player.ts`** (плеер играет роль IDE): `answerResume` и страницы истории - history;
 `answerModel` (ответ обязан быть отложенным) и `setEffort` - models; переписывание - prompt-improver;
@@ -170,6 +180,8 @@ panel-keys.
 - `restoreTabs`, `rememberTabs`, `replayTranscript`, `lostTranscript`, `showTab`, `asleepUntilSeen` - restore-tabs
 - `nameSession`, `titleWanted`/`ownTitle` у `conversations` - tab-names
 - `rewind`, `previewRewind`, `cutBack`, `rewinding` (очередь и пуш ждут отката), `uuid` в `deliverPrompt` - rewind
+- `revertChanges` (откат файлов хода по его диффам) - changed-files
+- `undiffed` в `onAgentLine` (дифф большой правки, который CLI не прислал) - changed-files
 - `replayFork`, `forkOpenings` (ожидание в `deliverPrompt`), `unbornFork`, `bringBackFork`, форк в `restoreTabs` - fork-tabs
 
 **`ClaudeSession.kt`** (подгружает turn-lifecycle): `rename`, `nameAfterPerson`, `namedAs`, `ownTitle` - tab-names; `setEffort`, `effort` - models; `awaitingPermission` -
@@ -187,7 +199,7 @@ models; `pasteCollapse` в `sendInit` - paste; `authenticateMcp`, `sayProject` -
 форка в `sendHistoryPage` - fork-tabs; `sendIndicators` и
 `hiddenIndicators` в `sendInit` - indicators.
 
-**`SessionCommands.kt`**: разбор команд от клиентов; `remember = local` у `setModel`/`setEffort` с телефона -
+**`SessionCommands.kt`**: разбор команд от клиентов; `revertChanges` - changed-files; `remember = local` у `setModel`/`setEffort` с телефона -
 remote-access; остальное - по заметке фичи, которой принадлежит команда.
 
 **`toolwindow/ClaudePanel.kt`**: сообщения аккаунтов и `designLogin` у двери окна - accounts; `setCustomModels` -

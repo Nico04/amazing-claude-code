@@ -106,6 +106,8 @@ export const FEATURES: Record<Product, Record<string, FeatureLabel>> = {
     stop_task: { group: 'conversation', label: 'Stop a background task' },
     // The panel's keys came to ACC first, and wait for the fork until they are ported there.
     panel_keys: { group: 'conversation', label: 'Switch, open or close tabs, or queue, by a key' },
+    // The list of files a turn changed came to ACC first, with its buttons that put them back.
+    revert_changes: { group: 'editor', label: "Revert a turn's changes to a file" },
     plugins_manage: { group: 'manage', label: 'Install or manage a Claude Code plugin' },
     account_add: { group: 'manage', label: 'Add a Claude account' },
     account_switch: { group: 'manage', label: 'Switch Claude account' },

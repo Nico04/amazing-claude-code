@@ -1261,7 +1261,21 @@ export const ko: Dict = {
       unconfirmed: '미확인',
     },
 
-    copy: { copied: '복사됨', click: '클릭해서 복사', openFile: '편집기에서 열기', openFolder: '폴더 표시' },
+    copy: { copied: '복사됨', click: '클릭해서 복사', openFile: '편집기에서 열기', openFolder: '폴더 표시', missing: '디스크에 그 파일이 없어요 - 눌러서 다시 확인' },
+    changes: {
+      all: (n) => `모두 보기 (${n})`,
+      fewer: '접기',
+      revert: '이 파일 되돌리기',
+      revertAll: '모두 되돌리기',
+      reverting: '되돌리는 중…',
+      restore: '변경 다시 적용',
+      restoreAll: '모두 다시 적용',
+      restoring: '다시 적용하는 중…',
+      reverted: '되돌림',
+      changed: '이후에 바뀌어서 그대로 둠',
+      missing: '파일이 더 이상 없어요',
+      failed: '파일을 쓸 수 없었어요',
+    },
   },
 
   chrome: {

@@ -692,6 +692,14 @@ internal class ClaudePanel(
                     endColumn = whole("endColumn"),
                     find = field("find"),
                 ),
+                missing = {
+                    webview?.send(
+                        buildJsonObject {
+                            put("type", "fileMissing")
+                            put("path", field("path"))
+                        }.toString(),
+                    )
+                },
             )
 
             // The embedded browser's clipboard is its own and does not reach the IDE's (see

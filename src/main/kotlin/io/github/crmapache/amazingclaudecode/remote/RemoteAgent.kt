@@ -20,6 +20,7 @@ import io.github.crmapache.amazingclaudecode.claude.SessionClient
 import io.github.crmapache.amazingclaudecode.claude.SessionLaunch
 import io.github.crmapache.amazingclaudecode.claude.SessionSnapshot
 import io.github.crmapache.amazingclaudecode.claude.StartingChoice
+import io.github.crmapache.amazingclaudecode.editor.UndiffedEdits
 import io.github.crmapache.amazingclaudecode.feedback.DiagnosticsLog
 import io.github.crmapache.amazingclaudecode.stats.StatsLedger
 import io.github.crmapache.amazingclaudecode.net.IdeHttp
@@ -1840,6 +1841,15 @@ internal class RemoteAgent : Disposable {
         private fun fitted(message: String): ByteArray? {
             val whole = envelope(message)
             if (whole.size <= FRAME_BODY_BYTES) return whole
+
+            // A diff the IDE worked out for a big edit can run to megabytes of short lines, which no trimming of
+            // strings shortens; the phone has no revert to use it for, and the counts beside it stay (see
+            // UndiffedEdits).
+            UndiffedEdits.lightened(message)?.let { lighter ->
+                val light = envelope(lighter)
+                if (light.size <= FRAME_BODY_BYTES) return light
+                return fitted(lighter)
+            }
 
             for (spareWords in listOf(true, false)) {
                 for (limit in PHONE_STRING_LIMITS) {

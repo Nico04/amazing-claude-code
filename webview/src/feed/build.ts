@@ -24,6 +24,7 @@ import {
   noteSubagent,
 } from './tasks'
 import { replayedMessage } from './replayed'
+import { applyChangesReverted, closeChanges, noteChanges } from './changes'
 import { editorOfBlocks } from './editorContext'
 import { applyModEvent } from './mods'
 import { readPlan, readQuestions, readTodos } from './toolInput'
@@ -210,9 +211,11 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
       // they were launched to run apart from it. They do NOT survive a move to another account: the
       // process is replaced, and everything it was running goes with it, so a chip left ticking is a
       // clock against a CLI that is gone.
+      // A stopped turn changed files all the same, and they are listed before the line saying it was stopped.
+      const closing = stoppedSilently ? closeChanges(state) : state
       const settled = stoppedSilently
         ? closeUnfinished(
-            state,
+            closing,
             now,
             { reason: 'stopped', tone: 'bad' },
             state.stoppedForAccount === true ? 'none' : 'background',
@@ -245,7 +248,8 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         // charge the agent with the minutes spent waiting for a decision earlier in the same work.
         pausedMs: stintOver || stintStarts ? 0 : state.pausedMs,
         waitStartedAt: action.status === 'idle' ? undefined : state.waitStartedAt,
-        seq: stoppedSilently ? state.seq + 1 : state.seq,
+        seq: stoppedSilently ? closing.seq + 1 : state.seq,
+        turnChanges: closing.turnChanges,
         startedAt: settled?.startedAt ?? state.startedAt,
         items: settled
           ? [
@@ -254,7 +258,7 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
               // same hole the result route below has always covered and this one never did.
               ...settled.items,
               {
-                id: `meta-${state.seq}`,
+                id: `meta-${closing.seq}`,
                 kind: 'meta',
                 stats: [STOPPED_BY_YOU],
                 outcome: {
@@ -370,8 +374,12 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         return { ...state, seq: state.seq + 1, items: [...state.items, message] }
       }
 
+      // A turn that ended without a result to list its files (see closeChanges) has them listed here, at
+      // the edge of the next one.
+      const closed = closeChanges(state)
+
       return {
-        ...state,
+        ...closed,
         status: 'running',
         turnStartedAt: now,
         // A turn of one's own is a new request by definition, so a pick made before it is now answerable
@@ -386,8 +394,8 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         streamingThinking: '',
         stopRequestedAt: undefined,
         crashed: false,
-        seq: state.seq + 1,
-        items: [...state.items, message],
+        seq: closed.seq + 1,
+        items: [...closed.items, message],
         // A new request is the boundary of the new tracker's task list - but a mark on it rather than a
         // reset of it: see the comment on tasksCarried in PanelState. A started task with no TaskCreate
         // answer is nothing dreadful to break off here - pendingTasks will simply never resolve, which is
@@ -400,6 +408,9 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
 
     case 'rewound':
       return applyRewound(state, action.uuid, action.all === true, now)
+
+    case 'changesReverted':
+      return applyChangesReverted(state, action.id, action.files, action.restore === true)
 
     /**
      * A bash-mode command. It neither starts nor touches the agent's turn: one may have been running at
@@ -863,14 +874,16 @@ const applyReplayFinished = (state: PanelState, now: number): PanelState => {
    */
   if (state.turnStartedAt !== undefined) return state
 
+  // The replay's last turn has no result to close its list of changed files (see addReplayedPrompt).
+  const closed = closeChanges(state)
   const { items, startedAt } = closeUnfinished(
-    state,
+    closed,
     now,
     { reason: 'replay', tone: 'dim' },
     'none',
   )
 
-  return { ...state, items, startedAt }
+  return { ...closed, items, startedAt }
 }
 
 /**
@@ -1027,7 +1040,9 @@ const applyRewound = (state: PanelState, uuid: string, all: boolean, now: number
   return closeRetry(finishCompacting(cut), 'stopped', now)
 }
 
-const applyProcessExited = (state: PanelState, exitCode: number, now: number): PanelState => {
+const applyProcessExited = (exited: PanelState, exitCode: number, now: number): PanelState => {
+  // What the broken-off turn had changed is on disk regardless, and is listed above the crash.
+  const state = closeChanges(exited)
   const { items, startedAt } = closeUnfinished(
     state,
     now,
@@ -1081,8 +1096,10 @@ const applyProcessExited = (state: PanelState, exitCode: number, now: number): P
  * Silent when there was nothing running: a swap that cost nothing is not news, and a line in the feed
  * about it would appear on every account change in every idle tab.
  */
-const applyProcessReplaced = (state: PanelState, now: number): PanelState => {
-  if (!isRunningSomething(state)) return state
+const applyProcessReplaced = (replaced: PanelState, now: number): PanelState => {
+  if (!isRunningSomething(replaced)) return replaced
+
+  const state = closeChanges(replaced)
 
   const { items, startedAt } = closeUnfinished(state, now, { reason: 'restarted', tone: 'bad' }, 'none')
 
@@ -1449,6 +1466,8 @@ const applyAgentEvent = (
         turnStartedAt: undefined,
         stintStartedAt: undefined,
         pausedMs: 0,
+        // And the files that turn changed: the feed they would be listed in has just been cleared.
+        turnChanges: [],
         waitStartedAt: undefined,
         stopRequestedAt: undefined,
         starting: false,
@@ -1534,7 +1553,8 @@ const applyAgentEvent = (
       // when the button was pressed, and the transcript kept only the tool's result (see
       // addReplayedAnswers).
       const withAnswers = replay ? addReplayedAnswers(withPrompt, event, now) : withPrompt
-      return applyToolResults(withAnswers, blocks, now, replay)
+      // What the results changed goes into the turn's list on the way (see feed/changes.ts).
+      return noteChanges(applyToolResults(withAnswers, blocks, now, replay), event, blocks)
     }
 
     case 'result': {
@@ -1596,12 +1616,17 @@ const applyAgentEvent = (
       // Never from a replay, for the reason the sign-in's door is never offered there: what the row adds
       // is an explanation of a route that is being used right now, and a conversation opened from the
       // history is a record of one that was.
-      const withError = finishCompacting(
-        event.is_error && event.result
-          ? addError(state, event.result, {
-              sampling: !replay && overSampling(event.api_error_status, event.result),
-            })
-          : state,
+      //
+      // The files the turn changed stand between the two - the last thing the turn did, and "Worked" under
+      // them (see ChangesItem).
+      const withError = closeChanges(
+        finishCompacting(
+          event.is_error && event.result
+            ? addError(state, event.result, {
+                sampling: !replay && overSampling(event.api_error_status, event.result),
+              })
+            : state,
+        ),
       )
 
       /**
@@ -2409,7 +2434,9 @@ const addReplayedPrompt = (
   // history read as a wall of paths and quotation marks where at the desk it had been a line of chips.
   const { tokens, quotes } = replayedMessage(text, agentAnswers(state))
 
-  return push(state, (id) => ({
+  // A transcript keeps no result of a turn, so a person's next message is where the turn before it ended -
+  // and where its list of changed files goes (see closeChanges).
+  return push(closeChanges(state), (id) => ({
     id,
     kind: 'user',
     time: formatClock(Number.isNaN(said) ? now : said),

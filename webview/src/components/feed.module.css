@@ -2403,6 +2403,206 @@
   flex-wrap: wrap;
 }
 
+/* The files a turn changed, at its end (see ChangesRow). A box of the diff's own kind, because what it
+   lists is the sum of the diffs above it; one row a file, the name never cut before its folders. */
+.changes {
+  display: flex;
+  flex-direction: column;
+  margin: 6px 0 4px;
+  padding: 3px 0;
+  border: 1px solid var(--acc-line);
+  border-radius: var(--acc-r-lg);
+  background: var(--acc-bg-deep);
+}
+
+.changeRow {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  padding: 2px 10px;
+  font: 12px var(--acc-mono);
+  line-height: var(--acc-code-leading, 18px);
+  text-align: left;
+  color: var(--acc-fg-soft);
+}
+
+/* A row and its revert button side by side; the button stays out of the row so a click on it never opens
+   the file. */
+.changeLine {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.changeLine > .changeRow {
+  flex: 1;
+}
+
+.changeRowLink {
+  cursor: pointer;
+}
+
+/* Put back: the row stays, quieter, its figures struck through - it is a record of what the turn did. */
+.changeRowReverted .changeFolder,
+.changeRowReverted .changeName {
+  color: var(--acc-fg-ghost);
+}
+
+.changeRowReverted .changeAdded,
+.changeRowReverted .changeRemoved {
+  color: var(--acc-fg-ghost);
+  text-decoration: line-through;
+}
+
+/* What came of a revert, between the name and the figures. One line, giving way before the name does: a note
+   that wrapped made its row taller the moment it appeared. */
+.changeNote {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-left: 10px;
+  font: var(--acc-fs-meta, 11px) var(--acc-mono);
+  color: var(--acc-fg-faint);
+}
+
+.changeNoteBad {
+  color: var(--acc-warn-light);
+}
+
+.changeRevert {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 22px;
+  margin-right: 4px;
+  border-radius: var(--acc-r-sm);
+  color: var(--acc-fg-faint);
+  cursor: pointer;
+}
+
+/* Bringing the changes back: the revert's arrow, turned to point forward. */
+.changeRestoreIcon {
+  transform: scaleX(-1);
+}
+
+.changeRevertSlot {
+  flex: none;
+  width: 24px;
+  margin-right: 4px;
+}
+
+.changeRevert:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .changeRevert:not(:disabled):hover {
+    background: var(--acc-bg-hover);
+    color: var(--acc-fg);
+  }
+}
+
+/* The list's own button, under its rows and at their right edge, where the eye ends reading them. */
+.changesFoot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  /* As tall with no button in it as with one: a foot whose buttons come and go must not move the list. */
+  min-height: calc(var(--acc-fs-meta, 11px) * 1.4 + 7px);
+  padding: 2px 4px 1px;
+}
+
+.changesRevertAll {
+  font: var(--acc-fs-meta, 11px) var(--acc-mono);
+  color: var(--acc-fg-faint);
+  padding: 2px 6px;
+  border-radius: var(--acc-r-sm);
+  cursor: pointer;
+}
+
+/* Unfolding a long list stands at the left of the foot, its buttons for the files at the right. */
+.changesFold {
+  margin-right: auto;
+}
+
+.changesRevertAll:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .changesRevertAll:not(:disabled):hover {
+    background: var(--acc-bg-hover);
+    color: var(--acc-fg);
+  }
+}
+
+@media (hover: hover) {
+  .changeRowLink:hover {
+    background: var(--acc-bg-hover);
+  }
+
+  .changeRowLink:hover .changeName {
+    text-decoration: underline dotted;
+    text-underline-offset: 2px;
+  }
+}
+
+.changeFolder {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--acc-fg-faint);
+  /* The ellipsis goes where the box starts, and right to left that is the path's beginning. */
+  direction: rtl;
+  text-align: left;
+}
+
+/* The path itself stays left to right inside it, or the slashes at its ends would change places. */
+.changeFolderText {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+.changeName {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--acc-fg-mono);
+}
+
+/* The figures stand at the right edge, in digits of one width, so the rows' counts line up. */
+.changeAdded {
+  flex: none;
+  margin-left: auto;
+  padding-left: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--acc-ok-light);
+}
+
+/* Changed by an amount nobody could count - see FileChange.uncounted. */
+.changeUncounted {
+  flex: none;
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--acc-fg-faint);
+}
+
+.changeRemoved {
+  flex: none;
+  padding-left: 8px;
+  font-variant-numeric: tabular-nums;
+  color: var(--acc-bad-light);
+}
+
 /* A mod's line in the transcript (see ModLogRow): the turn's own result row's quiet, with the mod's name
    leading it the way the terminal's "●" does. */
 .modLog {

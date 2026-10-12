@@ -1341,6 +1341,29 @@ const answerQueue = (message: WebviewMessage): void => {
  * `{ state: 'unavailable', detail: '…' }`), and `window.__accHarnessRewindRefuse = 'moved'` to have the next
  * rewind refused for that reason. Unset, there are files to put back and the rewind goes through.
  */
+/**
+ * Putting back a turn's files (see ChangeRevert in the IDE): the harness has no disk, so it answers the way the
+ * IDE does when the file is where the turn left it - put back - except for a manifest, which it says was
+ * changed since. That way both kinds of row can be looked at in the scenario "The files a turn changed".
+ * Bringing changes back always works here.
+ */
+const answerRevert = (message: WebviewMessage): void => {
+  if (message.type !== 'revertChanges') return
+  const { sessionId, id, files } = message
+  window.setTimeout(() => {
+    window.__accReceive?.({
+      type: 'changesReverted',
+      sessionId,
+      id,
+      ...(message.restore ? { restore: true } : {}),
+      files: files.map((file) => ({
+        path: file.path,
+        outcome: message.restore ? 'restored' : file.path.endsWith('AndroidManifest.xml') ? 'changed' : 'reverted',
+      })),
+    })
+  }, 400)
+}
+
 const answerRewind = (message: WebviewMessage): void => {
   if (message.type === 'rewindPreview') {
     const code: RewindCode = window.__accHarnessRewindCode ?? {
@@ -1585,6 +1608,7 @@ const listenToPanel = () => {
     if (message) answerQueue(message)
     if (message) answerSound(message)
     if (message) answerRewind(message)
+    if (message) answerRevert(message)
     if (message) answerPanelKeys(message)
   }
 

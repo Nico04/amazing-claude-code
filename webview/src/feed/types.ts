@@ -4,7 +4,7 @@
  * list, the plan, the questions), some from system events.
  */
 
-import type { EditorRef } from '../protocol'
+import type { EditorRef, FileEdit, RevertOutcome } from '../protocol'
 import type { WorkflowView } from './workflow'
 
 /**
@@ -686,6 +686,62 @@ export interface MetaItem {
   outcome?: { state: 'worked' | 'stopped' | 'movedAccount' | 'restarted'; duration: string }
 }
 
+/**
+ * One file a turn changed, and by how many lines - a row of [ChangesItem].
+ *
+ * The figures are the CLI's own: every edit comes back with the diff the CLI actually applied
+ * (`structuredPatch` in the tool's structured result), and a created file says so (`type: 'create'`). See
+ * feed/changes.ts for where they are read and what stands in when a result does not carry them.
+ */
+export interface FileChange {
+  /** The path the tool was given, in full - what a click on the row opens. */
+  path: string
+  /** The same path as the feed shows it: from the project's root when the file lies inside the project. */
+  shown: string
+  added: number
+  removed: number
+  /** The turn created the file: there was nothing in it before, so nothing was removed from it either. */
+  created: boolean
+  /**
+   * The file changed by an amount nobody could count: a big edit the CLI reported without its diff, and nothing
+   * on this side to work one out from (see changeOf). The row says so instead of showing figures.
+   */
+  uncounted?: true
+  /** The call that changed the file first in the turn - what names the turn's list (see closeChanges). */
+  firstCall: string
+  /**
+   * What the turn did to the file, change by change, for putting it back (see ChangeRevert in the IDE).
+   *
+   * Absent when a change of the file came without its diff - a CLI too old to send one, a result cut short
+   * on the way: there is then nothing exact to undo, and the row has no button rather than one that guesses.
+   */
+  edits?: FileEdit[]
+  /** What putting the file back came to, once the IDE has answered (see changesReverted). */
+  revert?: RevertOutcome
+  /** Why bringing the changes back after a revert did not happen - the file stays reverted. */
+  restoreRefused?: RevertOutcome
+  /**
+   * How many times the IDE has answered about this file. A pressed button waits for this to move rather than
+   * for the row's words to change: the same refusal twice is two answers that read the same.
+   */
+  answers?: number
+}
+
+/**
+ * The files the turn changed, at its end - one row per file, with the lines added and removed.
+ *
+ * Asked for by a person who read the end of an answer for the list of what had been touched: the cards
+ * that did the editing stand far up the feed, folded into groups, and an answer names the files only when
+ * the model happens to. Here the list is the same at the end of every turn, drawn from the calls rather than
+ * from what the model chose to say. Subagents' edits are in it too (see noteChanges).
+ */
+export interface ChangesItem {
+  id: string
+  kind: 'changes'
+  /** In the order the turn first touched them. */
+  files: FileChange[]
+}
+
 /** How a chain of retries ended: the request went through, the CLI gave up, or the turn was interrupted. */
 export type RetryOutcome = 'recovered' | 'failed' | 'stopped'
 
@@ -913,6 +969,7 @@ export type FeedItem =
   | CheckpointItem
   | CompactItem
   | MetaItem
+  | ChangesItem
   | RetryItem
   | ModelSwitchItem
   | ModelStuckItem

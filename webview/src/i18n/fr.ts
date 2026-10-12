@@ -1273,7 +1273,21 @@ export const fr: Dict = {
       unconfirmed: 'non confirmé',
     },
 
-    copy: { copied: 'Copié', click: 'Cliquer pour copier', openFile: "Ouvrir dans l'éditeur", openFolder: 'Afficher le dossier' },
+    copy: { copied: 'Copié', click: 'Cliquer pour copier', openFile: "Ouvrir dans l'éditeur", openFolder: 'Afficher le dossier', missing: 'Ce fichier n’existe pas sur le disque - cliquer pour vérifier à nouveau' },
+    changes: {
+      all: (n) => `Tout afficher (${n})`,
+      fewer: 'Afficher moins',
+      revert: 'Annuler les changements de ce fichier',
+      revertAll: 'Tout annuler',
+      reverting: 'Annulation…',
+      restore: 'Rétablir les changements',
+      restoreAll: 'Tout rétablir',
+      restoring: 'Rétablissement…',
+      reverted: 'Annulé',
+      changed: 'Modifié depuis, laissé tel quel',
+      missing: 'Le fichier n’existe plus',
+      failed: 'Impossible d’écrire le fichier',
+    },
   },
 
   chrome: {

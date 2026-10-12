@@ -1261,7 +1261,21 @@ export const zh: Dict = {
       unconfirmed: '未确认',
     },
 
-    copy: { copied: '已复制', click: '点击复制', openFile: '在编辑器中打开', openFolder: '显示文件夹' },
+    copy: { copied: '已复制', click: '点击复制', openFile: '在编辑器中打开', openFolder: '显示文件夹', missing: '磁盘上没有这个文件 - 点击重新查找' },
+    changes: {
+      all: (n) => `全部显示（${n}）`,
+      fewer: '收起',
+      revert: '撤销此文件的改动',
+      revertAll: '全部撤销',
+      reverting: '正在撤销…',
+      restore: '恢复这些改动',
+      restoreAll: '全部恢复',
+      restoring: '正在恢复…',
+      reverted: '已撤销',
+      changed: '之后又被改过，保持原样',
+      missing: '文件已不存在',
+      failed: '无法写入文件',
+    },
   },
 
   chrome: {

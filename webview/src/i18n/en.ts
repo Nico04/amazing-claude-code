@@ -1663,7 +1663,25 @@ export const en = {
       unconfirmed: 'unconfirmed',
     },
 
-    copy: { copied: 'Copied', click: 'Click to copy', openFile: 'Open in the editor', openFolder: 'Show the folder' },
+    copy: { copied: 'Copied', click: 'Click to copy', openFile: 'Open in the editor', openFolder: 'Show the folder', missing: 'No such file on disk - press to look again' },
+    /**
+     * The list of files a turn changed (see ChangesRow): a row's buttons both ways, the list's own, and what came
+     * of a revert or of bringing it back.
+     */
+    changes: {
+      all: (n: number): string => `Show all (${n})`,
+      fewer: 'Show fewer',
+      revert: 'Revert this file',
+      revertAll: 'Revert all',
+      reverting: 'Reverting…',
+      restore: 'Bring the changes back',
+      restoreAll: 'Bring all back',
+      restoring: 'Bringing back…',
+      reverted: 'Reverted',
+      changed: 'Changed since, left as is',
+      missing: 'The file is gone',
+      failed: "Couldn't write the file",
+    },
   },
 
   chrome: {

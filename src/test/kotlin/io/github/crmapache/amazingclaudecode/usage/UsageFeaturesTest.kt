@@ -55,7 +55,7 @@ class UsageFeaturesTest {
         val types = listOf(
             "newSession", "nameSession", "reorderTabs", "queuePrompt", "takeQueued", "reorderQueue", "stop",
             "stopTask", "bash", "improvePrompt", "setModel", "setEffort", "setMode", "planDecision", "askAnswer",
-            "agentTranscript", "openFile", "clipboardWrite", "pick", "savePastedFile", "resumeSession", "search",
+            "agentTranscript", "openFile", "revertChanges", "clipboardWrite", "pick", "savePastedFile", "resumeSession", "search",
             "searchAi", "voiceStart", "startPairing", "scenarioRun", "scenarioSave", "scenarioDraft",
             "scenarioSchedule", "scenarioQueue", "scenarioAnswer", "saveImage", "mcpAdd", "pluginInstall",
             "accountAdd", "accountUse", "designLogin", "feedbackSend", "setTheme", "setTextSize", "setLanguage",

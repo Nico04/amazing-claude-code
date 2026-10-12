@@ -11,8 +11,11 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountDesk
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountsWatch
+import io.github.crmapache.amazingclaudecode.editor.ChangeRevert
 import io.github.crmapache.amazingclaudecode.editor.DiskRefresh
 import io.github.crmapache.amazingclaudecode.editor.EditorContext
+import io.github.crmapache.amazingclaudecode.editor.FileReverts
+import io.github.crmapache.amazingclaudecode.editor.UndiffedEdits
 import io.github.crmapache.amazingclaudecode.editor.UnsavedEdits
 import io.github.crmapache.amazingclaudecode.feedback.DiagnosticsLog
 import io.github.crmapache.amazingclaudecode.remote.LocalBridgeServer
@@ -239,6 +242,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      */
     private val disk: DiskRefresh = DiskRefresh(project.basePath, this)
 
+    /** The diffs the CLI leaves out of big edits, worked out before the line goes anywhere (see UndiffedEdits). */
+    private val undiffed = UndiffedEdits { runCatching { ClaudeHome.of(project.basePath) }.getOrNull() }
+
     /**
      * What this project contributes to the statistics tab. It is told about everything below - the
      * stream, the messages, the tabs, the decisions - and writes it into the machine-wide ledger.
@@ -414,6 +420,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             // ask the very process that has just finished for a fresh figure.
             if (line.contains(RESULT_MARKER)) {
                 usage.refreshContext(sessionId)
+                if (!replay) undiffed.turnEnded(conversations.conversationIdOf(sessionId))
                 if (!replay) {
                     // The subscription usage: the turn has just cost some of the limit, and the freshest
                     // share is precisely at this process - it got it in the answer. A past conversation's
@@ -891,10 +898,14 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      * [replay] marks a past conversation being read off disk rather than a live turn - the mark travels
      * onwards untouched, because the interface treats the two differently (see feed/build.ts).
      */
-    fun onAgentLine(sessionId: String, line: String, replay: Boolean = false) {
+    fun onAgentLine(sessionId: String, incoming: String, replay: Boolean = false) {
         // Not an event at all - there is nothing to put into an envelope. A live process does not bring
         // such a line this far (see ClaudeSession.noteDiagnostic), but an old transcript may hold one.
-        if (!line.startsWith("{")) return
+        if (!incoming.startsWith("{")) return
+
+        // A big edit the CLI reported without its diff gets one worked out here, before anybody sees the line
+        // (see UndiffedEdits). Only live: a transcript is read long after the copies it would need moved on.
+        val line = if (replay) incoming else undiffed.fill(incoming, conversations.conversationIdOf(sessionId))
 
         // A mod speaking to a surface: decided before anything else here, because what it says most often -
         // "draw me again", up to ten times a second - must never reach the journal (see ModLines). Only a
@@ -1893,6 +1904,32 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         }
     }
 
+
+    /**
+     * Files a turn changed, put back - a row's button on the list of changed files, or the list's "revert all"
+     * (see ChangeRevert) - or, with [restore], brought back after that. [id] names the list in the feed, so
+     * every client can mark the rows it answers.
+     *
+     * What is unsaved in an editor is saved first, as before any turn: the turn's lines are looked for in the
+     * file as the person sees it, and a revert written over an unsaved buffer would fight it afterwards. The
+     * outcome is said to everyone watching and kept in the journal: a second window and a reloaded panel show
+     * the same rows put back, and a refusal is a fact about the file rather than about the screen that asked.
+     */
+    fun revertChanges(sessionId: String, id: String, files: List<ChangeRevert.FileRequest>, restore: Boolean = false) {
+        if (id.isBlank() || files.isEmpty()) return
+
+        AppExecutorUtil.getAppExecutorService().execute {
+            UnsavedEdits.flush(project)
+            val outcomes = files.map { file -> file.path to FileReverts.apply(project, file.path, file.edits, restore) }
+            // Counts only: the paths would leave the machine with a report (see DiagnosticsLog).
+            DiagnosticsLog.note(
+                DiagnosticsLog.AGENT,
+                (if (restore) "brought back" else "reverted") + " a turn's changes: " +
+                    outcomes.groupingBy { it.second.wire }.eachCount().entries.joinToString { "${it.key} ${it.value}" },
+            )
+            broadcast(sessionId, ChangeRevert.outcomeJson(sessionId, id, outcomes, restore))
+        }
+    }
 
     /**
      * Everything on this side that held the dropped part, made to agree with the CLI - see [rewind]. Runs
