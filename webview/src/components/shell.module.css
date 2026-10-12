@@ -751,8 +751,12 @@
   color: var(--acc-fg-faint);
 }
 
-.tabClose:hover {
-  background: var(--acc-line-strong);
+/* The tab's own buttons (the cross and the fork) light up in the tab's group colour on hover: a grey square
+   on the open tab's coloured light read as a smudge. Translucent, so the one mix sits on the open tab's light
+   and on a plain tab alike. */
+.tabClose:hover,
+.tabForkButton:hover {
+  background: color-mix(in srgb, var(--acc-group-paint) 35%, transparent);
   color: var(--acc-fg);
 }
 
@@ -783,11 +787,6 @@
   place-items: center;
   border-radius: var(--acc-r-xs);
   color: var(--acc-fg-faint);
-}
-
-.tabForkButton:hover {
-  background: var(--acc-line-strong);
-  color: var(--acc-fg);
 }
 
 /* Nothing to fork yet: the button keeps its place and its hint, and stops looking pressable. */
