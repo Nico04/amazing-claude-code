@@ -25,8 +25,11 @@ import javax.swing.KeyStroke
  * road the context menu already takes (see clipboard.ts). The IDE swallows the typed key that follows a press
  * it handled, so the letter does not come through either. Confirmed on the reporter's machine.
  *
- * The shortcuts are the keymap's own Paste plus Ctrl+Shift+V, the terminal's paste. Mac and Windows are left
- * alone: there the browser pastes by itself and can do more than this road (see clipboard.ts).
+ * The shortcuts are the keymap's own Paste plus Ctrl+V, Ctrl+Shift+V (the terminal's paste) and Shift+Insert,
+ * whatever the keymap says: in a text field these mean paste, and the page itself never pastes on a key press
+ * any more (a Ctrl nobody held rides into the browser on a Shift+V, see clipboardKeys.ts) - so a paste key
+ * this action did not take would do nothing at all. Mac and Windows are left alone: there the browser pastes
+ * by itself and can do more than this road (see clipboard.ts).
  */
 internal object PasteKeys {
 
@@ -52,10 +55,12 @@ internal object PasteKeys {
     }
 
     private fun shortcuts(): Array<Shortcut> {
-        val terminal = KeyboardShortcut(
+        val usual = listOf(
+            KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK),
             KeyStroke.getKeyStroke(KeyEvent.VK_V, InputEvent.CTRL_DOWN_MASK or InputEvent.SHIFT_DOWN_MASK),
-            null,
-        )
-        return (CommonShortcuts.getPaste().shortcuts.toList() + terminal).distinct().toTypedArray()
+            KeyStroke.getKeyStroke(KeyEvent.VK_INSERT, InputEvent.SHIFT_DOWN_MASK),
+        ).map { KeyboardShortcut(it, null) }
+
+        return (CommonShortcuts.getPaste().shortcuts.toList() + usual).distinct().toTypedArray()
     }
 }
