@@ -9,6 +9,14 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.33] - 2026-10-12
+
+- Added: the files a turn changed are listed under the agent's answer at the end of the turn. Each line shows the path from the project root (the full path for a file outside the project), the lines added in green and the lines removed in red; a file the turn created shows only its added lines. A click opens the file in the editor. Edits made by subagents are counted too, and a list of more than 12 files shows the first 10 with "Show all".
+- Added: a revert button on every file in that list, and "Revert all" for the whole turn. A revert takes back exactly the lines the turn changed, so edits made since in other parts of the file stay. If the turn's lines were changed by hand since, the file is left alone and the line says "Changed since". A file the turn created is deleted. The same button brings a reverted file back, "Bring all back" does it for the whole list, and Cmd+Z in the editor undoes a revert too. Once you send the next message, the list above it becomes read-only, so the agent is not left working on code that has been taken back.
+- Fixed: the line counts on an edit card could disagree with the diff under it, for example +2 -1 above a single added line, or +1 -1 for a replace across the whole file. They are now counted from that same diff.
+- Fixed: a click on a path to a file that no longer exists did nothing. The link now says that the file is gone.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.32] - 2026-10-12
 
 - Added: a switch for the spell check in Settings → Spell check. Writing to Claude in several languages, every word outside the checker's dictionaries came up with a red underline. Turned off, the message field and the panel's other text fields stop underlining, at once and in every IDE window. A phone keeps checking with its own keyboard.
@@ -970,7 +978,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.32...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.33...HEAD
+[0.13.33]: https://github.com/crmapache/amazing-claude-code/compare/0.13.32...0.13.33
 [0.13.32]: https://github.com/crmapache/amazing-claude-code/compare/0.13.31...0.13.32
 [0.13.31]: https://github.com/crmapache/amazing-claude-code/compare/0.13.30...0.13.31
 [0.13.30]: https://github.com/crmapache/amazing-claude-code/compare/0.13.29...0.13.30
