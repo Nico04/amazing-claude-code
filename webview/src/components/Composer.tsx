@@ -73,6 +73,7 @@ import {
   removeChip,
   scrollCaretIntoView,
   splitTokens,
+  takeKeyboard,
   wrappedLineCount,
 } from './composerDom'
 import { savePastedFile, savePastedFiles } from '../pasted'
@@ -345,7 +346,10 @@ interface ComposerProps {
   files: string[]
   /** How many images have already gone out in this session - the new ones are numbered on from here. */
   imageBaseCount: number
-  /** The panel asks for the field to be focused, after a reference from the editor for instance. */
+  /**
+   * The panel asks for the field to be focused - after a reference from the editor, a tab the person
+   * switched to (see pickTab in App) - with the caret kept where it stood or put at the end (takeKeyboard).
+   */
   focusToken: number
   /**
    * The field's contents changed - and where the change came from, which the panel needs in order to tell
@@ -717,7 +721,7 @@ export const Composer = ({
   }, [sessionId])
 
   useEffect(() => {
-    if (focusToken > 0) input.current?.focus()
+    if (focusToken > 0 && input.current) takeKeyboard(input.current)
   }, [focusToken])
 
   // Any edit opens the hint again and puts the choice back at the top. Unconditional on purpose, and

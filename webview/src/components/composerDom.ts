@@ -237,6 +237,20 @@ export const placeCaretAtEnd = (root: HTMLElement | null) => {
   selection?.addRange(padTrailingBreak(root) ?? endRange(root))
 }
 
+/**
+ * The keyboard handed to the field from outside - a tab switched to, a dialog closed, a tab's name
+ * confirmed - with the caret where the person left it, or at the end of the draft.
+ *
+ * Not focus() alone: with the selection standing anywhere else on the page (a word picked out of the feed,
+ * the cross of a closed tab) Chromium puts the caret at the very start of the field, and the next word
+ * went in front of the draft it was meant to continue.
+ */
+export const takeKeyboard = (root: HTMLElement) => {
+  const caret = window.getSelection()?.anchorNode
+  if (!caret || !root.contains(caret)) placeCaretAtEnd(root)
+  root.focus()
+}
+
 /** The caret right beside a chip - on the side the arrow was travelling towards. */
 export const placeCaretBeside = (node: HTMLElement, side: 'before' | 'after') => {
   const range = document.createRange()

@@ -39,7 +39,8 @@ paths:
 
 **`webview/src/App.tsx`** (и `mobile/App.tsx`, где заметка говорит «в обоих `App`»):
 - `reuseMessage`, `intoField` - message-reuse
-- `queueEdits`, `takeBackQueued`, `case 'queuedTaken'`, `before` в `intoTheQueue`, фокус в `startSession` - queue-edit
+- `queueEdits`, `takeBackQueued`, `case 'queuedTaken'`, `before` в `intoTheQueue` - queue-edit
+- `pickTab`, `focusToken` (фокус в `startSession`, `resume`, `closeSession`) - composer-field
 - `shareEditor`, `editorContext`, `editorSkips`, `withEditor` в `submit`, `case 'editorContext'` - editor-context
 - `improveSources`, `restoreDraft`, `registerApply` - prompt-improver
 - `feedPlaces`, `key={active}`, `forgetFeedFocus` - reading-place

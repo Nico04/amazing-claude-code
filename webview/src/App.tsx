@@ -981,8 +981,9 @@ export const App = () => {
     // holds, and a run watched for an hour and closed would otherwise sit here till the panel reloads.
     const watched = runOfTab(id)
     if (watched) setRunRecords(({ [watched]: gone, ...rest }) => rest)
-    // The neighbour in the strip, whatever kind of tab it is - see tabAfterClosing.
-    if (active === id) setActive(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
+    // The neighbour in the strip, whatever kind of tab it is - see tabAfterClosing - with the keyboard, as
+    // after closing a conversation (see closeSession).
+    if (active === id) pickTab(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
   }
 
   /**
@@ -4346,6 +4347,10 @@ export const App = () => {
       // nothing is replayed. In the tab on screen that is simply closing the menu.
       const open = tabHolding(entry.id, sessions, (tab) => panelsRef.current[tab]?.sessionId)
 
+      // Either way the keyboard goes with it, as with a tab picked on the strip (see pickTab): every road
+      // here is a press - the history, a hit of the search, the name in a fork's seam, a run's chat.
+      setFocusToken((current) => current + 1)
+
       if (open) {
         setActive(open)
         setSideMenu({ open: false, screen: 'menu' })
@@ -5998,8 +6003,30 @@ export const App = () => {
     const next = sessions.filter((session) => session.id !== id)
     setSessions(next)
     // The neighbour in the strip, and one of this panel's own tabs just as readily as a chat: the
-    // empty screen is for an empty strip (see tabAfterClosing).
-    if (active === id) setActive(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
+    // empty screen is for an empty strip (see tabAfterClosing). It takes the keyboard as a picked tab does
+    // (see pickTab): the field that had it is gone with its tab.
+    if (active === id) pickTab(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
+  }
+
+  /**
+   * A tab the person chose - a click on the strip, Enter on a tab, the panel's keys, the neighbour of the
+   * open tab they closed - and the keyboard goes with it into the tab's field, the way it does after "+" and
+   * a fork (see startSession) and after a conversation picked in the history or the search (see resume).
+   *
+   * Reported (0.13.25): switching to another conversation left the keys with nobody, and every switch cost
+   * a click into the field before the next prompt could be typed. The press on the strip keeps the focus
+   * where it was (see startDrag in Header), which is the field only if the person had been typing - not
+   * after reading the feed or coming back from the editor. A tab with no field - the statistics, the hub -
+   * has nothing to take it; a run being watched has the main thread's field, and that one does.
+   *
+   * Only on a real change, so the second press of a double click - the tab's rename - finds nothing to
+   * take the keyboard away from the name. The IDE switching tabs on its own (a restore, a tab closed from
+   * the phone) does not come here: nobody in this panel asked for the field.
+   */
+  const pickTab = (id: string) => {
+    if (id === active) return
+    setActive(id)
+    setFocusToken((current) => current + 1)
   }
 
   /**
@@ -6016,12 +6043,9 @@ export const App = () => {
       case 'nextTab':
       case 'previousTab': {
         const target = tabBeside(stripTabs(sessions, panelTabs), active, command === 'nextTab' ? 1 : -1)
-        if (!target || target === active) return
-        setActive(target)
-        // Straight into the field, the way a new tab and a fork land there: the hand that switched tabs
-        // with a key is on the keyboard, and the next thing it does is type. The panel's own tabs have no
-        // field.
-        if (!isPanelTab(target)) setFocusToken((current) => current + 1)
+        // Straight into the field (see pickTab): the hand that switched tabs with a key is on the keyboard,
+        // and the next thing it does is type.
+        if (target) pickTab(target)
         return
       }
 
@@ -6051,7 +6075,7 @@ export const App = () => {
         sessions={tabs}
         layout={composerLayout}
         activeSession={active}
-        onPickSession={setActive}
+        onPickSession={pickTab}
         onCloseSession={closeSession}
         onNewSession={() => startSession(`session-${Date.now()}`)}
         onFork={forkWhole}
@@ -6064,7 +6088,7 @@ export const App = () => {
         onReturnToInput={() => setFocusToken((current) => current + 1)}
         onOpenMenu={openMenu}
         panelTabs={headerPanelTabs}
-        onPickPanelTab={setActive}
+        onPickPanelTab={pickTab}
         onClosePanelTab={closePanelTab}
         newTabKey={keyText(panelKeys.newTab)}
         closeTabKey={keyText(panelKeys.closeTab)}
