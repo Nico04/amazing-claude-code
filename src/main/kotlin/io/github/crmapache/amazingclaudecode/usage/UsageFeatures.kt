@@ -101,6 +101,7 @@ internal object UsageFeatures {
         "newChatMode",
         "composerLayout",
         "pasteCollapse",
+        "spellcheck",
         "sendKey",
         "keys",
         "settingSources",
@@ -130,6 +131,7 @@ internal object UsageFeatures {
         "sounds",
         "share_editor",
         "restore_tabs",
+        "spellcheck",
         "improve_prompt",
         "custom_models",
         "new_chat",
@@ -303,6 +305,7 @@ internal object UsageFeatures {
         "soundSettings" -> "sounds"
         "setShareEditor" -> "share_editor"
         "setRestoreTabs" -> "restore_tabs"
+        "setSpellcheck" -> "spellcheck"
         "setImproveInstructions" -> "improve_prompt"
         "setCustomModels" -> "custom_models"
         "setDefaultModel", "setDefaultEffort", "setDefaultMode" -> "new_chat"

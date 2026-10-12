@@ -934,6 +934,11 @@ type ShellMessageBody =
          * setting - reads as on, which is the default (see ClaudePreferences.shareEditor).
          */
         shareEditor?: boolean
+        /**
+         * Whether the panel's text fields underline misspelled words. Unset - a plugin older than the
+         * setting - reads as on, which is what the browser does by itself (see ClaudePreferences.spellcheck).
+         */
+        spellcheck?: boolean
       }
       /**
        * Which of Claude Code's settings layers this project's conversations are started with - '' for
@@ -1245,6 +1250,8 @@ type ShellMessageBody =
   | { type: 'restoreTabs'; on: boolean }
   /** The same, for whether a message carries what the editor shows - changed in this or another window. */
   | { type: 'shareEditor'; on: boolean }
+  /** The same, for whether the text fields check spelling - changed in this or another window. */
+  | { type: 'spellcheck'; on: boolean }
   /**
    * The anonymous usage statistics' state on this machine: whether the question has been answered, and when
    * a report last went through (zero for never). Not to be confused with `usage` above, which is the
@@ -2437,6 +2444,8 @@ export type WebviewMessage =
   | { type: 'setRestoreTabs'; on: boolean }
   /** Whether a message sent from the panel carries what the editor shows (see EditorContext.kt). */
   | { type: 'setShareEditor'; on: boolean }
+  /** Whether the panel's text fields check spelling - machine-wide (see ClaudePreferences.spellcheck). */
+  | { type: 'setSpellcheck'; on: boolean }
   /** Which indicators around the input field are switched off - the whole list (see indicators.ts). */
   | { type: 'setHiddenIndicators'; hidden: string[] }
   /**

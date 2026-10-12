@@ -330,6 +330,12 @@
   color: var(--acc-fg-dim);
 }
 
+/* The same neutral again: whether the field underlines misspelled words is its behaviour too. */
+.rowIconSpellcheck {
+  background: var(--acc-neutral-12);
+  color: var(--acc-fg-dim);
+}
+
 /* The key shares that same neutral: which key sends is about the input field's behaviour, exactly as the
    two rows above it are. */
 .rowIconSend {

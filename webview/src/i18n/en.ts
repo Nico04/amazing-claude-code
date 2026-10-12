@@ -54,6 +54,7 @@ export const en = {
       newChatMode: { title: 'DEFAULT MODE', hint: 'what new tabs start in' },
       composerLayout: { title: 'COMPOSER LAYOUT', hint: 'where the input sits' },
       pasteCollapse: { title: 'PASTED TEXT', hint: 'when a paste folds into a chip' },
+      spellcheck: { title: 'SPELL CHECK', hint: 'underlines under misspelled words' },
       sendKey: { title: 'SENDING A MESSAGE', hint: 'which key sends it' },
       keys: { title: 'KEYBOARD SHORTCUTS', hint: 'every key the panel answers to' },
       settingSources: { title: 'WHERE SETTINGS COME FROM', hint: 'which layers Claude Code loads' },
@@ -107,6 +108,7 @@ export const en = {
       shareEditor: { label: 'Open file and selection', sub: 'What goes along with each message' },
       composerLayout: { label: 'Composer layout', sub: 'Where the input sits' },
       pasteCollapse: { label: 'Pasted text', sub: 'When a paste folds into a chip' },
+      spellcheck: { label: 'Spell check', sub: 'Underline misspelled words' },
       sendKey: { label: 'Sending a message', sub: 'Which key sends it' },
       keys: { label: 'Keyboard shortcuts', sub: 'Tabs, queue, search and the rest' },
       settingSources: { label: 'Settings sources', sub: "Which of Claude Code's layers load here" },
@@ -230,6 +232,18 @@ export const en = {
     label: 'Send the editor along',
     hint: 'Each message carries the file open in the editor, and the lines selected in it - the way Claude Code does it in a terminal',
     note: 'Only from this panel: a message written on a phone carries nothing of the editor. One message can go without it - press the file’s chip in the input field.',
+    on: 'On',
+    off: 'Off',
+  },
+
+  /**
+   * The spell check of the panel's text fields - one switch. The note says who it is for (people writing in
+   * several languages, whose every word in the others came up underlined) and that a phone is not touched.
+   */
+  spellcheck: {
+    label: 'Check spelling',
+    hint: 'Words the checker does not know get a red underline - in the message field and in the panel’s other text fields',
+    note: 'Turn it off if you write in several languages and words in the others come up underlined. A message written on a phone is checked by the phone’s own keyboard, which this switch does not change.',
     on: 'On',
     off: 'Off',
   },

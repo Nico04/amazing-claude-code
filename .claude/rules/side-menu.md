@@ -4,6 +4,7 @@ paths:
   - "webview/src/components/SideMenu.test.ts"
   - "webview/src/components/sideMenu.module.css"
   - "webview/src/components/AuthorCard.tsx"
+  - "webview/src/components/SwitchScreen.tsx"
 ---
 
 ## Настройки живут за одной кнопкой, а не в корне меню

@@ -33,6 +33,7 @@ export type MenuScreen =
   | 'newChatMode'
   | 'composerLayout'
   | 'pasteCollapse'
+  | 'spellcheck'
   | 'sendKey'
   | 'keys'
   | 'settingSources'
@@ -89,6 +90,8 @@ export interface MenuSummary {
   composerLayout: string
   /** From how many lines a pasted text folds into a chip, or that it never does. */
   pasteCollapse: string
+  /** Whether the text fields underline misspelled words - "On" or "Off". */
+  spellcheck: string
   /** Which key sends a message - the key itself ("Enter", "Cmd+Enter"), not a sentence about it. */
   sendKey: string
   /**
@@ -166,6 +169,7 @@ const SETTINGS_SCREENS: MenuScreen[] = [
   'shareEditor',
   'composerLayout',
   'pasteCollapse',
+  'spellcheck',
   'sendKey',
   'keys',
   'settingSources',
@@ -391,6 +395,14 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M6 3.2H4.4a1.2 1.2 0 0 0-1.2 1.2v8a1.2 1.2 0 0 0 1.2 1.2h7.2a1.2 1.2 0 0 0 1.2-1.2v-8a1.2 1.2 0 0 0-1.2-1.2H10" />
       <rect x="6" y="1.9" width="4" height="2.6" rx="0.9" />
       <path d="M5.9 8h4.2M5.9 10.6h2.6" />
+    </svg>
+  ),
+  /* A letter over a wavy line - the underline the checker draws under a word it does not know, which is the
+     one thing everybody recognises it by. */
+  spellcheck: (
+    <svg viewBox="0 0 16 16" aria-hidden="true" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5.2 9L8 2.8 10.8 9M6.2 6.9h3.6" />
+      <path d="M2.4 12.4q1.4-1.4 2.8 0t2.8 0 2.8 0 2.8 0" />
     </svg>
   ),
   /* A key with a corner arrow on it - the Enter key itself, which is what the row is about. Drawn rather
@@ -853,6 +865,15 @@ export const SettingsScreen = ({
           sub={t.settings.rows.pasteCollapse.sub}
           value={summary.pasteCollapse}
           onClick={() => onPick('pasteCollapse')}
+        />
+        {/* In the run about the input field: it is about what the field does with the words typed into it. */}
+        <Row
+          icon="spellcheck"
+          iconClass={s.rowIconSpellcheck}
+          label={t.settings.rows.spellcheck.label}
+          sub={t.settings.rows.spellcheck.sub}
+          value={summary.spellcheck}
+          onClick={() => onPick('spellcheck')}
         />
         <Row
           icon="sendKey"

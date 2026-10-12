@@ -483,6 +483,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         val client = clients[clientId] ?: return
 
         val batch = ArrayList<String>()
+        refreshInit()
         batch += projectMessages()
         batch += sessionsMessage()
         // Which tab to put on screen: the one that was there when the panel was last closed or reloaded.
@@ -2612,6 +2613,22 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         PROJECT_ORDER.mapNotNull { type -> projectCache[type] }
 
     /**
+     * The `init` a joining client is handed, built again rather than replayed.
+     *
+     * It carries the machine's settings, and the copy kept since the project opened carried them as they
+     * were then: a page reloaded after the spell check, the editor in messages or the send key had been
+     * switched got the old answer back, and its screen showed it until the IDE restarted. Only once it has
+     * been said at all - the first client's warm-up says it (see [warmUp]), and a copy that fails to build
+     * leaves the old one rather than none.
+     */
+    private fun refreshInit() {
+        if (!projectCache.containsKey(INIT)) return
+        runCatching { catalog.initMessage() }
+            .onSuccess { projectCache[INIT] = it }
+            .onFailure { thisLogger().warn("The project's init could not be built again", it) }
+    }
+
+    /**
      * The same facts, for a client that is watching the PROJECT rather than a conversation in it.
      *
      * A phone on the scenarios screen is looking at the project and at no chat at all, and the shelves,
@@ -2759,6 +2776,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         /** And the relay's - one client here however many phones sit behind it. */
         const val RELAY_PREFIX = "relay-"
 
+        /** The fact that carries the project and the machine's settings - rebuilt for a joining client. */
+        private const val INIT = "init"
+
         /**
          * The order the project's facts are handed over in. Explicit rather than "whatever the map
          * iterates as": the interface builds its first screen out of these, and a sign-in state
@@ -2774,9 +2794,10 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             // red its owner had damped, and stayed there until somebody at the desk moved it again.
             "calmColors",
             "init",
-            // Right after `init`, which carries the same setting as it stood when the hub warmed up: the
-            // cached `init` is what a joining window is given, so without the later fact a panel reopened
-            // after the switch was flipped would come back with the indicator its owner had hidden.
+            // Right after `init`, which carries the same setting. This fact came first, when the `init` a
+            // joining window was given was the copy from the hub's warm-up and brought back an indicator
+            // its owner had hidden; `init` is built afresh for each client now (see refreshInit), and the
+            // two agree. After it all the same, so the newer word is the last one either way.
             "indicators",
             "auth",
             // Right after the sign-in it qualifies: a client that joins without it cannot draw the menu

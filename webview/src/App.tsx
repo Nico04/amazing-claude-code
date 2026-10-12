@@ -70,6 +70,7 @@ import { Appearance, appearanceSummary } from './components/Appearance'
 import { CalmColors } from './components/CalmColors'
 import { RestoreTabs } from './components/RestoreTabs'
 import { ShareEditor } from './components/ShareEditor'
+import { Spellcheck } from './components/Spellcheck'
 import { UsageConsentCard, UsageReportScreen, UsageScreen } from './components/UsageStats'
 import { Indicators } from './components/Indicators'
 import {
@@ -749,6 +750,11 @@ export const App = () => {
    * IDE says otherwise, like the switch above.
    */
   const [shareEditor, setShareEditorState] = useState(true)
+  /**
+   * Whether the text fields underline misspelled words (see ClaudePreferences.spellcheck). On until the IDE
+   * says otherwise: it is what the browser does by itself, and the harness has no IDE to say it.
+   */
+  const [spellcheck, setSpellcheckState] = useState(true)
   /**
    * What the editor beside the panel shows right now - the file in front of the person and the lines
    * selected in it. Null with no text editor open, and always in the harness until a scenario says otherwise.
@@ -2255,6 +2261,7 @@ export const App = () => {
               })
               setRestoreTabsState(message.preferences.restoreTabs !== false)
               setShareEditorState(message.preferences.shareEditor !== false)
+              setSpellcheckState(message.preferences.spellcheck !== false)
             }
             if (message.improve) setImproveInstructions(message.improve)
             // Only until the fact itself has said: `project` is sent again whenever the branch changes, and
@@ -2451,6 +2458,11 @@ export const App = () => {
           // Whether a message carries what the editor shows - flipped here or in another window.
           case 'shareEditor':
             setShareEditorState(message.on)
+            break
+
+          // Whether the text fields check spelling - flipped here or in another window.
+          case 'spellcheck':
+            setSpellcheckState(message.on)
             break
 
           // The usage statistics' question, answered here or in any other IDE on the machine.
@@ -3710,6 +3722,27 @@ export const App = () => {
     send({ type: 'setShareEditor', on })
     setShareEditorState(on)
   }, [])
+
+  /** Whether the text fields check spelling - applied here at once, and every window is told. */
+  const setSpellcheck = useCallback((on: boolean) => {
+    send({ type: 'setSpellcheck', on })
+    setSpellcheckState(on)
+  }, [])
+
+  /**
+   * The spell check, for every text field of the panel at once: the attribute on the document's root is
+   * inherited by each field that does not say otherwise, and the ones that do say "false" are the fields for
+   * names, paths and keys, where an underline is never wanted. Removed rather than set to "true" when on, so
+   * the browser's own default holds, and on the root rather than on the input field alone because the
+   * same person writes the answer to a question, the feedback and the improve-prompt text too.
+   *
+   * The browser drops the underlines already drawn when the attribute changes, so switching it off clears
+   * a field mid-sentence rather than at the next word.
+   */
+  useEffect(() => {
+    if (spellcheck) document.documentElement.removeAttribute('spellcheck')
+    else document.documentElement.setAttribute('spellcheck', 'false')
+  }, [spellcheck])
 
   /** The deferred write of the gauges' colour, and the last figure sent - see setCalmColors. */
   const calmSaveTimer = useRef<number | undefined>(undefined)
@@ -5797,6 +5830,7 @@ export const App = () => {
     },
     restoreTabs: restoreTabs ? t.restoreTabs.on : t.restoreTabs.off,
     shareEditor: shareEditor ? t.shareEditor.on : t.shareEditor.off,
+    spellcheck: spellcheck ? t.spellcheck.on : t.spellcheck.off,
     composerLayout: composerLayoutOptions(t).find((option) => option.id === chosenLayout)?.label ?? '',
     pasteCollapse: pasteCollapseSummary(t, pasteCollapse),
     sendKey: sendKeySummary(sendKey),
@@ -7012,6 +7046,10 @@ export const App = () => {
 
         {sideMenu.open && sideMenu.screen === 'shareEditor' ? (
           <ShareEditor t={t} on={shareEditor} onToggle={setShareEditor} />
+        ) : null}
+
+        {sideMenu.open && sideMenu.screen === 'spellcheck' ? (
+          <Spellcheck t={t} on={spellcheck} onToggle={setSpellcheck} />
         ) : null}
 
         {sideMenu.open && sideMenu.screen === 'calmColors' ? (

@@ -24,6 +24,7 @@ internal object ClaudePreferences {
         val language: String,
         val restoreTabs: Boolean,
         val shareEditor: Boolean,
+        val spellcheck: Boolean,
     )
 
     fun snapshot(): Snapshot = Snapshot(
@@ -39,6 +40,7 @@ internal object ClaudePreferences {
         language = language,
         restoreTabs = restoreTabs,
         shareEditor = shareEditor,
+        spellcheck = spellcheck,
     )
 
     var model: String
@@ -220,6 +222,17 @@ internal object ClaudePreferences {
     var shareEditor: Boolean
         get() = read(SHARE_EDITOR_KEY) != SHARE_EDITOR_OFF
         set(value) = write(SHARE_EDITOR_KEY, if (value) "" else SHARE_EDITOR_OFF)
+
+    /**
+     * Whether the panel's text fields underline misspelled words (see spellcheck in App.tsx).
+     *
+     * On unless switched off, stored the other way round like [shareEditor]: it is what the embedded browser
+     * does by itself. Asked for by somebody who writes to Claude in several languages, where every word in
+     * the other ones came up underlined. Machine-wide: it is about the person typing, not a repository.
+     */
+    var spellcheck: Boolean
+        get() = read(SPELLCHECK_KEY) != SPELLCHECK_OFF
+        set(value) = write(SPELLCHECK_KEY, if (value) "" else SPELLCHECK_OFF)
 
     /**
      * The models somebody named by hand, because Claude Code does not name them (see CustomModels.tsx).
@@ -447,6 +460,8 @@ internal object ClaudePreferences {
     private const val RESTORE_TABS_OFF = "off"
     private const val SHARE_EDITOR_KEY = "acc.shareEditor"
     private const val SHARE_EDITOR_OFF = "off"
+    private const val SPELLCHECK_KEY = "acc.spellcheck"
+    private const val SPELLCHECK_OFF = "off"
     private const val CUSTOM_MODELS_KEY = "acc.models.custom"
     private const val EXECUTABLE_KEY = "acc.executable"
     private const val MUTED_SOUNDS_KEY = "acc.sounds.muted"

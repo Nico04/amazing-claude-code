@@ -48,11 +48,11 @@ describe('the two plugins', () => {
       notInPlugin: ['project_trust'],
     })
     expect(apart(SCREENS.acc, SCREENS.acx)).toEqual({
-      missingHere: ['claudeConfig', 'keys', 'settingSources'],
+      missingHere: ['claudeConfig', 'keys', 'settingSources', 'spellcheck'],
       notInPlugin: ['codexConfig', 'newChatContext'],
     })
     expect(apart(SETTINGS.acc, SETTINGS.acx)).toEqual({
-      missingHere: ['claude_config', 'setting_sources'],
+      missingHere: ['claude_config', 'setting_sources', 'spellcheck'],
       notInPlugin: ['codex_config', 'project_trust'],
     })
   })

@@ -41,6 +41,7 @@ paths:
 - `reuseMessage`, `intoField` - message-reuse
 - `queueEdits`, `takeBackQueued`, `case 'queuedTaken'`, `before` в `intoTheQueue` - queue-edit
 - `pickTab`, `focusToken` (фокус в `startSession`, `resume`, `closeSession`) - composer-field
+- `spellcheck`, `setSpellcheck`, `case 'spellcheck'`, атрибут на корне документа - composer-field
 - `shareEditor`, `editorContext`, `editorSkips`, `withEditor` в `submit`, `case 'editorContext'` - editor-context
 - `improveSources`, `restoreDraft`, `registerApply` - prompt-improver
 - `feedPlaces`, `key={active}`, `forgetFeedFocus` - reading-place
@@ -80,7 +81,8 @@ paths:
 - любое новое сообщение - remote-access: реши про него в `RemoteCommands`, иначе красный `RemoteCommandsTest`
 - `rejected` - prompt-improver; `'withdrawn'` - permissions; `PaintedTerm`, `matchCase`, `wholeWords` - search
 - `mcpList` с `ifRunning` - idle-sleep; `cursor` в `replayFinished`, `historyPage` - history
-- `effort`, `setCustomModels`, `customModels` - models; `setSendKey` - composer-field; `queue` - remote-access
+- `effort`, `setCustomModels`, `customModels` - models; `setSendKey`, `spellcheck`, `setSpellcheck` - composer-field;
+  `queue` - remote-access
 - `models` у `usage`, `ModelUsageWindow`, `hiddenIndicators`, `setHiddenIndicators`, факт `indicators` - indicators
 - `toolUseResult` у `AgentUserEvent`, `text` у `askAnswer` - permissions; `origin` у `AgentUserEvent` - history
 - `settingSources` в `init`, `setSettingSources`, `askSettingSources`, `accountOutranked`, `api_error_status` - setting-sources
@@ -158,6 +160,7 @@ panel-keys.
 - `takeQueued`, `before` у `queuePrompt`, `enqueue` - queue-edit; `editorSeen`, `echoWith`, `context` в
   `deliverPrompt` - editor-context
 - `changeModel`, `emitLive` для усилия - models
+- `refreshInit` (свежий `init` подключившемуся) - remote-access
 - `INIT_MARKER` - fork-tabs и history; `RESULT_MARKER`, `everyHub`, `accounts`, `accountsChangedElsewhere` - accounts
 - `settingSources` у `conversations`, `sendAccountOutranked` - setting-sources
 - `resumeConversation`, сообщение `conversation` в `attach`/`resetJournal` - history
@@ -191,7 +194,7 @@ remote-access; остальное - по заметке фичи, которой
 models; `openFile` - open-in-editor; фидбэк и лог незнакомого сообщения (только тип и длина) - feedback;
 `setHiddenIndicators` - indicators; `setTheme`, `setTextSize`, `sendTheme`, `appearanceChanged` - appearance;
 `saveDraft`, `tabShown`, `setRestoreTabs`, `sendDrafts` - restore-tabs; `watchEditor`, `sendEditorContext`,
-`setShareEditor` - editor-context; счёт фич `UsageFeatures.ofMessage` у двери окна, `setUsageStats`,
+`setShareEditor` - editor-context; `setSpellcheck`, `spellcheckChanged` - composer-field; счёт фич `UsageFeatures.ofMessage` у двери окна, `setUsageStats`,
 `usageStatsPreview`, `usageChanged` - usage-stats; `PanelKeys.install`, `pressPanelKey`, `sendPanelKeys`,
 `watchKeymap`, `openKeymap` - panel-keys.
 
@@ -204,7 +207,7 @@ models; `openFile` - open-in-editor; фидбэк и лог незнакомог
 **`ClaudePreferences.kt`** (подгружает models): `gaugeVivid` - calm-colors; `language` - i18n;
 `improveInstructions` - prompt-improver; стартовая модель новой вкладки переехала в `StartingChoice.kt` -
 models; `hiddenIndicators` - indicators; `theme`, `textSize` - appearance; `restoreTabs` - restore-tabs;
-`shareEditor` - editor-context.
+`shareEditor` - editor-context; `spellcheck` - composer-field.
 
 **`RemoteCommands.kt`** (подгружает remote-access): почему телефону разрешено или запрещено конкретное
 сообщение, сказано в заметке фичи, которой оно принадлежит.

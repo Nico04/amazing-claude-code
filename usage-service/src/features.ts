@@ -163,6 +163,8 @@ export const SCREENS: Record<Product, Record<string, string>> = {
     accounts: 'Claude accounts',
     // The cheat sheet of keys, ACC's alone until the fork ports the panel's keys.
     keys: 'Keyboard shortcuts',
+    // The spell check switch, ACC's alone until the fork has it.
+    spellcheck: 'Spell check',
     settingSources: 'Claude Code settings sources',
     claudeConfig: 'Claude Code settings',
   },
@@ -198,6 +200,7 @@ export const SETTINGS: Record<Product, Record<string, string>> = {
   acc: {
     ...SHARED_SETTINGS,
     executable: 'Path to Claude Code',
+    spellcheck: 'Spell check',
     claude_config: 'Claude Code settings',
     setting_sources: 'Claude Code settings sources',
   },

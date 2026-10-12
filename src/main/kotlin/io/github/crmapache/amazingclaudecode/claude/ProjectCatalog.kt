@@ -283,101 +283,108 @@ internal class ProjectCatalog(
         ?.let { ClaudeExecutable.supportsFlag(it, SettingSources.FLAG) }
         ?: true
 
-    fun sendInit() {
+    fun sendInit() = hub.broadcastProject(initMessage())
+
+    /**
+     * The project and the machine's settings as they stand right now - what [sendInit] says, and what a
+     * client joining later is handed (see ClaudeSessionHub.attach).
+     */
+    fun initMessage(): String {
         val preferences = ClaudePreferences.snapshot()
 
-        hub.broadcastProject(
-            buildJsonObject {
-                put("type", "init")
-                put("projectName", project.name)
-                put("workingDirectory", project.basePath.orEmpty())
-                ProjectFacts.gitBranch(project)?.let { put("gitBranch", it) }
-                // The panel's own version, shown at the foot of the menu. Asked of the platform rather
-                // than kept as a constant of ours: a second copy of a number that Gradle already patches
-                // into plugin.xml is a number that will one day disagree with it.
-                //
-                pluginVersion?.let { put("pluginVersion", it) }
-                // The choice of model and the rest outlives an IDE restart: looking for it again after
-                // every opening is the same as not saving it at all.
-                putJsonObject("preferences") {
-                    // What "as last chosen" comes to right now - the account in use first, the machine's
-                    // last pick after it - rather than the machine's pick alone (see StartingChoice).
-                    put("model", StartingChoice.unpinnedModel())
-                    put("effort", StartingChoice.unpinnedEffort())
-                    // What a new tab is PINNED to, beside what was last chosen above. Two values rather
-                    // than one, and the empty one is the point: empty means "whatever was last chosen"
-                    // (see ClaudePreferences.newTabModel).
-                    put("newTabModel", preferences.newTabModel)
-                    put("newTabEffort", preferences.newTabEffort)
-                    // And the answer an untouched tab is drawn by, worked out here and only here - the
-                    // chip over it promises the process the IDE will launch (see sendNewTabDefaults).
-                    put("startingModel", StartingChoice.model())
-                    put("startingEffort", StartingChoice.effort())
-                    // With the same value the process will genuinely come up with: the selector in the
-                    // panel has to tell the truth from the first second. Never chosen at all - we take
-                    // Claude Code's own default, the way the terminal takes it (see
-                    // PermissionDefaultMode).
-                    put(
-                        "mode",
-                        PermissionModes.resolve(
-                            preferences.mode,
-                            fallback = PermissionDefaultMode.of(project.basePath, SettingSources.of(project)),
-                        ),
-                    )
-                    if (preferences.composerLayout.isNotEmpty()) put("composerLayout", preferences.composerLayout)
-                    // Sent only when chosen, like the layout above: an absent value means the panel's own
-                    // default rather than "never fold", and the two must not be confused.
-                    if (preferences.pasteCollapse.isNotEmpty()) put("pasteCollapse", preferences.pasteCollapse)
-                    // And which key sends. Sent unconditionally, unlike the two above: an empty value
-                    // says "Enter", which is a real answer here rather than an absent one - a panel
-                    // that has never been asked sends on Enter (see normalizeSendKey).
-                    put("sendKey", preferences.sendKey)
-                    // And how much colour the gauges keep. Unconditional like the send key: a hundred is
-                    // an answer rather than a missing one - a panel nobody has asked draws the ladder.
-                    put("calmVivid", preferences.gaugeVivid)
-                    // And which indicators around the field are switched off. Unconditional too: an empty
-                    // list says "all of them shown", the answer a panel nobody has asked gives by itself.
-                    putJsonArray("hiddenIndicators") { preferences.hiddenIndicators.forEach { add(it) } }
-                    // Two values rather than one, and the empty one is not the useless one: `language`
-                    // is the explicit choice and is usually empty, `ideLanguage` is what the IDE itself
-                    // is set to. Empty means "speak whatever the IDE speaks", and the picker needs the
-                    // second value to say which language that is right now instead of promising
-                    // something unnamed.
-                    put("language", preferences.language)
-                    put("ideLanguage", IdeLanguage.current())
-                    // Whether the tabs come back after a restart. Unconditional: "on" is the answer a
-                    // panel nobody has asked gives, and it is a real one (see ClaudePreferences.restoreTabs).
-                    put("restoreTabs", preferences.restoreTabs)
-                    // Whether a message carries what the editor shows. Unconditional for the same reason:
-                    // "on" is the default (see ClaudePreferences.shareEditor).
-                    put("shareEditor", preferences.shareEditor)
+        return buildJsonObject {
+            put("type", "init")
+            put("projectName", project.name)
+            put("workingDirectory", project.basePath.orEmpty())
+            ProjectFacts.gitBranch(project)?.let { put("gitBranch", it) }
+            // The panel's own version, shown at the foot of the menu. Asked of the platform rather
+            // than kept as a constant of ours: a second copy of a number that Gradle already patches
+            // into plugin.xml is a number that will one day disagree with it.
+            //
+            pluginVersion?.let { put("pluginVersion", it) }
+            // The choice of model and the rest outlives an IDE restart: looking for it again after
+            // every opening is the same as not saving it at all.
+            putJsonObject("preferences") {
+                // What "as last chosen" comes to right now - the account in use first, the machine's
+                // last pick after it - rather than the machine's pick alone (see StartingChoice).
+                put("model", StartingChoice.unpinnedModel())
+                put("effort", StartingChoice.unpinnedEffort())
+                // What a new tab is PINNED to, beside what was last chosen above. Two values rather
+                // than one, and the empty one is the point: empty means "whatever was last chosen"
+                // (see ClaudePreferences.newTabModel).
+                put("newTabModel", preferences.newTabModel)
+                put("newTabEffort", preferences.newTabEffort)
+                // And the answer an untouched tab is drawn by, worked out here and only here - the
+                // chip over it promises the process the IDE will launch (see sendNewTabDefaults).
+                put("startingModel", StartingChoice.model())
+                put("startingEffort", StartingChoice.effort())
+                // With the same value the process will genuinely come up with: the selector in the
+                // panel has to tell the truth from the first second. Never chosen at all - we take
+                // Claude Code's own default, the way the terminal takes it (see
+                // PermissionDefaultMode).
+                put(
+                    "mode",
+                    PermissionModes.resolve(
+                        preferences.mode,
+                        fallback = PermissionDefaultMode.of(project.basePath, SettingSources.of(project)),
+                    ),
+                )
+                if (preferences.composerLayout.isNotEmpty()) put("composerLayout", preferences.composerLayout)
+                // Sent only when chosen, like the layout above: an absent value means the panel's own
+                // default rather than "never fold", and the two must not be confused.
+                if (preferences.pasteCollapse.isNotEmpty()) put("pasteCollapse", preferences.pasteCollapse)
+                // And which key sends. Sent unconditionally, unlike the two above: an empty value
+                // says "Enter", which is a real answer here rather than an absent one - a panel
+                // that has never been asked sends on Enter (see normalizeSendKey).
+                put("sendKey", preferences.sendKey)
+                // And how much colour the gauges keep. Unconditional like the send key: a hundred is
+                // an answer rather than a missing one - a panel nobody has asked draws the ladder.
+                put("calmVivid", preferences.gaugeVivid)
+                // And which indicators around the field are switched off. Unconditional too: an empty
+                // list says "all of them shown", the answer a panel nobody has asked gives by itself.
+                putJsonArray("hiddenIndicators") { preferences.hiddenIndicators.forEach { add(it) } }
+                // Two values rather than one, and the empty one is not the useless one: `language`
+                // is the explicit choice and is usually empty, `ideLanguage` is what the IDE itself
+                // is set to. Empty means "speak whatever the IDE speaks", and the picker needs the
+                // second value to say which language that is right now instead of promising
+                // something unnamed.
+                put("language", preferences.language)
+                put("ideLanguage", IdeLanguage.current())
+                // Whether the tabs come back after a restart. Unconditional: "on" is the answer a
+                // panel nobody has asked gives, and it is a real one (see ClaudePreferences.restoreTabs).
+                put("restoreTabs", preferences.restoreTabs)
+                // Whether a message carries what the editor shows. Unconditional for the same reason:
+                // "on" is the default (see ClaudePreferences.shareEditor).
+                put("shareEditor", preferences.shareEditor)
+                // Whether the text fields check spelling. Unconditional, and "on" by default like the
+                // two above (see ClaudePreferences.spellcheck).
+                put("spellcheck", preferences.spellcheck)
+            }
+            // Which of Claude Code's settings layers this project loads - outside `preferences`
+            // deliberately: everything in there is the machine's, and this one belongs to the
+            // repository that happens to be open (see SettingSources). The value alone, because it
+            // is all that costs nothing: what the repository sets and whether this CLI knows the
+            // flag are asked for by the screen itself (see [sendSettingSources]).
+            put("settingSources", SettingSources.of(project))
+            // What the improve button asks for. Both texts: the screen shows the built-in one as what
+            // is in force while nothing of one's own has been put in, and it is also what the restore
+            // button restores - a default the screen cannot name is a default nobody edits.
+            putJsonObject("improve") {
+                put("instructions", preferences.improveInstructions)
+                put("builtIn", PromptImprover.BUILT_IN_INSTRUCTIONS)
+            }
+            // The sound settings are also a choice made once.
+            putJsonObject("sounds") {
+                putJsonArray("muted") {
+                    ClaudePreferences.mutedSounds.filter { it in AlertSounds.ids }.forEach { add(it) }
                 }
-                // Which of Claude Code's settings layers this project loads - outside `preferences`
-                // deliberately: everything in there is the machine's, and this one belongs to the
-                // repository that happens to be open (see SettingSources). The value alone, because it
-                // is all that costs nothing: what the repository sets and whether this CLI knows the
-                // flag are asked for by the screen itself (see [sendSettingSources]).
-                put("settingSources", SettingSources.of(project))
-                // What the improve button asks for. Both texts: the screen shows the built-in one as what
-                // is in force while nothing of one's own has been put in, and it is also what the restore
-                // button restores - a default the screen cannot name is a default nobody edits.
-                putJsonObject("improve") {
-                    put("instructions", preferences.improveInstructions)
-                    put("builtIn", PromptImprover.BUILT_IN_INSTRUCTIONS)
+                putJsonObject("volumes") {
+                    ClaudePreferences.soundVolumes
+                        .filterKeys { it in AlertSounds.ids }
+                        .forEach { (id, volume) -> put(id, volume) }
                 }
-                // The sound settings are also a choice made once.
-                putJsonObject("sounds") {
-                    putJsonArray("muted") {
-                        ClaudePreferences.mutedSounds.filter { it in AlertSounds.ids }.forEach { add(it) }
-                    }
-                    putJsonObject("volumes") {
-                        ClaudePreferences.soundVolumes
-                            .filterKeys { it in AlertSounds.ids }
-                            .forEach { (id, volume) -> put(id, volume) }
-                    }
-                }
-            }.toString(),
-        )
+            }
+        }.toString()
     }
 
     fun refreshBranch() {

@@ -156,6 +156,7 @@ const SHARED_SETTINGS: Record<string, string> = {
 }
 
 export const REPORTED_SETTINGS: Record<Product, Record<string, string>> = {
-  acc: { ...SHARED_SETTINGS, accounts: 'Claude accounts' },
+  // The spell check switch is ACC's alone until the fork has it.
+  acc: { ...SHARED_SETTINGS, accounts: 'Claude accounts', spellcheck: 'Spell check on' },
   acx: { ...SHARED_SETTINGS, accounts: 'Codex accounts' },
 }

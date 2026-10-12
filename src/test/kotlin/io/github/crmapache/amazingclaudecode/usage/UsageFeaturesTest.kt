@@ -60,7 +60,8 @@ class UsageFeaturesTest {
             "scenarioSchedule", "scenarioQueue", "scenarioAnswer", "saveImage", "mcpAdd", "pluginInstall",
             "accountAdd", "accountUse", "designLogin", "feedbackSend", "setTheme", "setTextSize", "setLanguage",
             "setComposerLayout", "setSendKey", "setPasteCollapse", "setCalmColors", "setHiddenIndicators",
-            "soundSettings", "setShareEditor", "setRestoreTabs", "setImproveInstructions", "setCustomModels",
+            "soundSettings", "setShareEditor", "setRestoreTabs", "setSpellcheck", "setImproveInstructions",
+            "setCustomModels",
             "setDefaultModel", "setClaudeConfig", "setSettingSources", "setExecutablePath", "voiceEnabled",
             "setRelayUrl",
         )

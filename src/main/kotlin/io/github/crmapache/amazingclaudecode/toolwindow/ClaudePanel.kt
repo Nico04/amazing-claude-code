@@ -120,6 +120,16 @@ internal class ClaudePanel(
         )
     }
 
+    /** The same, for whether the text fields check spelling (see ClaudePreferences.spellcheck). */
+    fun spellcheckChanged() {
+        webview?.send(
+            buildJsonObject {
+                put("type", "spellcheck")
+                put("on", ClaudePreferences.spellcheck)
+            }.toString(),
+        )
+    }
+
     /** The same, for whether the tabs come back after a restart (see TabMemory). */
     fun restoreTabsChanged() {
         webview?.send(
@@ -607,6 +617,13 @@ internal class ClaudePanel(
             "setShareEditor" -> {
                 ClaudePreferences.shareEditor = payload["on"]?.jsonPrimitive?.booleanOrNull != false
                 ClaudePanels.everyPanel { it.shareEditorChanged() }
+            }
+
+            // Whether the text fields underline misspelled words. Machine-wide like the switch above: every
+            // window's fields follow it at once.
+            "setSpellcheck" -> {
+                ClaudePreferences.spellcheck = payload["on"]?.jsonPrimitive?.booleanOrNull != false
+                ClaudePanels.everyPanel { it.spellcheckChanged() }
             }
 
             // Whether the tabs come back at all. Machine-wide: every project's memory is told, a switch

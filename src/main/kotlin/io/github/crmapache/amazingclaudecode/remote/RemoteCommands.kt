@@ -453,6 +453,12 @@ internal object RemoteCommands {
          */
         "setShareEditor",
         /**
+         * Whether the desk panel's text fields check spelling (see ClaudePreferences.spellcheck) - a machine
+         * setting about the desk's keyboard. A phone's field is checked by the phone's own keyboard, which
+         * this switch does not reach and should not.
+         */
+        "setSpellcheck",
+        /**
          * The sparkle button beside the paperclip and the text it asks by.
          *
          * `setImproveInstructions` writes a machine-wide setting, and belongs with `setDefaultMode` above

@@ -139,6 +139,30 @@ class SessionFanOutTest : BasePlatformTestCase() {
         assertTrue("init at $init, sessions at $sessions", init >= 0 && init < sessions)
     }
 
+    /**
+     * The settings as they stand when the client joins, not as they stood when the project opened. A page
+     * reloaded after a switch was flipped used to be handed the warm-up's copy of `init` and showed the old
+     * answer until the IDE restarted.
+     */
+    fun testAJoiningClientIsHandedTheSettingsAsTheyStandNow() {
+        val hub = hub()
+        val kept = ClaudePreferences.spellcheck
+        try {
+            ClaudePreferences.spellcheck = true
+            hub.catalog.sendInit()
+            ClaudePreferences.spellcheck = false
+
+            val reloaded = Recorder("reloaded")
+            hub.register(reloaded)
+            hub.attach(reloaded.id)
+
+            val init = reloaded.received.single { it.contains("\"type\":\"init\"") }
+            assertTrue(init, init.contains("\"spellcheck\":false"))
+        } finally {
+            ClaudePreferences.spellcheck = kept
+        }
+    }
+
     /** Only the latest of each kind is kept - a joining client wants the present state, not a history of it. */
     fun testOnlyTheFreshestProjectFactIsKept() {
         val hub = hub()
