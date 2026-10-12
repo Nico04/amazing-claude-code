@@ -7,6 +7,7 @@ import type { Dict } from '../i18n/en'
 import { useFieldHistory } from '../hooks/useFieldHistory'
 import { useResting } from '../hooks/useResting'
 import type { TitleSource } from '../protocol'
+import { splitTabTitle } from '../feed/title'
 import type { TabCall } from '../sounds'
 
 /**
@@ -297,6 +298,118 @@ const TabNameField = ({
       onClick={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}
     />
+  )
+}
+
+const ELLIPSIS = '…'
+
+/** The ellipsis's width in a font, measured once per font: the one glyph the name does not hold. */
+const ellipsisWidths = new Map<string, number>()
+
+const ellipsisWidth = (font: string): number => {
+  const known = ellipsisWidths.get(font)
+  if (known !== undefined) return known
+
+  const context = document.createElement('canvas').getContext('2d')
+  if (!context) return 0
+  context.font = font
+  const width = context.measureText(ELLIPSIS).width
+  ellipsisWidths.set(font, width)
+  return width
+}
+
+/**
+ * The name as it fits [room] pixels: whole if it does, otherwise cut in the middle - the head down to the
+ * ellipsis, then the last word (see splitTabTitle). Measured on the name itself as the tab lays it out (the
+ * hidden copy in TabTitle), so the font, its fallbacks and the kerning are the tab's own. A tail that leaves
+ * the head less than a couple of letters is given up, and the name is cut at the end.
+ */
+const fitTitle = (title: string, text: Text, room: number, font: string): string => {
+  const range = document.createRange()
+  const width = (to: number, from = 0) => {
+    range.setStart(text, from)
+    range.setEnd(text, to)
+    return range.getBoundingClientRect().width
+  }
+
+  if (width(title.length) <= room + 0.5) return title
+
+  /** The head's longest start, letters whole, that fits [budget]; null when not even [least] letters do. */
+  const headIn = (head: string, budget: number, least: number): string | null => {
+    const stops = [0]
+    for (const letter of head) stops.push(stops.at(-1)! + letter.length)
+
+    let low = 0
+    let high = stops.length - 1
+    while (low < high) {
+      const middle = Math.ceil((low + high) / 2)
+      if (width(stops[middle]!) <= budget) low = middle
+      else high = middle - 1
+    }
+    return low < least ? null : head.slice(0, stops[low]).trimEnd()
+  }
+
+  const dots = ellipsisWidth(font)
+  const { head, tail } = splitTabTitle(title)
+  if (tail) {
+    const kept = headIn(head, room - dots - width(title.length, head.length), 2)
+    if (kept !== null) return `${kept}${ELLIPSIS}${tail}`
+  }
+
+  return `${headIn(title, room - dots, 0) ?? ''}${ELLIPSIS}`
+}
+
+/**
+ * A tab's name, for a strip of conversations that often begin alike: "Refactor auth module" and "Refactor
+ * auth tests" cut at the end were the same tab twice (asked from IntelliJ IDEA, 0.13.20).
+ *
+ * So the name is cut in the middle: the head gives way to an ellipsis and the last word stays (see
+ * splitTabTitle, fitTitle). The cut is worked out rather than left to `text-overflow`: a box cut by the
+ * browser ends its ellipsis wherever the last whole letter did, and in the middle of a name that left a
+ * gap of up to a letter before the tail - "Refactor …   documentation".
+ *
+ * Two copies of the name, for the two jobs it has. The hidden one is the whole name in the flow: it is what
+ * the tab is as wide as (the tab grows into its row's room up to its whole name, see .tab in the styles),
+ * what is measured, what a screen reader reads, and what the hint checks for a cut. The visible one lies
+ * over it, as it fits. Cut or not, the name is whole a hover away - the hint comes up only when something
+ * is cut (`data-tooltip-clipped`, see Tooltips), and not on the tab being dragged, where it would ride along.
+ */
+const TabTitle = ({ title, hint }: { title: string; hint: boolean }) => {
+  const box = useRef<HTMLSpanElement>(null)
+  const whole = useRef<HTMLSpanElement>(null)
+  const [shown, setShown] = useState(title)
+
+  useLayoutEffect(() => {
+    const element = box.current
+    const text = whole.current?.firstChild
+    if (!element || !(text instanceof Text)) return
+
+    const fit = () =>
+      setShown(fitTitle(title, text, element.getBoundingClientRect().width, getComputedStyle(element).font))
+
+    fit()
+    // The tab's width changes with everything around it - a tab opened or closed in its row, the panel
+    // resized - and the webfont may arrive after the first measure.
+    const observer = new ResizeObserver(fit)
+    observer.observe(element)
+    let live = true
+    void document.fonts?.ready.then(() => live && fit())
+
+    return () => {
+      live = false
+      observer.disconnect()
+    }
+  }, [title])
+
+  return (
+    <span ref={box} className={s.tabTitle} data-tooltip={hint ? title : undefined} data-tooltip-clipped="">
+      <span ref={whole} className={s.tabTitleWhole}>
+        {title}
+      </span>
+      <span className={s.tabTitleShown} aria-hidden="true">
+        {shown}
+      </span>
+    </span>
   )
 }
 
@@ -963,7 +1076,7 @@ export const Header = ({
             onDone={(name, byKey) => finishNaming(session, name, byKey)}
           />
         ) : (
-          <span className={s.tabTitle}>{session.title}</span>
+          <TabTitle title={session.title} hint={!dragging} />
         )}
         {/* On the tab it forks, beside the cross: both are things done to this conversation. On every tab and
             always: shown on the open tab alone, it widened the tab it came to and narrowed the one it left,
@@ -1041,7 +1154,7 @@ export const Header = ({
         className={`${s.dot} ${DOT_CLASS[tab.state ?? 'idle']}`}
         data-tooltip={tab.hint || undefined}
       />
-      <span className={s.tabTitle}>{tab.title}</span>
+      <TabTitle title={tab.title} hint={!dragging} />
       <button
         type="button"
         className={s.tabClose}

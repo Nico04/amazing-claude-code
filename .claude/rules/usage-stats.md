@@ -18,7 +18,8 @@ paths:
 - **`webview/src/components/UsageStats.tsx`** - карточка над полем, экран «Settings → Usage statistics» и экран
   с полным текстом отчёта.
 - **`usage-service/`** - приёмник и админка на `usage.mzpizote.com` (SQLite в томе, пароль `ADMIN_PASSWORD`).
-  Как деплоить - `usage-service/README.md`. Секреты (общий ключ и пароль админки) - в `secrets/usage.env`,
+  Как деплоить - `usage-service/README.md`; в релизе его выкатывает `/deploy` сам, если исходники разошлись с
+  сервером (шаг 5 скилла, до публикации плагина). Секреты (общий ключ и пароль админки) - в `secrets/usage.env`,
   в чат не выводить.
 
 Что легко сломать, не заметив:

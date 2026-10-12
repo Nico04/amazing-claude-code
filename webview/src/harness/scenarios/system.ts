@@ -176,6 +176,32 @@ export const scenariosSystem: Scenario[] = [
     ]),
   ]),
 
+  /*
+   * Long tab names that begin alike (see TabTitle in Header.tsx). Three conversations start with "Refactor
+   * auth module", a fork carries its parent's name, one is Chinese, one is short. On a wide window every
+   * name is whole; narrow the window and the names are cut in the middle, the last word staying, and a hover
+   * over a cut one shows it whole.
+   */
+  scenario('tab-titles', 'Long tab names that begin alike', 'system', [
+    checkpoint('Five conversations, three of them begin alike', [
+      shell({
+        type: 'sessions',
+        sessions: [
+          { id: SESSION, title: 'Refactor auth module token refresh', titleSource: 'llm', kind: 'main', groupId: SESSION, depth: 0, status: 'idle', awaitsYou: false },
+          { id: 's-auth-fork', title: 'Refactor auth module token refresh', titleSource: 'llm', kind: 'branch', parentId: SESSION, groupId: SESSION, depth: 1, status: 'idle', awaitsYou: false },
+          { id: 's-auth-tests', title: 'Refactor auth module tests', titleSource: 'llm', kind: 'main', groupId: 's-auth-tests', depth: 0, status: 'running', awaitsYou: false },
+          { id: 's-auth-docs', title: 'Refactor auth module documentation', titleSource: 'user', kind: 'main', groupId: 's-auth-docs', depth: 0, status: 'idle', awaitsYou: false },
+          { id: 's-login-zh', title: '修复登录页面的样式问题和跳转问题', titleSource: 'llm', kind: 'main', groupId: 's-login-zh', depth: 0, status: 'idle', awaitsYou: false },
+          { id: 's-parser', title: 'Fix the parser', titleSource: 'llm', kind: 'main', groupId: 's-parser', depth: 0, status: 'idle', awaitsYou: false },
+        ],
+      }),
+      user('Which of these was the token refresh one?'),
+      wait(400),
+      ...textReply('This one - the tab on the left, with its fork beside it.'),
+      turnResult(900),
+    ]),
+  ]),
+
   scenario('session-crash', 'A broken session', 'system', [
     checkpoint('The user asks to run the tests', [user('Run the full set of tests'), wait(500)]),
     checkpoint('Bash: pnpm test', [toolUse('Bash', { command: 'pnpm test' }, 's13-1'), wait(900)]),

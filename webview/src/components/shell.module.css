@@ -368,12 +368,15 @@
   min-width: 0;
 }
 
-/* They squeeze themselves and wrap only when there is nowhere left to squeeze - they neither run off the
-   panel's edge nor get clipped silently. flex-grow:0 matters: with growth a tab, when it is the only one,
-   would spread out to max-width and push the "+" button onto a second row though there is plenty of room
-   beside it. The width comes from the title rather than from growth. The height is explicit: without it,
-   when wrapping onto several rows, a tab's height would be counted from its contents (shorter) rather than
-   from the header's former 34px. */
+/* A tab is as wide as its name, and a long name first grows into the room its row has. The rows are laid
+   out as if every tab stopped at 210px (the basis) - so a long name never pushes a neighbour or the "+"
+   onto another row - and then a tab still cutting its name takes the free end of its row, up to its whole
+   name (max-content) and no further. A short name is narrower than the basis and stops at itself. The
+   browser shares the room out evenly between the tabs still growing. Before, every tab stopped at 210px,
+   and a wide panel with three tabs cut all three names beside an empty strip (asked from IntelliJ IDEA,
+   0.13.20). A tab with no room at all gives way down to 70px, as it always did. The height is explicit:
+   without it, when wrapping onto several rows, a tab's height would be counted from its contents (shorter)
+   rather than from the header's former 34px. */
 .tab {
   position: relative;
   display: flex;
@@ -383,9 +386,9 @@
   /* On the right, with room to spare beyond the cross's width: without it the hover highlight on the close
      button stood flush against the tab's edge. */
   padding: 0 13px 0 11px;
-  flex: 0 1 auto;
+  flex: 1 1 210px;
   min-width: 70px;
-  max-width: 210px;
+  max-width: max-content;
   border-bottom: 2px solid transparent;
   color: var(--acc-fg-dim);
   /* A tab is not a button (it holds one of its own - the cross), but it is pressed whole, so it needs a
@@ -687,11 +690,28 @@
   animation: none;
 }
 
+/* A name cut in the middle (see TabTitle in Header.tsx): the whole name in the flow, invisible, gives the
+   tab its width and its height, and the name as it fits lies over it. `pre` on both: the cut one ends its
+   head on a space at times, and plain wrapping would drop it. The whole one clips so that a cut shows as an
+   overflow (the hint asks for it - see Tooltips); the shown one clips only as a guard. */
 .tabTitle {
+  position: relative;
+  min-width: 0;
   font: 12px/15px var(--acc-font);
-  white-space: nowrap;
+}
+
+.tabTitleWhole {
+  display: block;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre;
+  opacity: 0;
+}
+
+.tabTitleShown {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  white-space: pre;
 }
 
 /* A tab's name being typed (see TabNameField in Header.tsx). It stands where the name stood, in the same
