@@ -9,6 +9,13 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.30] - 2026-10-11
+
+- Added: keyboard shortcuts for the panel's tabs and for Queue. While the focus is in the panel, the keys that switch and close editor tabs in your IDE keymap do the same to the panel's tabs: Cmd+Shift+] and Cmd+Shift+[ and Cmd+W on a Mac, Alt+Right, Alt+Left and Ctrl+F4 elsewhere. Cmd+T (Ctrl+Shift+T on Windows and Linux) opens a new tab, the same key that opens one in the terminal. Option+Enter (Alt+Enter) puts the message in the queue while the agent works and sends it when the agent is free. In the editor these keys keep doing what they did before.
+- Added: all of these are actions in Settings | Keymap, under the plugin, so you can rebind them there or run them from Find Action. A key that opens the panel from anywhere in the IDE can be set there too.
+- Added: closing a tab by key while its agent is still working asks first, because the key may have been meant for the editor. Enter closes it, Escape keeps it. The cross on the tab closes at once, as before.
+- Added: Settings → Keyboard shortcuts lists every key the panel answers to, from switching tabs to answering a question by number, as your keymap has them right now, with a button that opens Keymap. The hints on Queue, on "+" and on the open tab's cross name their keys.
+
 ## [0.13.29] - 2026-10-11
 
 - Fixed: on Linux, Ctrl+V in the panel could type a "v" instead of pasting, and Ctrl+Shift+V a "V" (reported on Ubuntu with Wayland and GNOME). The key reached the panel's browser without its Ctrl, while pasting from the right-click menu worked. On Linux the IDE now takes the paste shortcuts from your keymap itself while the panel has focus and pastes from the IDE clipboard. Ctrl+Shift+V pastes too.
@@ -954,7 +961,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.29...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.30...HEAD
+[0.13.30]: https://github.com/crmapache/amazing-claude-code/compare/0.13.29...0.13.30
 [0.13.29]: https://github.com/crmapache/amazing-claude-code/compare/0.13.28...0.13.29
 [0.13.28]: https://github.com/crmapache/amazing-claude-code/compare/0.13.27...0.13.28
 [0.13.27]: https://github.com/crmapache/amazing-claude-code/compare/0.13.26...0.13.27
