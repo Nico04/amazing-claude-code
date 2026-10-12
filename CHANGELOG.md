@@ -9,6 +9,14 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.34] - 2026-10-12
+
+- Changed: a tab with a long name now grows into the free room in its row, up to its whole name. Before, every tab stopped at the same width and cut its name even on a wide panel with empty space beside it. The rows are laid out as before, so no tab moves to another row.
+- Changed: a name that still does not fit is cut in the middle rather than at the end, keeping its last word: "Refactor auth mo… tests" and "Refactor auth mo… docs" no longer look like the same tab. Names in Chinese and Japanese keep their last few characters.
+- Added: hovering over a cut tab name shows the whole name. A name that fits shows no hint.
+- Fixed: a conversation opened from the history came back with its name cut at forty characters, although the same tab showed it whole while the conversation was live. The model's name now comes back whole.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.33] - 2026-10-12
 
 - Added: the files a turn changed are listed under the agent's answer at the end of the turn. Each line shows the path from the project root (the full path for a file outside the project), the lines added in green and the lines removed in red; a file the turn created shows only its added lines. A click opens the file in the editor. Edits made by subagents are counted too, and a list of more than 12 files shows the first 10 with "Show all".
@@ -978,7 +986,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.33...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.34...HEAD
+[0.13.34]: https://github.com/crmapache/amazing-claude-code/compare/0.13.33...0.13.34
 [0.13.33]: https://github.com/crmapache/amazing-claude-code/compare/0.13.32...0.13.33
 [0.13.32]: https://github.com/crmapache/amazing-claude-code/compare/0.13.31...0.13.32
 [0.13.31]: https://github.com/crmapache/amazing-claude-code/compare/0.13.30...0.13.31
