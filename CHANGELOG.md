@@ -9,6 +9,10 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.36] - 2026-10-12
+
+- Changed: hovering over a tab's close or fork button now lights it in the tab's own colour, faintly, instead of a grey square. The grey looked like a smudge on the coloured light of the open tab.
+
 ## [0.13.35] - 2026-10-12
 
 - Fixed: on Linux, typing a capital V in the panel could paste the clipboard instead, starting at random (reported on Ubuntu with Wayland). Since 0.13.29 the panel took Ctrl+Shift+V as a paste on its own, and the embedded browser sometimes delivers a Shift+V with a Ctrl nobody pressed. On Linux the panel now never pastes because of a key press it sees; the IDE takes Ctrl+V, Ctrl+Shift+V and Shift+Insert while the panel has focus, so they keep working.
@@ -990,7 +994,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.35...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.36...HEAD
+[0.13.36]: https://github.com/crmapache/amazing-claude-code/compare/0.13.35...0.13.36
 [0.13.35]: https://github.com/crmapache/amazing-claude-code/compare/0.13.34...0.13.35
 [0.13.34]: https://github.com/crmapache/amazing-claude-code/compare/0.13.33...0.13.34
 [0.13.33]: https://github.com/crmapache/amazing-claude-code/compare/0.13.32...0.13.33
