@@ -9,6 +9,11 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.32] - 2026-10-12
+
+- Added: a switch for the spell check in Settings → Spell check. Writing to Claude in several languages, every word outside the checker's dictionaries came up with a red underline. Turned off, the message field and the panel's other text fields stop underlining, at once and in every IDE window. A phone keeps checking with its own keyboard.
+- Fixed: after the panel reloaded, some settings came back as they were when the project opened, for example the editor going along with messages, the send key or the sounds, and the panel showed the old value until the IDE restarted. The panel now gets the settings as they stand whenever it connects.
+
 ## [0.13.31] - 2026-10-12
 
 - Fixed: after switching to another tab you had to click in the message field before you could type. A click on a tab changed the conversation but left the keyboard where it was, so coming from the editor or from reading the feed your typing went nowhere. Now the field of the tab you switch to takes the keyboard: by a click on the tab, by the tab keys, after closing the open tab, and when you open a conversation from the history or the search. A message you had started continues from its end.
@@ -965,7 +970,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.31...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.32...HEAD
+[0.13.32]: https://github.com/crmapache/amazing-claude-code/compare/0.13.31...0.13.32
 [0.13.31]: https://github.com/crmapache/amazing-claude-code/compare/0.13.30...0.13.31
 [0.13.30]: https://github.com/crmapache/amazing-claude-code/compare/0.13.29...0.13.30
 [0.13.29]: https://github.com/crmapache/amazing-claude-code/compare/0.13.28...0.13.29
