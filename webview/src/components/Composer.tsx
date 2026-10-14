@@ -58,9 +58,11 @@ import {
   chipNodeIn,
   currentRange,
   droppedPaths,
+  dropEmptyText,
   extractTokens,
   hasFiles,
   headText,
+  insertAtRange,
   needsLeadingSpace,
   needsTrailingSpace,
   notePastedPath,
@@ -1174,16 +1176,13 @@ export const Composer = ({
 
     const chip: Chip = { kind: path.endsWith('/') ? 'dir' : 'file', value: path }
     const node = chipNodeIn(root, chip)
-    range.insertNode(node)
-    range.setStartAfter(node)
-    range.collapse(true)
+    insertAtRange(range, node)
 
     // The caret has somewhere to type on without sticking to the chip - as after an attachment from the
     // clipboard.
     const space = document.createTextNode(' ')
-    range.insertNode(space)
-    range.setStartAfter(space)
-    range.collapse(true)
+    insertAtRange(range, space)
+    dropEmptyText(root)
 
     const selection = window.getSelection()
     selection?.removeAllRanges()
@@ -1201,9 +1200,8 @@ export const Composer = ({
     range.deleteContents()
 
     const node = document.createTextNode(text)
-    range.insertNode(node)
-    range.setStartAfter(node)
-    range.collapse(true)
+    insertAtRange(range, node)
+    dropEmptyText(root)
 
     // What was pasted may end in a line break - a line copied from a terminal usually does. The caret
     // needs room on that line.
@@ -1262,24 +1260,19 @@ export const Composer = ({
     // needs no space in front of it, there is nothing to add.
     if (needsLeadingSpace(charBefore(range))) {
       const space = document.createTextNode(' ')
-      range.insertNode(space)
-      range.setStartAfter(space)
-      range.collapse(true)
+      insertAtRange(range, space)
     }
 
     const node = chipNodeIn(root, chip)
-    range.insertNode(node)
-    range.setStartAfter(node)
-    range.collapse(true)
+    insertAtRange(range, node)
 
     // After it always: the caret needs something to stand on in order to type on without sticking to the
     // chip, even if the image landed at the very end of the field.
     if (needsTrailingSpace(charAfter(range))) {
       const space = document.createTextNode(' ')
-      range.insertNode(space)
-      range.setStartAfter(space)
-      range.collapse(true)
+      insertAtRange(range, space)
     }
+    dropEmptyText(root)
 
     const selection = window.getSelection()
     selection?.removeAllRanges()
@@ -1305,19 +1298,11 @@ export const Composer = ({
     let tail: Node | null = null
 
     for (const token of next) {
-      if (token.kind === 'text') {
-        const text = document.createTextNode(token.value)
-        range.insertNode(text)
-        range.setStartAfter(text)
-        tail = text
-      } else {
-        const node = chipNodeIn(root, token.chip)
-        range.insertNode(node)
-        range.setStartAfter(node)
-        tail = node
-      }
-      range.collapse(true)
+      const node = token.kind === 'text' ? document.createTextNode(token.value) : chipNodeIn(root, token.chip)
+      insertAtRange(range, node)
+      tail = node
     }
+    dropEmptyText(root)
 
     // It came back at the field's end and ends in a break - the caret needs a line to stand on (see
     // padTrailingBreak).

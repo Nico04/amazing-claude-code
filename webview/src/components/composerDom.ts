@@ -183,6 +183,53 @@ export const scrollCaretIntoView = (root: HTMLElement) => {
   root.scrollTop += caretScrollShift(caret, root.getBoundingClientRect())
 }
 
+/**
+ * Puts a node where a collapsed range stands and moves the range past it - Range.insertNode without the empty
+ * text node it leaves behind.
+ *
+ * insertNode splits the text node the range stands in even at its very edge, and at the end of one that
+ * leaves an empty text node after whatever was inserted. In the input field that empty node broke the next
+ * Chinese word: typed after a paste that followed some text ("我", then a pasted chip, then "wocao"), the
+ * browser dropped the composition after its first letter without a word, kept that letter as plain text and
+ * began a new composition behind it - "w我草" (reported from IntelliJ IDEA, reproduced in the sandbox with
+ * the system Pinyin and over CDP). With the empty node gone the same sequence composes cleanly.
+ *
+ * So the edges are never split: at the end of a text node the node goes after it, at the start before it,
+ * and an empty one is replaced outright. Only a range inside the text splits it, into two halves that both
+ * hold something.
+ */
+export const insertAtRange = (range: Range, node: Node): void => {
+  const { startContainer: container, startOffset: offset } = range
+  const parent = container.parentNode
+
+  if (container instanceof Text && parent) {
+    if (container.length === 0) parent.replaceChild(node, container)
+    else if (offset >= container.length) parent.insertBefore(node, container.nextSibling)
+    else if (offset === 0) parent.insertBefore(node, container)
+    else range.insertNode(node)
+  } else {
+    range.insertNode(node)
+  }
+
+  range.setStartAfter(node)
+  range.collapse(true)
+}
+
+/**
+ * Takes out the empty text nodes an edit of ours left in the field - see insertAtRange for what one of them
+ * does to the next composed word.
+ *
+ * insertAtRange never makes one, but the deletion in front of it can: a selection running across several
+ * nodes is cut out of each of them, and the one it ended in may be left with nothing. The field is flat - text
+ * and chips side by side - so its own children are all there is to look at. A caret or a range standing in a
+ * removed node is moved by the browser to where the node was, which is the same place.
+ */
+export const dropEmptyText = (root: HTMLElement): void => {
+  for (const node of Array.from(root.childNodes)) {
+    if (node instanceof Text && node.length === 0) node.remove()
+  }
+}
+
 /** An empty range at the very end of the contents - the fallback when there is no caret. */
 const endRange = (root: HTMLElement): Range => {
   const range = document.createRange()
