@@ -4,6 +4,7 @@ import { en } from './i18n/en'
 import { ru } from './i18n/ru'
 import { describe, expect, it } from 'vitest'
 import {
+  carriesPick,
   columns,
   effortOptions,
   effortShortLabel,
@@ -319,6 +320,31 @@ describe('the caption of the model a tab works on', () => {
     expect(resolvePanelModel({ pendingModel: 'haiku', model: 'claude-fable-5' }, models, 'fable')).toBe(
       'claude-haiku-4-5',
     )
+  })
+})
+
+describe('whether an answer carries the model picked', () => {
+  it('measures a pick that names a generation by the generation', () => {
+    expect(carriesPick('claude-opus-4-8', 'claude-opus-4-8-20260101')).toBe(true)
+    expect(carriesPick('claude-opus-4-8', 'claude-opus-5-5')).toBe(false)
+  })
+
+  it('measures a pick of a whole family by the family', () => {
+    expect(carriesPick('opus[1m]', 'claude-opus-5[1m]')).toBe(true)
+    expect(carriesPick('opus', 'claude-fable-5-1')).toBe(false)
+  })
+
+  it('measures a pick by what the catalogue expands it into, window mark aside', () => {
+    expect(carriesPick('opus', 'claude-opus-4-8', 'claude-opus-5-5')).toBe(false)
+    expect(carriesPick('opus[1m]', 'claude-opus-5-5', 'claude-opus-5-5[1m]')).toBe(true)
+    expect(carriesPick('default', 'claude-opus-5-5', 'claude-opus-5-5')).toBe(true)
+  })
+
+  it('has no answer for a pick it cannot read', () => {
+    expect(carriesPick('default', 'claude-opus-5-5')).toBeUndefined()
+    expect(carriesPick('my-provider-model', 'my-provider-model')).toBeUndefined()
+    // Two models behind one pick, whatever the catalogue expands it into.
+    expect(carriesPick('opusplan', 'claude-sonnet-5', 'claude-opus-5-5')).toBeUndefined()
   })
 })
 

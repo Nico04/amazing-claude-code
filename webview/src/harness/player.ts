@@ -1629,7 +1629,7 @@ const answerModel = (message: Extract<WebviewMessage, { type: 'setModel' }>): vo
   modelPicks += 1
   const carried = signatureOf(message.model) || streamSignature
   // A pick of the model already at work cannot fail to arrive - it is already here - and the panel
-  // rightly says nothing about it (see picksAnother in feed/build.ts). Stepping over such a pick keeps
+  // rightly says nothing about it (see expectingOwnSwap in feed/build.ts). Stepping over such a pick keeps
   // the promise of this cycle honest: every third pick that asks for something ELSE does not take.
   const stuck = modelPicks % 3 === 0 && carried !== streamSignature
   const signature = stuck ? streamSignature : carried

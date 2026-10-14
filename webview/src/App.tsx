@@ -7,6 +7,7 @@ import {
   ADD_MODEL,
   LAST_USED,
   effortOptions,
+  expandModel,
   modeMenuOptions,
   modelMenu,
   type ModeAvailability,
@@ -1909,6 +1910,9 @@ export const App = () => {
   modelBookRef.current = modelBook
   const tabAccountsRef = useRef(tabAccounts)
   tabAccountsRef.current = tabAccounts
+  /** The catalogue of the account a given tab runs on, as it is now - for the subscription (see above). */
+  const catalogueOfTab = (sessionId: string): ModelInfo[] | null =>
+    modelBookRef.current[tabAccountsRef.current[sessionId] ?? ''] ?? null
   const prefsRef = useRef(prefs)
   prefsRef.current = prefs
 
@@ -3403,7 +3407,16 @@ export const App = () => {
               // well as at a birth, and read as a choice that announcement accused a conversation of
               // running on a model nobody picked (see the modelApplied action).
               session: message.sessionId,
-              action: { kind: 'modelApplied', model: message.model, error: message.error, born: message.born },
+              action: {
+                kind: 'modelApplied',
+                model: message.model,
+                error: message.error,
+                born: message.born,
+                // The pick as the CLI means it: "opus" names no generation, and judged by its name alone a
+                // pick of the latest Opus made from Opus 4.8 arrived looking like the agent's swap (see
+                // carriesPick).
+                resolved: expandModel(catalogueOfTab(message.sessionId), message.model),
+              },
             })
             break
 
@@ -3433,7 +3446,7 @@ export const App = () => {
                 // Resolved by the same formula as in the render (see resolvePanelModel), otherwise
                 // "did the agent name a model" would be decided differently in two places.
                 const sessionPanel = panelsRef.current[message.sessionId]
-                const sessionModels = modelBookRef.current[tabAccountsRef.current[message.sessionId] ?? ''] ?? null
+                const sessionModels = catalogueOfTab(message.sessionId)
                 const refusedModel = resolvePanelModel(sessionPanel ?? {}, sessionModels, sessionPanel?.ownModel ?? prefsRef.current.model)
                 setAutoRefusedModels((current) => (current.includes(refusedModel) ? current : [...current, refusedModel]))
               } else {

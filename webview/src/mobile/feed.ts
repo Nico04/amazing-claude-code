@@ -1,7 +1,7 @@
-import { normalizeMode } from '../catalog'
+import { expandModel, normalizeMode } from '../catalog'
 import { reducePanel } from '../feed/build'
 import { initialPanelState, type PanelAction, type PanelState } from '../feed/panelState'
-import type { ShellMessage } from '../protocol'
+import type { ModelInfo, ShellMessage } from '../protocol'
 import type { UserToken } from '../feed/types'
 
 /**
@@ -164,8 +164,16 @@ export const tickFeed = (feed: MobileFeed, now: number): MobileFeed => {
  * on request. It matters that it is the IDE's rather than the device's: the whole of this state is
  * measured in the IDE's time, and a single moment let in off the local clock is a duration counted
  * across two of them.
+ *
+ * `models` is that machine's catalogue, as its inventory last carried it - the reducer has none of its own,
+ * and a pick is judged by what the catalogue expands it into (see the `model` case below).
  */
-export const applyMessage = (feed: MobileFeed, message: ShellMessage, now: number = Date.now()): MobileFeed => {
+export const applyMessage = (
+  feed: MobileFeed,
+  message: ShellMessage,
+  now: number = Date.now(),
+  models: ModelInfo[] | null = null,
+): MobileFeed => {
   const at = message.at ?? now
   const seq = message.seq ?? feed.seq
 
@@ -326,8 +334,17 @@ export const applyMessage = (feed: MobileFeed, message: ShellMessage, now: numbe
     // what it needs is to know that the change was somebody's doing. Without this the tab's memory of
     // what the stream last named stays on the old model, and the first answer signed with the new one is
     // announced in the feed as a swap made behind one's back (see noteStreamModel).
+    //
+    // Expanded through the catalogue for the same reason as at the desk: "opus" names no generation, and a
+    // pick of the latest Opus made from Opus 4.8 would otherwise arrive looking like the agent's swap.
     case 'model':
-      return collect({ kind: 'modelApplied', model: message.model, error: message.error, born: message.born })
+      return collect({
+        kind: 'modelApplied',
+        model: message.model,
+        error: message.error,
+        born: message.born,
+        resolved: expandModel(models, message.model),
+      })
 
     /*
      * What this conversation works at (see ClaudeSessionHub.sendEffort). Nobody but the IDE knows it -

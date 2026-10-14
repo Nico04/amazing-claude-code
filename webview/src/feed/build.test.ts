@@ -699,7 +699,7 @@ describe('the model swapped by the CLI itself', () => {
   /**
    * Recorded from a live panel: "Opus 1M picked, but the answers keep coming on Opus 5 1M" - one and the
    * same model, named as a choice on one side and as a signature on the other. The wait was raised by a
-   * comparison that reads those two as different models (see picksAnother), and nothing could ever
+   * comparison that reads those two as different models (see expectingOwnSwap), and nothing could ever
    * answer it: what came next was that same model again.
    */
   it('keeps quiet when the model picked is the one already at work', () => {
@@ -778,6 +778,68 @@ describe('the model swapped by the CLI itself', () => {
     expect(modelSwitches(state)).toEqual([
       { id: expect.any(String), kind: 'model', from: 'claude-opus-5[1m]', to: 'claude-opus-4-8', reason: '' },
     ])
+  })
+
+  /**
+   * Recorded live: Opus 4.8 picked by hand in a conversation on Opus 5.5, and the feed said "Opus 5.5 ->
+   * Opus 4.8, switched by Claude Code, not by you". The pick names a generation, and judged by the family
+   * alone it looked like the model already at work, so nothing was waiting for it to arrive.
+   */
+  it('keeps quiet when another generation of the same family is picked', () => {
+    let state = play([initEvent('claude-opus-5-5'), signedTextEvent('claude-opus-5-5', 'Working.')])
+    state = reducePanel(state, { kind: 'modelApplied', model: 'claude-opus-4-8' })
+    state = play([signedTextEvent('claude-opus-4-8', 'On Opus 4.8 now.')], state)
+
+    expect(state.model).toBe('claude-opus-4-8')
+    expect(state.switchedFrom).toBeUndefined()
+    expect(modelSwitches(state)).toEqual([])
+  })
+
+  // And the way back: "opus" names no generation, but the catalogue says which one it means.
+  it('keeps quiet when the family is picked back from an older generation', () => {
+    let state = play([initEvent('claude-opus-4-8'), signedTextEvent('claude-opus-4-8', 'Working.')])
+    state = reducePanel(state, { kind: 'modelApplied', model: 'opus', resolved: 'claude-opus-5-5' })
+    state = play([signedTextEvent('claude-opus-5-5', 'On Opus 5.5 now.')], state)
+
+    expect(state.switchedFrom).toBeUndefined()
+    expect(modelSwitches(state)).toEqual([])
+  })
+
+  // The catalogue tells a pick of the model already at work from a pick of another, so the agent's own
+  // fallback right after such a pick is still news.
+  it('still announces a fallback after picking, by the catalogue, the model already at work', () => {
+    let state = play([initEvent('claude-opus-5-5'), signedTextEvent('claude-opus-5-5', 'Working.')])
+    state = reducePanel(state, { kind: 'modelApplied', model: 'opus', resolved: 'claude-opus-5-5' })
+    state = play([signedTextEvent('claude-opus-4-8', 'Carrying on.')], state)
+
+    expect(modelSwitches(state)).toEqual([
+      { id: expect.any(String), kind: 'model', from: 'claude-opus-5-5', to: 'claude-opus-4-8', reason: '' },
+    ])
+  })
+
+  // A pick of another generation that never arrives is just as much news as a pick of another family.
+  it('says so when the picked generation never arrives', () => {
+    let state = play([initEvent('claude-opus-5-5'), signedTextEvent('claude-opus-5-5', 'Looking.')])
+    state = reducePanel(state, { kind: 'modelApplied', model: 'claude-opus-4-8' })
+    state = play([toolUseEvent('t1', 'Read', { file_path: 'a.ts' })], state)
+    state = play([toolResultEvent('t1', 'line 1')], state)
+    state = play([signedTextEvent('claude-opus-5-5', 'Still here.')], state)
+
+    expect(stuckPicks(state)).toEqual([
+      { id: expect.any(String), kind: 'modelStuck', picked: 'claude-opus-4-8', running: 'claude-opus-5-5' },
+    ])
+  })
+
+  // Opusplan plans on Opus and works on Sonnet: neither signature says the pick did not take.
+  it('does not accuse opusplan of not arriving when the answers stay on Opus', () => {
+    let state = play([initEvent('claude-opus-5-5'), signedTextEvent('claude-opus-5-5', 'Looking.')])
+    state = reducePanel(state, { kind: 'modelApplied', model: 'opusplan', resolved: 'claude-opus-5-5' })
+    state = play([toolUseEvent('t1', 'Read', { file_path: 'a.ts' })], state)
+    state = play([toolResultEvent('t1', 'line 1')], state)
+    state = play([signedTextEvent('claude-opus-5-5', 'Planning.')], state)
+
+    expect(stuckPicks(state)).toEqual([])
+    expect(state.stuckPick).toBeUndefined()
   })
 
   // The next pick answers the accent the last one left: the person has just chosen again.

@@ -9,7 +9,7 @@ import type {
   ToolResultBlock,
   ToolUseBlock,
 } from '../protocol'
-import { modelFamily, normalizeMode, sameModel } from '../catalog'
+import { carriesPick, modelFamily, normalizeMode, sameModel } from '../catalog'
 import { parseParagraphs } from './markdown'
 import { initialPanelState, push, type PanelAction, type PanelState } from './panelState'
 import { togglePin } from './pins'
@@ -514,6 +514,7 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         // The tab's own model either way: an announcement exists precisely so that a tab nobody has
         // touched is drawn by what it runs on rather than by the setting (see PanelState.ownModel).
         ownModel: action.model,
+        ownModelResolved: action.resolved,
         // Only a choice is judged, and an announcement is not one (see the `born` half of the action).
         // The shell names a tab's model at its birth, to every client that joins and after every reset,
         // and it names the CHOICE it was launched on - "opus[1m]", never the signature the answers carry.
@@ -523,7 +524,7 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         ...(action.born
           ? {}
           : {
-              ownSwap: expectingOwnSwap(state, action.model, action.error),
+              ownSwap: expectingOwnSwap(state, action.model, action.resolved, action.error),
               // A pick is judged only once a request that could carry it has begun - see
               // PanelState.ownSwapDue.
               ownSwapDue: false,
@@ -1237,32 +1238,28 @@ const realModel = (model: string | undefined): string | undefined =>
  * at work moves nothing either, and a tab whose stream has never named a model has no signature to be
  * compared against - a fork, for one, is told its parent's model before its own process is up (see App).
  * A flag raised in any of those cases would wait forever and swallow the first real swap that came.
+ *
+ * "Already at work" is asked by carriesPick, the same yardstick arrivedAsPicked measures the answer by -
+ * deliberately so. Asked by sameModel alone, a pick of a whole family ("opus[1m]") never matched the
+ * signature of that very model ("claude-opus-5[1m]"), and the wait it raised could never be answered.
+ * Asked by the family alone, a pick of another generation ("claude-opus-4-8" on Opus 5.5) matched the
+ * model it was leaving, no wait was raised, and the pick arriving was announced as the agent's swap.
+ *
+ * A pick that cannot be read ("default" with no catalogue, a model of somebody else's provider) settles
+ * nothing, and then something may well be coming: the wait is raised, because it is also what keeps a
+ * swap the person asked for from being announced as the agent's doing.
  */
-const expectingOwnSwap = (state: PanelState, model: string, error?: string): boolean | undefined => {
+const expectingOwnSwap = (
+  state: PanelState,
+  model: string,
+  resolved: string | undefined,
+  error?: string,
+): boolean | undefined => {
   if (error) return state.ownSwap
   if (!state.streamModel || sameModel(state.streamModel, model)) return state.ownSwap
-  if (!picksAnother(model, state.streamModel)) return state.ownSwap
+  if (carriesPick(model, state.streamModel, resolved)) return state.ownSwap
 
   return true
-}
-
-/**
- * Does the pick name a model other than the one the answers are already coming on?
- *
- * By family, and this is the same yardstick arrivedAsPicked measures the answer by - deliberately so.
- * The check above it is by sameModel, which compares generations: a pick carries none ("opus[1m]"), a
- * signature always does ("claude-opus-5[1m]"), so on that pair sameModel says "different models" about
- * one and the same model, and the guard right above never fired for a pick of a whole family. Picking
- * the model already at work then raised a wait that nothing could ever answer: the signature that came
- * next was that same model, and the only reading left for it was "the pick did not take".
- *
- * A family the panel does not know ("default", a model of somebody else's provider) settles nothing, and
- * then something may well be coming: the wait is raised, because it is also what keeps a swap the person
- * asked for from being announced as the agent's doing.
- */
-const picksAnother = (pick: string, running: string): boolean => {
-  const family = modelFamily(pick)
-  return family ? family !== modelFamily(running) : true
 }
 
 /**
@@ -1325,15 +1322,13 @@ const noteStreamModel = (state: PanelState, named: string, reason = '', replay =
 /**
  * Is this signature the pick coming true?
  *
- * By family, because that is all a pick and a signature have in common (see modelFamily). Where the pick
- * has no family the panel knows - "default", a model of somebody else's provider - the question cannot be
- * answered, and the old rule stands: anything other than the model being left is the answer to it. Better
- * to keep quiet than to accuse a pick of not working because its name is unfamiliar.
+ * By the generation where the pick or its catalogue names one, by the family otherwise (see carriesPick).
+ * Where the pick cannot be read - "default" with no catalogue, a model of somebody else's provider - the
+ * question cannot be answered, and the old rule stands: anything other than the model being left is the
+ * answer to it. Better to keep quiet than to accuse a pick of not working because its name is unfamiliar.
  */
-const arrivedAsPicked = (state: PanelState, named: string): boolean => {
-  const family = state.ownModel ? modelFamily(state.ownModel) : ''
-  return family ? family === modelFamily(named) : true
-}
+const arrivedAsPicked = (state: PanelState, named: string): boolean =>
+  !state.ownModel || carriesPick(state.ownModel, named, state.ownModelResolved) !== false
 
 /**
  * The pick did not take: a new request has gone out and come back signed by the model being left.
@@ -2839,7 +2834,7 @@ export const modelContextWindow = (model: string | undefined): number | undefine
  * stream names the same model, and the stream takes over only when it means another one - the CLI does
  * swap on its own (see ModelSwitchItem).
  *
- * By family rather than by sameModel, for the reason arrivedAsPicked gives: a choice is a family
+ * By family rather than by sameModel, for the reason modelFamily gives: a choice is a family
  * ("opus[1m]") and a signature is an identifier ("claude-opus-5"), and sameModel says no to that pair -
  * it compares generations, which a choice never carries. The window is a matter of the family and the
  * mark, and the mark is in the choice alone; a choice of no family the panel knows ("default", a model of

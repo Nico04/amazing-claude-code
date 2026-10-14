@@ -208,6 +208,9 @@ export const App = () => {
   const [agents, setAgents] = useState<PairedAgent[]>([])
   const [screen, setScreen] = useState<Screen>({ at: 'sessions' })
   const [inventories, setInventories] = useState<Record<string, Inventory>>({})
+  /** For the handler of the feed's messages, which is built once: a pick is judged by the catalogue. */
+  const inventoriesRef = useRef(inventories)
+  inventoriesRef.current = inventories
   const [states, setStates] = useState<Record<string, LinkState>>({})
   const [feed, setFeed] = useState<MobileFeed>(emptyFeed())
   const [opening, setOpening] = useState<Opening | null>(null)
@@ -1075,7 +1078,8 @@ export const App = () => {
       })
     }
 
-    setFeed((previous) => applyMessage(previous, message, clockOf(agentId).now()))
+    const models = inventoriesRef.current[agentId]?.models ?? null
+    setFeed((previous) => applyMessage(previous, message, clockOf(agentId).now(), models))
   }, [clockOf, cards, sideStep])
 
   /** Watch a conversation from the beginning and show it. */

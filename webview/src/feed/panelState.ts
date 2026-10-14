@@ -84,6 +84,11 @@ export interface PanelState {
    * own. Absent, the tab follows the setting, as a fresh tab does.
    */
   ownModel?: string
+  /**
+   * What the catalogue expands [ownModel] into ("opus" -> "claude-opus-5-5"), when it knows. A pick is
+   * judged by it rather than by its own name, which may carry no generation (see carriesPick).
+   */
+  ownModelResolved?: string
   permissionMode?: string
   /**
    * A mode chosen but not yet confirmed. The button and the menu show it until the agent answers:
@@ -510,8 +515,11 @@ export type PanelAction =
    * protocol.ts). Both kinds draw the chip, and only a choice is judged afterwards: read as a pick, an
    * announcement of the model a tab has been working on all along accused it of not arriving (see
    * [ownSwap]), and a re-attach was enough to put that in the feed of a conversation nobody had touched.
+   *
+   * [resolved] is what the tab's catalogue expands the model into, when the client has one: the reducer
+   * has no catalogue of its own, and without it a pick of "opus" cannot be told from a stay on Opus 4.8.
    */
-  | { kind: 'modelApplied'; model: string; error?: string; born?: boolean }
+  | { kind: 'modelApplied'; model: string; error?: string; born?: boolean; resolved?: string }
   | { kind: 'effortRequested'; effort: string }
   /**
    * The effort this conversation works at, as the shell says it does. There is no "applied" beside it

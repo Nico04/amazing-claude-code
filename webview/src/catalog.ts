@@ -101,20 +101,46 @@ export const sameModel = (one: string, other: string): boolean => modelKey(one) 
  * belongs to no family the panel knows: "default", "opusplan-preview", a model of somebody else's
  * provider written in by hand (see CustomModels).
  *
- * It exists for one question and one only: has the model the person just picked arrived? A pick is a
- * choice ("fable", "opus[1m]") and a signature is an identifier ("claude-fable-5-1"), so [sameModel] says
- * no to that pair - it compares generations, and a choice carries none. The family is the most the two
- * have in common, and it is enough: the person picked a family, and a signature out of it is that pick
- * coming true. Where the family is unknown the question cannot be answered at all, and nothing is
- * guessed - see noteStreamModel.
+ * A pick is a choice ("fable", "opus[1m]") and a signature is an identifier ("claude-fable-5-1"), so
+ * [sameModel] says no to that pair - it compares generations, and a choice carries none. The family is the
+ * most the two have in common, which is what [carriesPick] falls back on.
  */
 export const modelFamily = (model: string): string => {
   const bare = model.toLowerCase().replace(/\[.*\]$/, '')
   return MODEL_FAMILIES.find((option) => bare.includes(option.id))?.id ?? ''
 }
 
+/**
+ * Does the signature under an answer carry this pick - yes, no, or there is no telling?
+ *
+ * The one yardstick a pick is judged by, both when deciding whether to wait for it and when deciding
+ * whether it has arrived (see expectingOwnSwap and arrivedAsPicked in feed/build.ts). It used to be the
+ * family alone. That is right for a pick that names no generation ("opus[1m]": any Opus is it coming
+ * true) and wrong for one that does. Recorded live: Opus 4.8 picked by hand in a conversation on Opus 5.5,
+ * and the feed said "Opus 5.5 -> Opus 4.8, switched by Claude Code, not by you". One family, so no wait
+ * was raised for the pick, and the first answer it brought was taken for the agent's own swap.
+ *
+ * So a pick is measured by what the catalogue expands it into wherever the catalogue knows ([resolved],
+ * see expandModel): "opus" names no generation, but the CLI knows which one it means, and only by that
+ * can going back to the family's latest from an older one be told apart from the agent's fallback. With a
+ * generation the measure is the model itself (sameModel), without one the family.
+ *
+ * No answer where the pick cannot be read: "default" with no catalogue to expand it, a model of somebody
+ * else's provider, and "opusplan", behind which stand two models at once - Opus while planning and Sonnet
+ * otherwise - so that no single signature says anything about it, whatever the catalogue expands it into.
+ */
+export const carriesPick = (pick: string, signature: string, resolved = ''): boolean | undefined => {
+  if (modelFamily(pick) === 'opusplan') return undefined
+
+  const measure = resolved || pick
+  const family = modelFamily(measure)
+  if (!family) return undefined
+
+  return modelVersion(measure) ? sameModel(measure, signature) : family === modelFamily(signature)
+}
+
 /** A choice turned into the identifier behind it, when the catalogue knows one; otherwise as it is. */
-const expandModel = (models: ModelInfo[] | null, model: string): string =>
+export const expandModel = (models: ModelInfo[] | null, model: string): string =>
   models?.find((option) => option.value === model)?.resolved || model
 
 /**

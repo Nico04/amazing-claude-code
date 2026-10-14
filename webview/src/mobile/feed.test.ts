@@ -406,6 +406,29 @@ describe('the phone building a conversation', () => {
     expect(feed.state.items.filter((item) => item.kind === 'model')).toEqual([])
   })
 
+  // "opus" picked at the desk from Opus 4.8: only the machine's catalogue says it means Opus 5.5.
+  it('judges a pick by the catalogue the machine carries', () => {
+    const models = [{ value: 'opus', label: 'Opus', description: '', resolved: 'claude-opus-5-5' }]
+    const signed = (model: string, text: string) =>
+      message({
+        type: 'agent',
+        sessionId: 'main',
+        event: { type: 'assistant', message: { model, content: [{ type: 'text', text }] } },
+      })
+
+    let feed = emptyFeed()
+    for (const next of [
+      message({ type: 'agent', sessionId: 'main', event: { type: 'system', subtype: 'init', model: 'claude-opus-4-8' } }),
+      signed('claude-opus-4-8', 'on 4.8'),
+      message({ type: 'model', sessionId: 'main', model: 'opus', applied: true }),
+      signed('claude-opus-5-5', 'on 5.5'),
+    ]) {
+      feed = applyMessage(feed, next, Date.now(), models)
+    }
+
+    expect(feed.state.items.filter((item) => item.kind === 'model')).toEqual([])
+  })
+
   /**
    * The queue belongs to the conversation rather than to this page. It used to be a piece of the thread
    * screen's own state, worked through by an effect there - and a page in a pocket is thrown out by the
