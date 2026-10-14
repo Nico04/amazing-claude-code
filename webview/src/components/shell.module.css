@@ -365,6 +365,10 @@
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
+  /* The rows stay packed at the top when the strip is taller than they are: a dragged tab grows it by the
+     row its drop is going to add (see Header), and spread over the extra height the rows slid down under
+     the hand, away from the places the gesture had measured. */
+  align-content: flex-start;
   min-width: 0;
 }
 
@@ -458,9 +462,13 @@
   padding-left: 11px;
 }
 
-/* The gap sets one group off from another: colour alone is not enough if the tabs have stuck together. */
+/* The gap sets one group off from another: colour alone is not enough if the tabs have stuck together. A
+   variable, because a dragged tab's preview hands it out by hand (see projectionFor in Header): the rule
+   below goes by the markup, and the preview reorders the strip without touching the markup. */
 .tabGroupStart {
-  margin-left: 6px;
+  --acc-group-gap: 6px;
+
+  margin-left: var(--acc-group-gap);
 }
 
 .tabGroupStart:first-child {
@@ -768,6 +776,9 @@
   flex: none;
   font-size: 15px;
   color: var(--acc-fg-dim);
+  /* It makes room for a dragged tab the way the tabs do (see .tab): a tab carried to the end of a row can
+     push it onto the next one. */
+  transition: transform 0.16s ease;
 }
 
 .tabAdd:hover {
