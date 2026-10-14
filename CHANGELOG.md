@@ -9,6 +9,13 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.37] - 2026-10-13
+
+- Added: tabs can be dragged from one row to another. When the tabs wrap onto several rows, a tab, or a conversation together with its forks, now follows the mouse up and down as well as along and drops into the row it is over. Before, a tab could only be moved within its own row. While you drag, the other tabs and the "+" move to exactly where the drop will put them, and the strip grows by a row if the drop needs one. A strip of one row works as before: the tab stays in it.
+- Fixed: picking another version of the model already at work, for example Opus 4.8 in a conversation on Opus 5.5, made the feed say the model had been "switched by Claude Code, not by you". The panel compared only the model family, so the first answer on the model you picked looked like the agent falling back on its own. A pick is now compared by the exact model it stands for, and going back from an older Opus to the latest one is told apart the same way.
+- Fixed: picking Opusplan in a conversation on Opus could bring a note that the picked model never took. Opusplan plans on Opus and works on Sonnet, so no single model under an answer says whether it took, and the panel no longer judges it by one.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.36] - 2026-10-12
 
 - Changed: hovering over a tab's close or fork button now lights it in the tab's own colour, faintly, instead of a grey square. The grey looked like a smudge on the coloured light of the open tab.
@@ -994,7 +1001,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.36...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.37...HEAD
+[0.13.37]: https://github.com/crmapache/amazing-claude-code/compare/0.13.36...0.13.37
 [0.13.36]: https://github.com/crmapache/amazing-claude-code/compare/0.13.35...0.13.36
 [0.13.35]: https://github.com/crmapache/amazing-claude-code/compare/0.13.34...0.13.35
 [0.13.34]: https://github.com/crmapache/amazing-claude-code/compare/0.13.33...0.13.34
