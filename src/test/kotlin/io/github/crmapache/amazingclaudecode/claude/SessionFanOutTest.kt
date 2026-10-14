@@ -2,6 +2,7 @@ package io.github.crmapache.amazingclaudecode.claude
 
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import io.github.crmapache.amazingclaudecode.remote.RemoteLimits
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -20,7 +21,10 @@ import kotlinx.serialization.json.put
 class SessionFanOutTest : BasePlatformTestCase() {
 
     private class Recorder(override val id: String) : SessionClient {
-        val received = mutableListOf<String>()
+        // Written from whatever thread the hub delivers on while the test reads it on its own: a plain list
+        // failed `any { }` with ConcurrentModificationException now and then (caught in a release run). This
+        // one is read as a snapshot.
+        val received = CopyOnWriteArrayList<String>()
 
         override fun deliver(messages: List<String>) {
             received += messages
