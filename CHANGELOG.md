@@ -9,6 +9,13 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.38] - 2026-10-14
+
+- Fixed: typing Chinese after a paste added a stray Latin letter in front of the word: "wocao" came out as "w我草" (reported from IntelliJ IDEA on a Mac). It happened when something was already typed before the paste. The paste left an empty piece of text behind the pasted block, and next to it the embedded browser lost the word being composed after its first letter, kept that letter as text and started the word again behind it. Pastes no longer leave anything empty behind, so the word composes in one go.
+- Fixed: a pasted text that ends with a line break, put after something already typed, could leave the caret at the end of the line above instead of on the new empty line. The same empty piece of text was the cause.
+- Changed: the phone no longer shows the microphone button while voice input is switched off on the computer the conversation runs on. Before, the button was always there and every press ended with "Voice input is switched off on the machine". The button comes back on its own as soon as voice input is switched on there, and a dictation already running when it is switched off can still be stopped.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.37] - 2026-10-13
 
 - Added: tabs can be dragged from one row to another. When the tabs wrap onto several rows, a tab, or a conversation together with its forks, now follows the mouse up and down as well as along and drops into the row it is over. Before, a tab could only be moved within its own row. While you drag, the other tabs and the "+" move to exactly where the drop will put them, and the strip grows by a row if the drop needs one. A strip of one row works as before: the tab stays in it.
@@ -1001,7 +1008,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.37...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.38...HEAD
+[0.13.38]: https://github.com/crmapache/amazing-claude-code/compare/0.13.37...0.13.38
 [0.13.37]: https://github.com/crmapache/amazing-claude-code/compare/0.13.36...0.13.37
 [0.13.36]: https://github.com/crmapache/amazing-claude-code/compare/0.13.35...0.13.36
 [0.13.35]: https://github.com/crmapache/amazing-claude-code/compare/0.13.34...0.13.35
