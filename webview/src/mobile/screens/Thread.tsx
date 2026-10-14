@@ -72,6 +72,8 @@ interface ThreadProps {
   loading: boolean
   /** Dictation, held by the application because the token for it arrives there - see useDictation. */
   voice: PhoneDictation
+  /** What the machine says about voice input - see the composer's prop of the same name. */
+  dictates?: boolean
   onSend: (prompt: OutgoingPrompt) => void
   /** Said when the agent comes free. It waits in the IDE, not here - see SessionQueue.kt. */
   onQueue: (prompt: OutgoingPrompt) => void
@@ -171,6 +173,7 @@ export const Thread = ({
   connected,
   loading,
   voice,
+  dictates,
   quotes,
   onDropQuote,
   onSend,
@@ -477,6 +480,7 @@ export const Thread = ({
           onStop={onStop}
           onRun={onRun}
           voice={voice}
+          dictates={dictates}
         />
       </footer>
     </OpenAgentContext.Provider>

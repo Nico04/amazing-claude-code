@@ -2590,6 +2590,7 @@ export const App = () => {
                     photos: (inventories[at.agentId]?.caps ?? []).includes(CAP_PARTS) ? ROOMY : NARROW,
                     connected: states[at.agentId] === 'connected',
                     voice: dictation,
+                    dictates: inventories[at.agentId]?.voice,
                   }
                 : null
             }
@@ -2918,6 +2919,7 @@ export const App = () => {
             connected={states[screen.agentId] === 'connected'}
             loading={!feed.loaded}
             voice={dictation}
+            dictates={inventories[screen.agentId]?.voice}
             onSend={(prompt: OutgoingPrompt) => {
               // A side question goes beside the work, the panel's way, and never as a message: the agent
               // would only answer "/btw isn't available in this environment" (see feed/side).

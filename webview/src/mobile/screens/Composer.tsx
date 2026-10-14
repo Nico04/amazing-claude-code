@@ -78,6 +78,13 @@ interface ComposerProps {
   /** Dictation - the state lives in the application, because the token for it arrives there. */
   voice: PhoneDictation
   /**
+   * What the machine says about voice input (see Inventory.voice). `false` takes the button away: the machine
+   * refuses every press while its switch is off, and a button that answers each one with "switched off on
+   * the machine" is a button that should not be there. Absent is an IDE older than the field - the button
+   * stays, and the refusal says why.
+   */
+  dictates?: boolean
+  /**
    * Whether the words go into a conversation - the default - or to something that only reads them: a run's
    * main thread (see ScenarioRun). Off a conversation the field keeps what a message is made of - the words,
    * the photos, the "@" for a file, dictation - and drops what is about a conversation: the limits and the
@@ -215,6 +222,7 @@ export const Composer = ({
   onStop,
   onRun,
   voice,
+  dictates,
   forConversation = true,
   placeholder,
 }: ComposerProps) => {
@@ -230,6 +238,17 @@ export const Composer = ({
   const pressedAt = useRef(0)
   const held = useRef(false)
   const listening = voice.phase === 'listening'
+  /*
+   * The button goes when the machine says voice input is off - but never from under a dictation that is
+   * still going: switched off at the desk mid-sentence, the recording here has to stay stoppable, and a
+   * button taken away takes the release with it (see the pointer capture below).
+   */
+  const micShown = dictates !== false || voice.phase !== 'idle'
+  /*
+   * A refusal for "switched off" is old news once the machine says it is on: the press that earned it was
+   * answered before the switch was flipped, and the line would go on saying so over a button that works.
+   */
+  const voiceError = micShown && !(voice.error === 'off' && dictates === true) ? voice.error : ''
 
   /*
    * Where a dictated phrase lands.
@@ -757,7 +776,7 @@ export const Composer = ({
       </div>
 
       {voice.interim ? <p className={m.voiceTail}>{voice.interim}</p> : null}
-      {voice.error ? <p className={m.attachError}>{voiceMessage(t, voice.error, true)}</p> : null}
+      {voiceError ? <p className={m.attachError}>{voiceMessage(t, voiceError, true)}</p> : null}
 
       {/*
         The row of actions, as a grid that wraps rather than a line that scrolls.
@@ -812,50 +831,52 @@ export const Composer = ({
             finger sliding off the button still ends the dictation on release rather than leaving it
             recording for ever.
           */}
-          <button
-            type="button"
-            className={`${m.iconBtn} ${listening ? m.iconBtnLive : ''}`}
-            aria-label={listening ? t.mobile.composer.voiceStop : t.mobile.composer.voice}
-            aria-pressed={listening}
-            /*
-               Greyed out with no link, but never while it is recording.
+          {micShown && (
+            <button
+              type="button"
+              className={`${m.iconBtn} ${listening ? m.iconBtnLive : ''}`}
+              aria-label={listening ? t.mobile.composer.voiceStop : t.mobile.composer.voice}
+              aria-pressed={listening}
+              /*
+                 Greyed out with no link, but never while it is recording.
 
-               The socket to Deepgram is the phone's own and outlives a relay that flaps, so disabling a
-               running dictation would be a recording nothing could stop: a disabled control gets no
-               pointer events, so even letting go would not reach it.
-            */
-            disabled={voice.phase === 'finishing' || (!connected && !listening)}
-            onPointerDown={(event) => {
-              if (listening) return
-              // Belt and braces with the disabled state above: no link, no token, and a microphone
-              // opened for nothing would only light the indicator.
-              if (!connected) return
-              event.currentTarget.setPointerCapture(event.pointerId)
-              pressedAt.current = Date.now()
-              voice.start()
-            }}
-            onPointerUp={() => {
-              if (!listening) return
-              // A tap rather than a hold: leave it running, and let the next tap end it.
-              if (Date.now() - pressedAt.current < TAP_MS) {
-                held.current = true
-                return
-              }
-              voice.stop()
-            }}
-            onPointerCancel={() => voice.cancel()}
-            onClick={() => {
-              // The click that follows a tap-to-latch is the same press; the one after that is the stop.
-              if (!listening) return
-              if (held.current) {
-                held.current = false
-                return
-              }
-              voice.stop()
-            }}
-          >
-            <Microphone className={m.iconMic} />
-          </button>
+                 The socket to Deepgram is the phone's own and outlives a relay that flaps, so disabling a
+                 running dictation would be a recording nothing could stop: a disabled control gets no
+                 pointer events, so even letting go would not reach it.
+              */
+              disabled={voice.phase === 'finishing' || (!connected && !listening)}
+              onPointerDown={(event) => {
+                if (listening) return
+                // Belt and braces with the disabled state above: no link, no token, and a microphone
+                // opened for nothing would only light the indicator.
+                if (!connected) return
+                event.currentTarget.setPointerCapture(event.pointerId)
+                pressedAt.current = Date.now()
+                voice.start()
+              }}
+              onPointerUp={() => {
+                if (!listening) return
+                // A tap rather than a hold: leave it running, and let the next tap end it.
+                if (Date.now() - pressedAt.current < TAP_MS) {
+                  held.current = true
+                  return
+                }
+                voice.stop()
+              }}
+              onPointerCancel={() => voice.cancel()}
+              onClick={() => {
+                // The click that follows a tap-to-latch is the same press; the one after that is the stop.
+                if (!listening) return
+                if (held.current) {
+                  held.current = false
+                  return
+                }
+                voice.stop()
+              }}
+            >
+              <Microphone className={m.iconMic} />
+            </button>
+          )}
         </div>
 
         {/*

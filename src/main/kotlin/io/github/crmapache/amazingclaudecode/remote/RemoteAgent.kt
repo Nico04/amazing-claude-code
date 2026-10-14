@@ -1357,6 +1357,12 @@ internal class RemoteAgent : Disposable {
             // The fact stays: for a project that is open it is live, while this is as fresh as the
             // last knock (see customModelsOf on the phone).
             putJsonArray("customModels") { ClaudePreferences.customModels.forEach { add(it) } }
+            // Whether voice input is switched on here. A phone dictates with its own microphone but on this
+            // machine's key, and this machine refuses it while the switch is off (see VoiceGrant) - so with it
+            // off the phone hides the button rather than offering one that answers every press with "switched
+            // off on the machine". Machine-wide like the two above; told again the moment it is flipped (see
+            // VoiceDesk.setEnabled), not only on the next knock.
+            put("voice", ClaudePreferences.voiceEnabled)
             putJsonArray("projects") {
                 for ((key, attachment) in projects) {
                     if (attachment.project.isDisposed) continue

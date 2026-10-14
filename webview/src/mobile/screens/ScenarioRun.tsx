@@ -42,7 +42,7 @@ interface ScenarioRunProps {
    * the relay and may be newer than the plugin behind it, which would refuse the message as one it has never
    * heard of.
    */
-  tell: { facts: ProjectFacts; photos: PhotoRoad; connected: boolean; voice: PhoneDictation } | null
+  tell: { facts: ProjectFacts; photos: PhotoRoad; connected: boolean; voice: PhoneDictation; dictates?: boolean } | null
   /** Words for the main thread of the run while it goes, photos included - see `scenarioTell`. */
   onTell: (prompt: OutgoingPrompt) => void
   onBack: () => void
@@ -379,6 +379,7 @@ export const ScenarioRun = ({
             onStop={ignore}
             onRun={ignore}
             voice={tell.voice}
+            dictates={tell.dictates}
             forConversation={false}
             placeholder={t.scenarios.run.tellPlaceholder}
           />
