@@ -439,7 +439,21 @@ export interface ScenarioStage {
   repeat: number
   /** Whether `repeat` is a ceiling the head may stop short of, rather than an exact count. */
   untilDone: boolean
+  /**
+   * Set when the stage runs once for each item of a list rather than a number of times: the head gives the
+   * list as the stage begins, and the stage becomes one pass per item (see Stage.each). `repeat` and
+   * `untilDone` are not read while it is set. Absent, or null, from an IDE older than this kind of stage.
+   */
+  each?: ScenarioStageEach | null
   cards: ScenarioCard[]
+}
+
+/** The list a stage runs once per item of. */
+export interface ScenarioStageEach {
+  /** Written in the stage's prompts as [[name]] and filled by the panel, one item per pass. */
+  name: string
+  /** What the list is, in the person's words - what the head is told when it is asked for it. */
+  description: string
 }
 
 /**
@@ -713,7 +727,8 @@ export interface ScenarioRunStep {
   summary: string
   /** What the head said each time it sent this card back to work. */
   nudges: string[]
-  verdict: '' | 'done' | 'undone'
+  /** `later` is an item of a list the head put off until the rest of the list was done (see StageList.putOff). */
+  verdict: '' | 'done' | 'undone' | 'later'
   verdictReason: string
   handoff: string
   failure: string
@@ -727,6 +742,25 @@ export interface ScenarioRunStep {
   takeOver?: string
   /** Time the run stood still while this card was the one on the board - see ScenarioRun.rested. */
   rested?: number
+  /**
+   * The item of the list this pass is for, in a stage that runs once per item - and absent or null elsewhere,
+   * and in such a stage before its list was given: the pass then holds the place the list is asked for.
+   */
+  item?: ScenarioRunItem | null
+}
+
+/** One item of a stage's list, as the pass that is for it carries it (see RunItem). */
+export interface ScenarioRunItem {
+  /** What the screen calls it. */
+  label: string
+  /** What is written into the prompts for [[name]]. */
+  value: string
+  /** Its place in the list, counting from one - 0 on a stage whose list came back empty. */
+  index: number
+  /** How long the list is; 0 marks the skipped passes of a stage whose list came back empty. */
+  count: number
+  /** Why this pass is a second go at its item, in the head's words; empty for the first go. */
+  again: string
 }
 
 export interface ScenarioRunNote {

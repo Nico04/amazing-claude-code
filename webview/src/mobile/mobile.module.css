@@ -3603,6 +3603,13 @@
   white-space: nowrap;
 }
 
+/* The item a pass of a list is for, by name - what tells seven rows of one card apart (see itemLabel). */
+.stepItem {
+  font: 500 var(--acc-fs-body) var(--acc-font);
+  color: var(--acc-fg-body);
+  overflow-wrap: anywhere;
+}
+
 .stepTime {
   flex: none;
   font: var(--acc-fs-label) var(--acc-mono);
@@ -3633,6 +3640,12 @@
 
 .stepVerdictBad {
   color: var(--acc-bad-text);
+  --acc-glance-strong: currentColor;
+}
+
+/* An item put off until the rest of the list: not done and not failed - it comes back. */
+.stepVerdictLater {
+  color: var(--acc-warn);
   --acc-glance-strong: currentColor;
 }
 
@@ -4384,6 +4397,13 @@
 
 .stageBody .wideButton {
   margin-bottom: 0;
+}
+
+/* Under the list of a stage that runs once per item: where its item lands in the prompts. */
+.listNote {
+  margin: 0;
+  font: var(--acc-fs-meta) var(--acc-font);
+  color: var(--acc-fg-ghost);
 }
 
 .stageCards {

@@ -13,7 +13,7 @@ import { clockLabel, defaultHour, nextNote, schedulesOf, weekdayName, whenLabel 
 import { runWorked } from '../../scenarios/timeline'
 import { countdown, timetableOf } from '../../scenarios/timetable'
 import { blankScenario } from '../../scenarios/blank'
-import { cardRuns, passesOf, problemsOf, blocking } from '../../scenarios/rules'
+import { cardRuns, loops, problemsOf, blocking } from '../../scenarios/rules'
 import { pastRuns, runMarks, runningRuns } from '../../scenarios/runs'
 import { namedRun, queueBehind, queueMarks, queueStanding, queuedFor } from '../../scenarios/queue'
 import { endedLabel, momentLabel } from '../../scenarios/moments'
@@ -740,7 +740,7 @@ const ScenarioCard = ({
           : [
               t.scenarios.stages(scenario.stages.length),
               t.scenarios.cards(cardRuns(scenario)),
-              scenario.stages.some((stage) => passesOf(stage) > 1) ? t.scenarios.hasLoop : '',
+              scenario.stages.some(loops) ? t.scenarios.hasLoop : '',
               scenario.inputs.length > 0
                 ? t.scenarios.asksFor(scenario.inputs.map((input) => input.name).filter(Boolean).join(', '))
                 : '',

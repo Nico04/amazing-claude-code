@@ -680,6 +680,7 @@ export const en = {
       stopped: 'Cut short by you',
       undone: 'Not done',
       headGaveUp: 'The main thread could not finish it either',
+      longList: 'The list was too long',
     },
     /** What the IDE said it could not do. */
     outcomes: {
@@ -750,6 +751,20 @@ export const en = {
       /** The heading of a pass of a stage that runs a set number of times, and of one that may stop early. */
       passOf: (pass: number, passes: number): string => `pass ${pass} of ${passes}`,
       passOfUpTo: (pass: number, passes: number): string => `pass ${pass} of up to ${passes}`,
+      /** On a pass of a stage that runs once per item of a list: which item of how many. */
+      itemOf: (index: number, count: number): string => `item ${index} of ${count}`,
+      /** On a pass that is the second go at its item, put off after the first until the rest of the list was done. */
+      secondGo: 'second go',
+      /** On the one pass of such a stage while the main thread has not given its list yet. */
+      listPending: 'waiting for the list',
+      /** On that pass once the list came back empty and the stage was skipped. */
+      listEmpty: 'nothing on the list',
+      /** On a pass whose item the main thread put off until the rest of the list was done. */
+      putOff: 'comes back after the rest',
+      /** What the heading of a stage that runs once per item says about its list. */
+      itemsShort: (n: number): string => (n === 1 ? '1 item' : `${n} items`),
+      listAheadShort: 'list not given yet',
+      listEmptyShort: 'empty list',
       /** In front of what the head said, between the cards. */
       headSaid: 'MAIN THREAD',
       sentBack: (n: number): string => (n === 1 ? 'sent back once' : `sent back ${n} times`),
@@ -882,6 +897,16 @@ export const en = {
       roundsUntilShort: (n: number): string => `×${n}, until done`,
       /** A loop that ends as soon as the head decides there is nothing left to do. */
       untilDone: 'or fewer, if the main thread says it is done',
+      /** A stage that runs once for each item of a list the main thread gives as it begins, rather than a number of times. */
+      perItem: 'once per item of a list',
+      /** The same in the outline, under the stage's name. */
+      perItemShort: 'per item',
+      /** The list such a stage runs once per item of: what its item is called in the prompts, and what the list is. */
+      listLabel: 'THE LIST',
+      itemName: 'name',
+      listHint:
+        'What the list is and what one item of it looks like. The main thread gives the whole list as the stage begins, and the stage runs once for each item.',
+      itemNote: (name: string): string => `Each pass gets its own item wherever a prompt says [[${name}]] - it needs no slot.`,
       cards: 'CARDS',
       addCard: 'Add a card',
       addCardHere: 'Add a card to this stage',
@@ -920,6 +945,13 @@ export const en = {
       duplicateInput: (name: string): string => `Two questions are both called ${name}.`,
       duplicateSlot: (card: string, name: string): string => `${card}: two slots are both called ${name}.`,
       badInputName: (name: string): string => `"${name}" is not a name - use letters, digits, - and _.`,
+      badItemName: (stage: string, name: string): string =>
+        `${stage}: "${name}" is not a name for the item - use letters, digits, - and _.`,
+      noItemList: (stage: string): string => `${stage}: nothing says what the list is.`,
+      itemSlotClash: (card: string, name: string): string =>
+        `${card}: the slot ${name} has the name of the stage's item, which the panel fills itself.`,
+      unusedItem: (stage: string, name: string): string =>
+        `${stage}: no prompt writes [[${name}]], so every pass is told the same.`,
       badSlotName: (card: string, name: string): string =>
         `${card}: "${name}" is not a name - use letters, digits, - and _.`,
     },
