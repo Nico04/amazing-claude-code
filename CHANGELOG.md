@@ -9,6 +9,12 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.39] - 2026-10-14
+
+- Added: a stage of a scenario can run once for each item of a list instead of a set number of times. Pick "once per item of a list" under the stage's RUNS, say what the list is, and write [[name]] in the cards where each pass's item goes. When the stage begins, the main thread gives the list once, and the stage gets exactly one pass per item, named after it: the road shows as many stops as there are items, the timeline says "item 3 of 7", and the stage's heading says how long the list is. Before, work over a list was a stage set to go round up to ten times, with the main thread picking "the next one" before every pass: a list longer than ten lost its tail without a word, a pass spent going back to an item was a pass the last item did not get, and nothing on the screen said how many items there were.
+- Added: the main thread can put an item of such a list off when something that passes has stopped it, for example a service that asked to sign in again. The item comes back once, as a second go at the end of the stage, and that go is told what the first one ran into. An empty list skips the stage, and a list of more than 50 items stops the run and says so rather than being cut short.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.38] - 2026-10-14
 
 - Fixed: typing Chinese after a paste added a stray Latin letter in front of the word: "wocao" came out as "w我草" (reported from IntelliJ IDEA on a Mac). It happened when something was already typed before the paste. The paste left an empty piece of text behind the pasted block, and next to it the embedded browser lost the word being composed after its first letter, kept that letter as text and started the word again behind it. Pastes no longer leave anything empty behind, so the word composes in one go.
@@ -1008,7 +1014,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.38...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.39...HEAD
+[0.13.39]: https://github.com/crmapache/amazing-claude-code/compare/0.13.38...0.13.39
 [0.13.38]: https://github.com/crmapache/amazing-claude-code/compare/0.13.37...0.13.38
 [0.13.37]: https://github.com/crmapache/amazing-claude-code/compare/0.13.36...0.13.37
 [0.13.36]: https://github.com/crmapache/amazing-claude-code/compare/0.13.35...0.13.36
