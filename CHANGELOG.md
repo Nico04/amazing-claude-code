@@ -9,6 +9,14 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.42] - 2026-10-16
+
+- Added: when you choose another account in the middle of a turn, every tab that was working carries on by itself on the new account. Before, each of them stood still under "Stopped to switch account" until you wrote "carry on" in it: the agent saw only an interrupted request and took it for yours.
+- Added: when the usage limit stops a turn, the tab carries on by itself 30 seconds after the five-hour window resets. A line at the end of the feed says when, with a "Don't carry on" button, on the phone too; saying no keeps what you queued for the reset rather than dropping it. Moving the tab to an account with room carries it on at once. A limit that resets in days is not waited out, and after three refused tries in a row the tab is left to you.
+- Added: when Claude Code is restarted under a conversation while its agents work in the background (an account switch, a new MCP server), the agent is told they were lost and to start again what it still needs. Before, it went on waiting for reports that were never coming.
+- These messages are written in the panel's language and are marked PANEL rather than YOU, with the reason on hover. They stay marked when the conversation is opened from the history, and the search leaves them out.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.41] - 2026-10-16
 
 - Changed: an answer appears character by character again, each character fading in place, instead of a whole word at a time as in 0.13.40. The text still keeps pace with the answer as it arrives.
@@ -1028,7 +1036,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.41...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.42...HEAD
+[0.13.42]: https://github.com/crmapache/amazing-claude-code/compare/0.13.41...0.13.42
 [0.13.41]: https://github.com/crmapache/amazing-claude-code/compare/0.13.40...0.13.41
 [0.13.40]: https://github.com/crmapache/amazing-claude-code/compare/0.13.39...0.13.40
 [0.13.39]: https://github.com/crmapache/amazing-claude-code/compare/0.13.38...0.13.39
