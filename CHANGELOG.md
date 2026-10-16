@@ -9,6 +9,15 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.40] - 2026-10-16
+
+- Added: a tab closed by mistake opens again with Cmd+Shift+T on a Mac and Ctrl+Shift+T elsewhere, as in a browser. The next press brings back the tab closed before it, up to twenty back, and any tab works: a conversation, a fork, the statistics, the scenarios, a run being watched. The tab comes back where it stood on the strip, with what was typed in its field, its model, effort and mode, and its forks under it again. The same list is at the top of the history screen as "Recently closed", where a click brings back that very tab. Closed conversations are remembered across a restart of the IDE. Messages that were queued in a tab closed while it worked come back too, and wait for your next message rather than going off on their own: the turn they were queued behind was stopped by the close. On Windows and Linux a new tab moves from Ctrl+Shift+T to Ctrl+T, so the pair is the one browsers use.
+- Added: the search window's tabs can be switched from the keyboard. Cmd+Option+1, 2 and 3 open This chat, All chats and Ask Claude (Ctrl+Alt with the digit off a Mac), and the IDE's next and previous tab keys step through them while the window is open. The tooltips and the cheat sheet in Settings name these keys, as well as the ones for Match case and Whole words. A character typed with the right Alt key, such as @ or # on a Spanish or French keyboard, still goes into the search field.
+- Fixed: undoing a turn's changes to a file often refused with "Changed since, left as is", although nobody had touched the file after the turn. It happened whenever the file was changed by more than the agent's own edits: a formatter the project runs after every edit, a script or sed the agent ran in the same turn, or Claude Code adding fields to a memory file it wrote. Now each file the turn changed is checked against the disk when the turn ends, and its row in the list undoes what the turn really did to it, with figures that match the file. A file is only ever put back to the copy Claude Code kept for that very turn, so an undo never takes back the work of an earlier turn as well.
+- Fixed: a phone that was offline while a conversation was cleared, or replaced by one opened from the history, came back showing the old conversation with the new one added under it. It is now shown the new conversation from its start.
+- Changed: an answer now appears word by word, each word fading in whole. Before, the text could stop in the middle of a word, so a word often appeared in two or three pieces, each animated on its own, and the pieces could wrap onto different lines while they faded in.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.39] - 2026-10-14
 
 - Added: a stage of a scenario can run once for each item of a list instead of a set number of times. Pick "once per item of a list" under the stage's RUNS, say what the list is, and write [[name]] in the cards where each pass's item goes. When the stage begins, the main thread gives the list once, and the stage gets exactly one pass per item, named after it: the road shows as many stops as there are items, the timeline says "item 3 of 7", and the stage's heading says how long the list is. Before, work over a list was a stage set to go round up to ten times, with the main thread picking "the next one" before every pass: a list longer than ten lost its tail without a word, a pass spent going back to an item was a pass the last item did not get, and nothing on the screen said how many items there were.
@@ -1014,7 +1023,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.39...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.40...HEAD
+[0.13.40]: https://github.com/crmapache/amazing-claude-code/compare/0.13.39...0.13.40
 [0.13.39]: https://github.com/crmapache/amazing-claude-code/compare/0.13.38...0.13.39
 [0.13.38]: https://github.com/crmapache/amazing-claude-code/compare/0.13.37...0.13.38
 [0.13.37]: https://github.com/crmapache/amazing-claude-code/compare/0.13.36...0.13.37
