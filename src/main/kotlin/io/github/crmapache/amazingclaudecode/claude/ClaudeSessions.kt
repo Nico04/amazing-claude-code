@@ -113,6 +113,17 @@ internal class ClaudeSessions(
      * fired there: said twice, the queue drains twice.
      */
     private val onMoved: (sessionId: String) -> Unit = {},
+    /**
+     * A tab's process was replaced while the tab stood idle - a quiet move, a renewal, a restart - and the new
+     * one is in the register now.
+     *
+     * Nobody speaks for the tab on these roads: no turn ended, so no status goes out. Yet this is the moment a
+     * "carry on" can be owed - the background agents that died with the old process, a limit wait that the
+     * move to another account has just ended (see [carryOns]).
+     */
+    private val onReplacedQuietly: (sessionId: String) -> Unit = {},
+    /** What the panel owes a tab has changed - read it anew with [carryOnOf] (see CarryOns.onChange). */
+    private val onCarryOnChanged: (sessionId: String) -> Unit = {},
 ) : Disposable {
 
     private val sessions = ConcurrentHashMap<String, ClaudeSession>()
@@ -340,7 +351,8 @@ internal class ClaudeSessions(
      * minutes, and a conversation billed all that time to the account the person has just left is not
      * what pressing Select says. Nothing written is lost by it: the CLI closes the interrupted call and
      * puts a "[Request interrupted by user]" line into the transcript, so the process raised on the new
-     * account resumes onto everything that was said.
+     * account resumes onto everything that was said - and is then told to carry on, because that line is
+     * all the agent sees of the stop, and it reads as the person's (see [carryOns]).
      *
      * Unless the account chosen is the one the tab is already on under another row - the CLI's own
      * sign-in holding the very account of an added row, which is what a merge leaves behind (see
@@ -414,6 +426,57 @@ internal class ClaudeSessions(
      * to happen before the conversation says anything else.
      */
     private val pendingRenewals = ConcurrentHashMap.newKeySet<String>()
+
+    /**
+     * The "carry on" each tab is owed - see CarryOns.
+     *
+     * An account switch's is marked at the interrupt rather than when the move lands, because the interrupt is
+     * the fact. A switch changed back inside the eight seconds voids the move and not the stop: that has
+     * already gone to the CLI, and the feed under the turn says "Stopped to switch account" all the same.
+     *
+     * Dropped by everything that ends what there was to carry on and runs through here: a rewind of the
+     * conversation, the tab closed or given another conversation. A person's Stop or kill says no to the words
+     * and keeps a limit's wait for the queue (see CarryOns.cancel). A person's own message drops it too, at the
+     * hub, which is the one that knows a message of theirs from the panel's (see ClaudeSessionHub.deliverPrompt).
+     */
+    private val carryOns = CarryOns(onChange = { sessionId -> onCarryOnChanged(sessionId) })
+
+    /** What this tab is owed now, settled - null when nothing is or it is not due yet (see CarryOns.take). */
+    fun takeCarryOn(sessionId: String, now: Long = System.currentTimeMillis()): CarryOns.Owed? =
+        carryOns.take(sessionId, now)
+
+    /** The tabs whose "carry on" is due at [now] - see CarryOns.due. */
+    fun dueCarryOns(now: Long): List<String> = carryOns.due(now)
+
+    /** What this tab is owed, due or not - see CarryOns. */
+    fun carryOnOf(sessionId: String): CarryOns.Owed? = carryOns.of(sessionId)
+
+    /** The "carry on" the panel said last in this tab, while nobody else has spoken there since. */
+    fun lastCarryOn(sessionId: String): CarryOns.Owed? = carryOns.lastSaid(sessionId)
+
+    fun oweCarryOn(sessionId: String, owed: CarryOns.Owed) {
+        // Only for a tab there is: a note about one closed a moment ago would be found by a tab opened under
+        // the same id later.
+        if (sessions.containsKey(sessionId)) carryOns.owe(sessionId, owed)
+    }
+
+    /** [next] in place of [read], only if [read] still stands - see CarryOns.replace. */
+    fun replaceCarryOn(sessionId: String, read: CarryOns.Owed, next: CarryOns.Owed?): Boolean =
+        carryOns.replace(sessionId, read, next)
+
+    fun dropCarryOn(sessionId: String) {
+        carryOns.drop(sessionId)
+    }
+
+    /** The person said no to the carry-on - see CarryOns.cancel. */
+    fun cancelCarryOn(sessionId: String) {
+        carryOns.cancel(sessionId)
+    }
+
+    /** A turn of this tab went through - see CarryOns.answered. */
+    fun carryOnAnswered(sessionId: String) {
+        carryOns.answered(sessionId)
+    }
 
     /**
      * The deadline under a move that is waiting for a turn to stop.
@@ -528,6 +591,9 @@ internal class ClaudeSessions(
             // account resumes onto everything that was said.
             if (pendingAccounts.put(sessionId, accountId) == accountId) return
 
+            // Nobody asked for this stop, so nobody will ask for the rest of the turn either: the work is
+            // carried on by the panel once the tab stands on the new account (see [carryOns]).
+            carryOns.owe(sessionId, CarryOns.Owed(CarryOns.Reason.ACCOUNT_SWITCH))
             onMoveStopping(sessionId)
             session.interrupt()
             armForcedMove(sessionId, accountId)
@@ -581,6 +647,10 @@ internal class ClaudeSessions(
         } finally {
             moving.remove(sessionId)
         }
+
+        // A move that cut a turn short is spoken for by the end of that turn, or by the deadline under it (see
+        // [onMoved]); every other one is not, and it may be exactly what a "carry on" was waiting for.
+        if (!told) onReplacedQuietly(sessionId)
     }
 
     /**
@@ -786,6 +856,9 @@ internal class ClaudeSessions(
         files: Boolean,
         onOutcome: (Rewind.Outcome) -> Unit,
     ) {
+        // What was to be carried on is about to be cut back with the rest, or kept by somebody who has just
+        // shown they are here and deciding (see [carryOns]).
+        if (conversation) carryOns.drop(sessionId)
         awake(sessionId).rewind(target, lastSeen, conversation, files, onOutcome)
     }
 
@@ -794,13 +867,20 @@ internal class ClaudeSessions(
         sessions[sessionId]?.cancelAside(id)
     }
 
-    /** Interrupting a turn: the conversation stays alive, unlike closing the session. */
+    /**
+     * Interrupting a turn: the conversation stays alive, unlike closing the session.
+     *
+     * The person's Stop - a move interrupts the session itself (see [moveTo]) - so whatever the panel was
+     * going to carry on here is now stopped by somebody who meant it (see [carryOns]).
+     */
     fun interrupt(sessionId: String, onTimeout: () -> Unit = {}) {
+        carryOns.cancel(sessionId)
         // The conversation is already gone - the panel will show it as free anyway, nothing to explain.
         sessions[sessionId]?.interrupt(onTimeout)
     }
 
     fun stop(sessionId: String) {
+        carryOns.cancel(sessionId)
         sessions[sessionId]?.stop()
     }
 
@@ -950,6 +1030,8 @@ internal class ClaudeSessions(
         // was asked for: the MCP screen questions the process next, and questioning the one that is
         // being replaced answers with the very list the person has just changed.
         then()
+        // And the agents that worked in the background are gone with the old process (see [onReplacedQuietly]).
+        onReplacedQuietly(sessionId)
 
         return raised
     }
@@ -1187,6 +1269,8 @@ internal class ClaudeSessions(
         pendingAccounts.remove(sessionId)
         pendingRenewals.remove(sessionId)
         forcedMoves.remove(sessionId)?.cancel(false)
+        // What the tab was to be told to carry on, unless this close IS the move it waits for (see [carryOns]).
+        if (!goesOn) carryOns.drop(sessionId)
 
         sessions.remove(sessionId)?.let { session ->
             if (!goesOn) session.mute()

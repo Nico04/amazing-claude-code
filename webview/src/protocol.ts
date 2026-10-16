@@ -896,6 +896,12 @@ export interface ScenarioRoadmapStop {
 }
 
 /**
+ * Why the IDE said a message into a conversation itself (see CarryOns.Reason in the plugin): an account switch
+ * cut the turn short, a limit stopped it and has since let go, or a restart lost the agents in its background.
+ */
+export type CarryOnReason = 'accountSwitch' | 'limit' | 'restart'
+
+/**
  * An occasion to call the person with a sound. The shell knows exactly these names: each has a file of
  * its own there (see AlertSounds.kt).
  */
@@ -1472,6 +1478,11 @@ type ShellMessageBody =
       steering?: boolean
       /** What the editor showed when the message was sent, as the IDE read it - the line under the card. */
       editor?: EditorRef
+      /**
+       * The IDE said this itself rather than passing on somebody's message, and why - see UserItem.auto and
+       * ClaudeSessionHub.carryOn.
+       */
+      auto?: CarryOnReason
     }
   /**
    * A phone's message has arrived, said to that phone alone (see SessionCommands.takeOnce in the plugin).
@@ -1481,6 +1492,13 @@ type ShellMessageBody =
   | { type: 'promptReceived'; sessionId: string; id: string }
   | { type: 'askResolved'; sessionId: string; id: string; outcome: 'answered' | 'dismissed' | 'withdrawn' }
   | { type: 'status'; sessionId: string; state: AgentStatus }
+  /**
+   * When this tab goes on by itself, the IDE saying "carry on" into it (see ClaudeSessionHub.carryOn) - a limit
+   * refused its turn, and the work resumes once the window resets. No `until`: it no longer will (the wait was
+   * spent, cancelled, or somebody spoke). `guess`: the CLI did not say when the limit resets, and `until` is when
+   * the panel tries. Not `at`: that is the journal's stamp of when the message was written (see SessionMessages).
+   */
+  | { type: 'carryOnWait'; sessionId: string; until?: number; guess?: boolean }
   /**
    * The tab's name from the first message - not straight away: while the LLM thinks, the tab already
    * carries a heuristic title (see deriveSessionTitle), and this message merely replaces it with a more
@@ -2282,6 +2300,11 @@ export type WebviewMessage =
     }
   /** The cross on a queued message: it is not going to be said after all. */
   | { type: 'unqueuePrompt'; sessionId: string; id: string }
+  /**
+   * "Don't carry on" under a limit's wait (see carryOnWait): the tab is left as it stands, and the IDE says
+   * so to every screen by sending the wait again without a moment.
+   */
+  | { type: 'cancelCarryOn'; sessionId: string }
   /**
    * The pencil on a queued message: take it out and hand it back to this window's field, whole (see
    * queuedTaken). Out of the queue while it is being edited, so the end of the turn cannot fire it half-way.

@@ -1385,6 +1385,28 @@ export const en = {
   feed: {
     empty: { title: 'Ask Claude about this project', hint: '@ for files · / for commands' },
     you: 'YOU',
+    /**
+     * Over a message the panel said itself instead of YOU - see UserItem.auto. The hint says why the work had
+     * stopped, and that nobody would have come back to say "carry on".
+     */
+    auto: {
+      label: 'PANEL',
+      /** Over the label, the reason - one for each road (see CarryOnReason). */
+      why: {
+        accountSwitch: 'Not written by you: switching the account cut the turn short, and the panel carried it on by itself',
+        limit: 'Not written by you: the usage limit stopped the turn, and the panel carried it on once it could go on',
+        restart: 'Not written by you: Claude Code was restarted under the conversation and its background agents were lost, so the panel told it to carry on',
+      },
+    },
+    /**
+     * The row at the end of the feed while the IDE waits out a limit to carry the conversation on by itself
+     * (see CarryOnRow) - PANEL stands before these words, so they are the panel's own sentence.
+     */
+    carryOn: {
+      planned: (clock: string): string => `Carries this conversation on by itself at ${clock}, once the limit resets`,
+      guessed: (clock: string): string => `Tries to carry this conversation on by itself at ${clock} - the limit did not say when it resets`,
+      cancel: "Don't carry on",
+    },
     /** The button that appears once the feed has been scrolled away from the newest message. */
     jumpToLatest: 'Jump to latest',
     copyBlock: 'Copy this block',

@@ -102,7 +102,8 @@ paths:
 - `TitleSource` (`'user'`), `nameSession`, `titleSource` у `SearchHit` - tab-names
 - `usageStats`, `usageStatsReport`, `setUsageStats`, `usageStatsPreview`, `stat` с `kind: 'feature'` - usage-stats
 - `rewind`, `rewindPreview`, `rewindOutcome`, `rewound`, `RewindCode`, `RewindRefusal`, `uuid` у `prompt`/`promptEcho` - rewind;
-  `before` у `newSession`, `ForkSeamEvent` (`fork_seam`) - fork-tabs
+  `before` у `newSession`, `ForkSeamEvent` (`fork_seam`) - fork-tabs; `auto` у `promptEcho`, `CarryOnReason`,
+  `carryOnWait`, `cancelCarryOn` - accounts
 
 **`webview/src/feed/build.ts`** (редьюсер ленты):
 - `TodoWrite`/`TaskCreate`/`TaskUpdate`, `tasksCarried`, `pendingTasks` - task-list
@@ -119,6 +120,7 @@ paths:
 - `editorOfBlocks` в `addReplayedPrompt`, `editor` у действия `prompt` - editor-context
 - `applyRewound`, `case 'rewound'`, `uuid`/`steering` у действия `prompt` - rewind
 - `case 'fork_seam'` (шов форка, `CheckpointItem.source`) - fork-tabs
+- `CARRY_ON` в `addReplayedPrompt`, `auto` у действия `prompt`, `case 'carryOnWait'` - accounts
 - `noteChanges` в `case 'user'`, `closeChanges` в `result`, тихой остановке, смерти и подмене процесса, `prompt`,
   `addReplayedPrompt`, `applyReplayFinished`; `turnChanges` в `/clear` - changed-files
 - `case 'changesReverted'` (итог отката файлов хода) - changed-files
@@ -127,7 +129,7 @@ paths:
 
 **`webview/src/feed/types.ts`** и **`webview/src/feed/panelState.ts`**:
 - `DraftEdit` - prompt-improver; `ErrorItem.signIn` - expired-sign-in; `ErrorItem.sampling` - setting-sources;
-  `ModelStuckItem` - models
+  `ModelStuckItem` - models; `UserItem.auto` (подпись PANEL), `PanelState.carryOn` - accounts
 - `ClosedReason`, `ToolMeta`, `CompactOutcome`, `DetailNote`, `PermItem.mode`, `LimitItem.window`,
   `MetaItem.stats` («Stopped by you» не переводится) - i18n; `movedAccount` - accounts
 - `CompactItem.startedAt`, `stintStartedAt`, `pausedMs` - turn-lifecycle; `TodoItem.replayed` - history
@@ -136,7 +138,7 @@ paths:
 - `earlierPages`, `oldestEventUuid`, `reachedStart` - history; `ownSwapDue`, `stuckPick` - models
 - `ChangesItem`, `FileChange`, `PanelState.turnChanges` - changed-files
 
-**`webview/src/components/Feed.tsx`**: `holdPressed` - paste; `case 'changes'`, `closedChanges`, `projectRoot` - changed-files; `pinsHeight` - pins; поправка прокрутки на
+**`webview/src/components/Feed.tsx`**: `carryOn`/`onCancelCarryOn` (строка плана) - accounts; `holdPressed` - paste; `case 'changes'`, `closedChanges`, `projectRoot` - changed-files; `pinsHeight` - pins; поправка прокрутки на
 `earlierPages` - history; `paint`, `PAINT_INTERVAL_MS`, `goToRow`, фокус находки - search;
 `onCopy` - clipboard и markdown (формулы уносятся исходником).
 
@@ -176,6 +178,8 @@ panel-keys; `answerClosedTabs` (зеркало полосы и закрытые 
 - `changeModel`, `emitLive` для усилия - models
 - `refreshInit` (свежий `init` подключившемуся) - remote-access
 - `INIT_MARKER` - fork-tabs и history; `RESULT_MARKER`, `everyHub`, `accounts`, `accountsChangedElsewhere` - accounts
+- `carryOn`, `sayNext` и `PassGate` за `runQueued` (один проход на вкладку), `auto` у `deliverPrompt`, `noteLimitRefusal`, `afterQuietSwap`,
+  `carryOnChanged`, `carryOnWhatIsDue`, `cancelCarryOn`, `RESTART` в `onProcessDropping` - accounts (работа, остановленная не человеком)
 - `settingSources` у `conversations`, `sendAccountOutranked` - setting-sources
 - `resumeConversation`, сообщение `conversation` в `attach`/`resetJournal` - history
 - `PROJECT_ORDER`, `broadcastProject` - remote-access и calm-colors; `indicators` в нём - indicators;

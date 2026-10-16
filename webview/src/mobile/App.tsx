@@ -3005,6 +3005,9 @@ export const App = () => {
                 id,
               })
             }
+            onCancelCarryOn={() =>
+              command(screen.agentId, screen.projectKey, { type: 'cancelCarryOn', sessionId: screen.sessionId })
+            }
             onStop={() =>
               command(screen.agentId, screen.projectKey, { type: 'stop', sessionId: screen.sessionId })
             }

@@ -273,6 +273,8 @@ export const applyMessage = (
         ...(message.editor ? { editor: message.editor } : {}),
         // The name it went into the conversation under - what a rewind from here names it by.
         ...(message.uuid ? { uuid: message.uuid } : {}),
+        // Said by the desk's IDE itself, PANEL over it as at the desk (see UserItem.auto).
+        ...(message.auto ? { auto: message.auto } : {}),
       })
 
     // The conversation was cut back - from the desk or from here (see the rewound message).
@@ -301,6 +303,10 @@ export const applyMessage = (
      */
     case 'turnStopped':
       return collect({ kind: 'stoppedForAccount' })
+
+    // The desk's plan to carry this conversation on after a limit - the same row and the same "no" as there.
+    case 'carryOnWait':
+      return collect({ kind: 'carryOnWait', at: message.until, guess: message.guess })
 
     case 'error':
       return collect({ kind: 'error', message: message.message })

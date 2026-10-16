@@ -1084,6 +1084,19 @@ export const fr: Dict = {
   feed: {
     empty: { title: 'Pose une question à Claude sur ce projet', hint: '@ pour les fichiers · / pour les commandes' },
     you: 'TOI',
+    auto: {
+      label: 'PANNEAU',
+      why: {
+        accountSwitch: "Ce n'est pas toi qui l'as écrit : le changement de compte a interrompu le tour, et le panneau l'a repris tout seul",
+        limit: "Ce n'est pas toi qui l'as écrit : la limite d'utilisation a arrêté le tour, et le panneau l'a repris tout seul dès que possible",
+        restart: "Ce n'est pas toi qui l'as écrit : Claude Code a redémarré sous la conversation, ses agents en arrière-plan ont été perdus, et le panneau lui a dit de reprendre",
+      },
+    },
+    carryOn: {
+      planned: (clock: string): string => `Reprendra cette conversation tout seul à ${clock}, une fois la limite réinitialisée`,
+      guessed: (clock: string): string => `Essaiera de reprendre cette conversation tout seul à ${clock} : la limite n'a pas dit quand elle se réinitialise`,
+      cancel: 'Ne pas reprendre',
+    },
     jumpToLatest: 'Aller au plus récent',
     copyBlock: 'Copier ce bloc',
     copyReply: 'Copier toute la réponse',

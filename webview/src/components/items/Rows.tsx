@@ -5,6 +5,7 @@ import { compactProgress } from '../../feed/compact'
 import { plainLine } from '../../feed/markdown'
 import { formatTokens } from '../../feed/build'
 import { limitWindowName } from '../../feed/usage'
+import { carryOnShown } from '../../feed/carryOn'
 import { useNow } from '../../hooks/useNow'
 import { useT } from '../../i18n'
 import type { Dict } from '../../i18n/en'
@@ -442,6 +443,55 @@ export const LimitRow = ({ item }: { item: LimitItem }) => {
         <span className={s.limitWhen}>{t.feed.limit.resetAt(resetClock(item.resetsAt), left)}</span>
       ) : null}
       <div className={s.spacer} />
+    </div>
+  )
+}
+
+/**
+ * When the IDE carries this conversation on by itself (see PanelState.carryOn): a limit refused the turn,
+ * and the work resumes once the window resets - or at once, if the tab is moved to an account with room.
+ *
+ * Said where the next turn will begin rather than on the limit's own row: it is about what comes next, and
+ * the row about the limit goes away at the reset, which is exactly when this happens. Not a warning colour:
+ * nothing is wrong, the panel is saying what it will do. And a way to say no, because what it will do is
+ * start work in a conversation the person may have walked away from.
+ */
+export const CarryOnRow = ({
+  carryOn,
+  running,
+  onCancel,
+}: {
+  carryOn: { at: number; guess: boolean }
+  /** A turn is running - the row stands down over it (see carryOnShown). */
+  running: boolean
+  /** Absent where the screen cannot answer the IDE - then the row only tells. */
+  onCancel?: () => void
+}) => {
+  const t = useT()
+  // The moment is the IDE's clock, so it is measured against the IDE's clock - a phone's runs apart (see useNow).
+  const clockNow = useNow()
+  const [now, setNow] = useState(clockNow)
+
+  // The same tick as the limit's row beside it: enough to stand down within seconds of the moment.
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(clockNow()), LIMIT_TICK_MS)
+    return () => window.clearInterval(timer)
+  }, [clockNow])
+
+  if (!carryOnShown(carryOn, running, now)) return null
+
+  const clock = resetClock(carryOn.at)
+
+  return (
+    <div className={s.carryOn}>
+      <span className={s.carryOnLabel}>{t.feed.auto.label}</span>
+      <span className={s.carryOnText}>{carryOn.guess ? t.feed.carryOn.guessed(clock) : t.feed.carryOn.planned(clock)}</span>
+      <div className={s.spacer} />
+      {onCancel ? (
+        <button type="button" className={s.carryOnCancel} onClick={onCancel}>
+          {t.feed.carryOn.cancel}
+        </button>
+      ) : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 package io.github.crmapache.amazingclaudecode.search
 
+import io.github.crmapache.amazingclaudecode.claude.CarryOnWords
 import io.github.crmapache.amazingclaudecode.claude.ClaudeHistory
 import java.time.Instant
 import kotlinx.serialization.json.Json
@@ -120,6 +121,12 @@ internal object TranscriptText {
             .replace(BLANK_LINES, "\n\n")
             .trim()
 
+        // The panel's "carry on", said in the person's name and not by them (see CarryOnWords): one in every tab
+        // an account switch or a limit stopped, and a search for "limit" would find little else. Asked after the
+        // CLI's reminders are off, as the feed asks it (see CARRY_ON in feed/build.ts): a reminder put ahead of the
+        // words would hide the tag from a look at the raw start.
+        if (words.startsWith(CARRY_ON)) return null
+
         return words.takeIf { it.isNotEmpty() }
     }
 
@@ -140,6 +147,7 @@ internal object TranscriptText {
     private const val SIDECHAIN = "\"isSidechain\":true"
     private const val NO_CONTENT = "(no content)"
     private const val INTERRUPTED = "[Request interrupted"
+    private const val CARRY_ON = "<${CarryOnWords.TAG}"
 
     /**
      * How much of one message is kept. A pasted log runs to a hundred kilobytes, and its hundredth

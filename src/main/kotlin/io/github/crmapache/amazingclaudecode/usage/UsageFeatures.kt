@@ -153,6 +153,7 @@ internal object UsageFeatures {
         "prompt",
         "queuePrompt",
         "unqueuePrompt",
+        "cancelCarryOn",
         "reorderQueue",
         "permissionDecision",
         "planDecision",

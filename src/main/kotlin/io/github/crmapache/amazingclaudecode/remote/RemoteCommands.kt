@@ -35,6 +35,13 @@ internal object RemoteCommands {
         "queuePrompt",
         "unqueuePrompt",
         "reorderQueue",
+        /**
+         * "Don't carry on" under a limit's wait - narrower than everything above: it only takes back a message
+         * the panel itself was going to say into this conversation (see ClaudeSessionHub.cancelCarryOn). A
+         * limit running out at night is exactly what a phone sees first, and saying no to the morning's
+         * carry-on from it is the point.
+         */
+        "cancelCarryOn",
         "permissionDecision",
         "planDecision",
         "askAnswer",

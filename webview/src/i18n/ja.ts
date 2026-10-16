@@ -1075,6 +1075,19 @@ export const ja: Dict = {
   feed: {
     empty: { title: 'このプロジェクトについて Claude に聞く', hint: '@ でファイル · / でコマンド' },
     you: 'あなた',
+    auto: {
+      label: 'パネル',
+      why: {
+        accountSwitch: 'あなたが書いたものではありません。アカウントの切り替えでターンが途中で止まったため、パネルが自動で続けました',
+        limit: 'あなたが書いたものではありません。利用上限でターンが止まったため、続けられるようになった時点でパネルが自動で続けました',
+        restart: 'あなたが書いたものではありません。会話の下で Claude Code が再起動してバックグラウンドのエージェントが失われたため、パネルが続けるよう伝えました',
+      },
+    },
+    carryOn: {
+      planned: (clock: string): string => `制限がリセットされる ${clock} に、この会話を自動で続けます`,
+      guessed: (clock: string): string => `${clock} に、この会話を自動で続けてみます（制限のリセット時刻は分かっていません）`,
+      cancel: '続けない',
+    },
     jumpToLatest: '最新へ移動',
     copyBlock: 'このブロックをコピー',
     copyReply: '返信全体をコピー',

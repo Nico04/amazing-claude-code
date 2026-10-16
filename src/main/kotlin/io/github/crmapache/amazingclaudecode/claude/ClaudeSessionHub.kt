@@ -11,6 +11,7 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountDesk
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountsWatch
+import io.github.crmapache.amazingclaudecode.claude.accounts.ClaudeAccounts
 import io.github.crmapache.amazingclaudecode.editor.ChangeRevert
 import io.github.crmapache.amazingclaudecode.editor.DiskRefresh
 import io.github.crmapache.amazingclaudecode.editor.EditorContext
@@ -22,6 +23,7 @@ import io.github.crmapache.amazingclaudecode.remote.LocalBridgeServer
 import io.github.crmapache.amazingclaudecode.remote.NotificationReasons
 import io.github.crmapache.amazingclaudecode.remote.RemoteAgent
 import io.github.crmapache.amazingclaudecode.search.SearchDesk
+import io.github.crmapache.amazingclaudecode.scenario.LimitRelief
 import io.github.crmapache.amazingclaudecode.scenario.ScenarioDesk
 import io.github.crmapache.amazingclaudecode.remote.RemoteKeys
 import io.github.crmapache.amazingclaudecode.remote.RemoteState
@@ -30,6 +32,7 @@ import io.github.crmapache.amazingclaudecode.usage.UsageReporter
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.JsonObject
@@ -129,9 +132,20 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
                 sendTurnStopped(sessionId)
             },
             onProcessDropping = { sessionId ->
+                // Read before the swap is announced: the announcement is what clears the count (see
+                // SessionSnapshot). Agents working in the background die with the process without a word, and
+                // the agent that started them goes on waiting for reports that are never coming. Agents nobody
+                // has heard from for long are a stuck count rather than work (see CarryOns.helpersAtWork).
+                val held = snapshot(sessionId).get()
+                val heard = maxOf(helpersHeard[sessionId] ?: 0L, held.changedAt)
+                if (CarryOns.helpersAtWork(held.pendingAgents.isNotEmpty(), heard, System.currentTimeMillis())) {
+                    conversations.oweCarryOn(sessionId, CarryOns.Owed(CarryOns.Reason.RESTART, helpersLost = true))
+                }
                 permissions.withdrawAll(sessionId)
                 sendProcessReplaced(sessionId)
             },
+            onReplacedQuietly = { sessionId -> afterQuietSwap(sessionId) },
+            onCarryOnChanged = { sessionId -> carryOnChanged(sessionId) },
             onBorn = { sessionId, effort, model, accountId ->
                 sendEffort(sessionId, effort)
                 sendModel(sessionId, model)
@@ -972,6 +986,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             notificationListener?.invoke(sessionId, NotificationReasons.EXTRA_USAGE, "")
         }
 
+        // A limit that stopped this tab is waited out and the work carried on after it (see [noteLimitRefusal]).
+        if (!replay) noticeLimit(sessionId, line)
+
         rawListeners.forEach { it(sessionId, line, replay) }
 
         val replayFlag = if (replay) ""","replay":true""" else ""
@@ -1191,6 +1208,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         // What this conversation was waiting to say goes with it: there is nothing left to say it to.
         queued.clear(id)
         conversations.close(id)
+        forgetCarryOn(id)
         stats.noteSessionClosed(id)
         // Off the strip, and so off the list the next start brings back. What it held - its draft too - is kept with
         // the tabs closed by hand when the person closed it (see keepClosed): it outlives a restart there, and is let
@@ -1897,15 +1915,24 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         remote: Boolean,
         /** What the editor showed, as the agent reads it - a block of its own beside the text (see ClaudeSession.userMessage). */
         context: String?,
+        /**
+         * Said by the panel rather than by anybody - see [carryOn]. It is not the person writing again, so a
+         * queue held for their next turn stays held, and it is no message of theirs to count.
+         */
+        auto: Boolean = false,
     ) {
         // A fork whose inherited history is still being played in: the message goes under it, not above it.
         forkOpenings[sessionId]?.await(FORK_OPENING_WAIT_SECONDS, TimeUnit.SECONDS)
 
+        // Somebody's own words are the next thing said here, and whatever the panel was going to carry on
+        // stands behind them no more (see CarryOns) - a queued message included: it was written by a person too.
+        if (!auto) conversations.dropCarryOn(sessionId)
+
         // The turn a held queue was waiting for (see SessionQueue.hold): the person has written again, and what
         // is queued goes after this turn, as anything queued does.
-        if (queued.release(sessionId)) sendQueue(sessionId, queued.of(sessionId))
+        if (!auto && queued.release(sessionId)) sendQueue(sessionId, queued.of(sessionId))
 
-        stats.notePrompt(sessionId, text, images = images.size, remote = remote)
+        if (!auto) stats.notePrompt(sessionId, text, images = images.size, remote = remote)
 
         // A message into a conversation nobody opened a tab for.
         //
@@ -2067,15 +2094,251 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      * queued message out of a compaction - `/compact` is a turn like any other, and a message written
      * into a running one is taken by the CLI and, more often than not, silently dropped (see
      * PromptDelivery).
+     *
+     * And one pass at a time per tab (see PassGate). This is asked from several threads - the end of a turn, a
+     * quiet swap, a limit's timer, the minute round - and "is it free" and "send, which marks it busy" are two
+     * steps: two passes side by side both found the tab free, and two messages went in, the second into the turn
+     * the first had just started.
      */
-    private fun runQueued(sessionId: String) {
+    internal fun runQueued(sessionId: String, now: Long = System.currentTimeMillis()) {
+        passes.computeIfAbsent(sessionId) { PassGate() }.request(now) { at -> sayNext(sessionId, at) }
+    }
+
+    /** Each tab's gate over [runQueued]. */
+    private val passes = ConcurrentHashMap<String, PassGate>()
+
+    /** One pass of [runQueued] - what goes into the tab next, if anything, as things stand at [now]. */
+    private fun sayNext(sessionId: String, now: Long) {
         if (!freeToSay(sessionId)) return
+
+        // Work stopped for a reason that was nobody's goes on before anything queued, and before a held queue
+        // too: what was queued was written to come after that work, and this is the work finishing. Nobody would
+        // come back to say it - the stop was not theirs - so every such tab stood still until somebody went
+        // through them writing "carry on" (see CarryOns).
+        //
+        // Only into a conversation there is something of. A move of a tab that never got as far as its transcript
+        // raises a fresh one with no conversation behind it (see ClaudeSessions.moveTo), and "carry on" would send
+        // a new agent off after work it has never heard of. Asked of the tab rather than of the disk, and before
+        // anything is settled: a lookup that fails - a project in WSL whose Claude Code home is not resolved yet -
+        // must not cost the carry-on for good.
+        if (conversations.carryOnOf(sessionId)?.isDue(now) == true && conversations.conversationIdOf(sessionId) == null) {
+            conversations.dropCarryOn(sessionId)
+        }
+
+        val owed = conversations.takeCarryOn(sessionId, now)
+        if (owed != null && !owed.silent) {
+            carryOn(sessionId, owed)
+            return
+        }
+
+        // A limit still being waited out holds the queue as well: what is queued would be refused just as the
+        // turn before it was, and goes after the panel's "carry on" once the limit has reset - or, when the
+        // person said no to the carry-on, at the reset with nothing said before it (see CarryOns.cancel).
+        if (conversations.carryOnOf(sessionId)?.reason == CarryOns.Reason.LIMIT) return
+
         // Waiting for the person rather than for the turn - see SessionQueue.hold.
         if (queued.isHeld(sessionId)) return
 
         val (entry, rest) = queued.take(sessionId) ?: return
         sendQueue(sessionId, rest)
         deliverPrompt(sessionId, entry.text, entry.images, entry.echo, entry.remote, entry.context)
+    }
+
+    /**
+     * The panel's own "carry on" - see [sayNext] and CarryOns.
+     *
+     * Said in the panel's language (see CarryOnWords) and drawn as the panel's rather than the person's: the
+     * echo is marked `auto` with the reason, and every client puts PANEL over the card where it would put YOU.
+     * The agent gets the words inside a tag, which is what keeps that true for a transcript read back later.
+     */
+    private fun carryOn(sessionId: String, owed: CarryOns.Owed) {
+        val words = CarryOnWords.of(owed, IdeLanguage.inForce(ClaudePreferences.language))
+        val echo = buildJsonObject {
+            putJsonArray("tokens") {
+                addJsonObject {
+                    put("kind", "text")
+                    put("value", words)
+                }
+            }
+            putJsonArray("quotes") {}
+            put("auto", owed.reason.wire)
+        }
+
+        DiagnosticsLog.note(DiagnosticsLog.AGENT, "the panel carried a conversation on (${owed.reason.wire})")
+        deliverPrompt(sessionId, CarryOnWords.forAgent(owed.reason, words), emptyList(), echo, remote = false, context = null, auto = true)
+    }
+
+    /**
+     * The "Don't carry on" under a limit's wait: the person has seen the plan and wants none of it. The words go,
+     * the wait stays for the queue (see CarryOns.cancel); the wait's own message tells every screen the plan is
+     * off (see [carryOnChanged]).
+     */
+    fun cancelCarryOn(sessionId: String) {
+        conversations.cancelCarryOn(sessionId)
+    }
+
+    /**
+     * A tab's process was replaced while it stood idle - see ClaudeSessions.onReplacedQuietly.
+     *
+     * Two things can be owed from this moment: the background agents that died with the old process, and the
+     * end of a limit's wait - a tab moved to an account that is not refusing has nothing left to wait for.
+     */
+    private fun afterQuietSwap(sessionId: String) {
+        val owed = conversations.carryOnOf(sessionId) ?: return
+        if (owed.reason == CarryOns.Reason.LIMIT) followLimitAcross(sessionId, owed)
+
+        // Off the thread that made the swap: that is the one an account was chosen on, and what follows raises
+        // a process and writes into it - for every tab of every project at once.
+        AppExecutorUtil.getAppExecutorService().execute { runQueued(sessionId) }
+    }
+
+    /**
+     * A tab waiting out a limit has been moved to another account. The wait was about the account it left, so
+     * it is timed again by the one it is on (see CarryOns.limitAcross) - and written only over what was read
+     * here: a person who wrote into the tab meanwhile has dropped the wait, and putting it back would carry on
+     * behind their own message.
+     */
+    private fun followLimitAcross(sessionId: String, owed: CarryOns.Owed) {
+        val from = owed.account ?: return
+        val to = conversations.accountOf(sessionId)
+        // The same subscription under another row (see ClaudeAccounts.sameAccount): the same limit.
+        if (from == to || ClaudeAccounts.getInstance().sameAccount(from, to)) return
+
+        val now = System.currentTimeMillis()
+        val refused = AccountUsage.getInstance().standing(to, now).refusedUntil
+        conversations.replaceCarryOn(sessionId, owed, CarryOns.limitAcross(owed, to, refused, now))
+    }
+
+    /** The last genuine stop of a limit each tab's stream reported - the window, and when it resets. */
+    private val lastStops = ConcurrentHashMap<String, ClaudeRateLimit.Verdict>()
+
+    /**
+     * When each tab last heard from its background agents - a subagent's step, a task's progress or end (see
+     * CarryOns.helpersAtWork).
+     */
+    private val helpersHeard = ConcurrentHashMap<String, Long>()
+
+    /**
+     * What a live line says about this tab's limit and its background: the reset of a stop and the refusal that
+     * follows it, a turn that went through, a sign of the agents at work.
+     *
+     * The refusal itself carries neither the window nor the reset - the CLI says those in the limit event
+     * before it (see AgentStream.isLimitRefusal), so the last stop is remembered until the refusal comes.
+     */
+    private fun noticeLimit(sessionId: String, line: String) {
+        if (line.contains(TASK_EVENT) || line.contains(SUBAGENT_LINE)) helpersHeard[sessionId] = System.currentTimeMillis()
+
+        ClaudeRateLimit.of(line)?.let { verdict -> if (verdict.stopped) lastStops[sessionId] = verdict }
+        when {
+            AgentStream.isLimitRefusal(line) -> noteLimitRefusal(sessionId)
+            // A turn that went through: whatever the panel said before it worked, and the next limit is a fresh
+            // one rather than another refusal of the same carry-on (see CarryOns.answered).
+            AgentStream.isTurnResult(line) && !line.contains(ERROR_RESULT) -> conversations.carryOnAnswered(sessionId)
+        }
+    }
+
+    /**
+     * The limit refused this tab's turn: the work is carried on by itself once the window resets - or as soon
+     * as the tab stands on an account with room (see [followLimitAcross]). The five-hour window is the usual
+     * case, and the one this was asked for: a long turn running into it at night used to stand there until
+     * morning, with the window long since open again. When - and whether at all - is CarryOns.limitWait.
+     */
+    internal fun noteLimitRefusal(sessionId: String, now: Long = System.currentTimeMillis()) {
+        val account = conversations.accountOf(sessionId)
+        val said = lastStops.remove(sessionId)?.resetsAt?.takeIf { it > now }
+        val known = said ?: AccountUsage.getInstance().standing(account, now).refusedUntil
+        val previous = conversations.lastCarryOn(sessionId)
+
+        val wait = CarryOns.limitWait(now, known, previous, account)
+        if (wait == null) {
+            if (previous?.reason == CarryOns.Reason.LIMIT && previous.tries + 1 >= CarryOns.LIMIT_TRIES) {
+                DiagnosticsLog.note(DiagnosticsLog.AGENT, "the limit kept refusing the panel's carry-on - left to the person")
+            }
+            return
+        }
+
+        conversations.oweCarryOn(sessionId, wait)
+    }
+
+    /**
+     * What the hub kept about a closed tab's carry-on - its timer, its gate, what it heard - let go with the tab
+     * (see [closeSession]). The conversation dropped what it owed a moment before (see ClaudeSessions.close).
+     */
+    private fun forgetCarryOn(sessionId: String) {
+        carryOnClocks.remove(sessionId)?.cancel(false)
+        shownWaits.remove(sessionId)
+        carryOnLocks.remove(sessionId)
+        passes.remove(sessionId)
+        helpersHeard.remove(sessionId)
+        lastStops.remove(sessionId)
+    }
+
+    /** What wakes each tab waiting out a limit (see [carryOnChanged]). */
+    private val carryOnClocks = ConcurrentHashMap<String, ScheduledFuture<*>>()
+
+    /** The wait each tab's screens were last told about, so that a change nobody can see is not said. */
+    private val shownWaits = ConcurrentHashMap<String, Long>()
+
+    /** Each tab's lock over [carryOnChanged]. */
+    private val carryOnLocks = ConcurrentHashMap<String, Any>()
+
+    /**
+     * What the panel owes a tab has changed: a wait is wound or let go, and every screen is told when the tab
+     * goes on by itself - the plan has to be visible, and it has to be possible to say no to it.
+     *
+     * What is owed is read here, under the tab's own lock, rather than handed in by whoever changed it. Changes
+     * come from several threads at once, and a value handed along could be drawn after a newer one: a wait dropped
+     * a moment ago drawn back on every screen. Read under the lock, the last of these to run tells the truth.
+     */
+    private fun carryOnChanged(sessionId: String) {
+        synchronized(carryOnLocks.computeIfAbsent(sessionId) { Any() }) {
+            val now = System.currentTimeMillis()
+            val owed = conversations.carryOnOf(sessionId)
+            val due = owed?.dueAt(now)
+
+            carryOnClocks.remove(sessionId)?.cancel(false)
+            // Wound for a silent wait too: it is the queue that goes at its end.
+            if (due != null) {
+                carryOnClocks[sessionId] = AppExecutorUtil.getAppScheduledExecutorService().schedule(
+                    {
+                        // At the moment it was wound for, whatever the clock says: a timer may come a hair early,
+                        // and a wait found "not yet" here would have nothing left to wake it but the minute round.
+                        runCatching { runQueued(sessionId, now = due) }
+                            .onFailure { thisLogger().warn("A tab could not carry on after its limit", it) }
+                    },
+                    due - now,
+                    TimeUnit.MILLISECONDS,
+                )
+            }
+
+            sendCarryOnWait(sessionId, owed?.shownAt(now), owed?.guess == true)
+        }
+    }
+
+    /**
+     * When this tab goes on by itself - or that it no longer will - to every screen (see the carryOnWait
+     * message in protocol.ts). Into the journal: a panel reloaded during a wait of hours must still show it.
+     *
+     * The moment travels as `until`, never as `at`: the journal stamps every message with its own `at`, the moment
+     * it was written, and a phone reads that one as the time the message happened (see mobile/feed.ts). Two keys
+     * of one name were one key to whoever parsed last - the reset taken for the event, or the event for the reset.
+     */
+    private fun sendCarryOnWait(sessionId: String, at: Long?, guess: Boolean) {
+        val before = shownWaits[sessionId]
+        if (before == at) return
+        if (at == null) shownWaits.remove(sessionId) else shownWaits[sessionId] = at
+
+        broadcast(
+            sessionId,
+            buildJsonObject {
+                put("type", "carryOnWait")
+                put("sessionId", sessionId)
+                if (at != null) {
+                    put("until", at)
+                    if (guess) put("guess", true)
+                }
+            }.toString(),
+        )
     }
 
     /** Whether something may be said into this conversation now, as far as the conversation is concerned. */
@@ -2818,6 +3081,10 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
                 // Off the scheduler's own thread: this pool carries the Stop watchdog and the usage
                 // polling, and taking a process down is not instant.
                 ApplicationManager.getApplication().executeOnPooledThread {
+                    // Carried on first: a tab whose wait has just ended is about to work, and put to sleep a moment
+                    // before, it would only be raised again - MCP servers and all - in the same tick.
+                    runCatching { carryOnWhatIsDue() }
+                        .onFailure { thisLogger().warn("A tab could not carry on", it) }
                     runCatching { putIdleConversationsToSleep() }
                         .onFailure { thisLogger().warn("The idle sweep stumbled", it) }
                 }
@@ -2828,6 +3095,20 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         )
 
         Disposer.register(this) { sweep.cancel(false) }
+    }
+
+    /**
+     * Every "carry on" that has come due and not gone - the second door after a wait's own timer (see
+     * [carryOnChanged]).
+     *
+     * The timer counts the machine's awake time, not the clock's: a Mac that slept through the night wakes with
+     * the reset long past and its timer still hours away. And a tab busy at the moment its wait ended - a
+     * background agent reporting in - goes on from its next idle status, which may never come. This round is
+     * a minute at most behind either.
+     */
+    private fun carryOnWhatIsDue() {
+        val now = System.currentTimeMillis()
+        conversations.dueCarryOns(now).forEach { runQueued(it, now) }
     }
 
     private fun putIdleConversationsToSleep() {
@@ -2861,6 +3142,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      * (see [IdleSleep]), read fresh rather than off the picture the loop started with.
      */
     private fun idleNow(sessionId: String, startedAt: Long, now: Long): Boolean {
+        // About to be carried on - see carryOnWhatIsDue. A tab busy at that moment is not idle either.
+        if (conversations.carryOnOf(sessionId)?.isDue(now) == true) return false
+
         val snapshot = snapshotOf(sessionId)
 
         return IdleSleep.sleeps(
@@ -3071,6 +3355,15 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
          * place rather than held up.
          */
         private const val FORK_OPENING_WAIT_SECONDS = 10L
+
+        /** How a turn's result says the turn failed - a refused carry-on, not one that went through. */
+        private const val ERROR_RESULT = "\"is_error\":true"
+
+        /** A task's start, progress or end - a sign of the background at work (see [helpersHeard]). */
+        private const val TASK_EVENT = "\"subtype\":\"task_"
+
+        /** A subagent's own step, filed under the call that started it. */
+        private const val SUBAGENT_LINE = "\"parent_tool_use_id\":\""
 
         /**
          * What the page may hand over about one of its own closed tabs (see [notePanelTabClosed]). Its words are

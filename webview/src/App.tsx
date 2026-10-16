@@ -2666,6 +2666,7 @@ export const App = () => {
                 steering: message.steering,
                 ...(message.editor ? { editor: message.editor } : {}),
                 ...(message.uuid ? { uuid: message.uuid } : {}),
+                ...(message.auto ? { auto: message.auto } : {}),
               },
             })
             break
@@ -3320,6 +3321,11 @@ export const App = () => {
           /** Which account a tab runs on - live state, like the effort beside it. */
           case 'turnStopped':
             feed({ session: message.sessionId, action: { kind: 'stoppedForAccount' } })
+            break
+
+          // When the IDE carries this tab on by itself after a limit, or that it no longer will (see CarryOnRow).
+          case 'carryOnWait':
+            feed({ session: message.sessionId, action: { kind: 'carryOnWait', at: message.until, guess: message.guess } })
             break
 
           case 'account':
@@ -6824,6 +6830,8 @@ export const App = () => {
               place={feedPlace}
               pins={panel.pins}
               onPin={togglePinned}
+              carryOn={panel.carryOn}
+              onCancelCarryOn={() => send({ type: 'cancelCarryOn', sessionId: active })}
             />
           ) : (
             <AgentStreamView item={activeTask} />

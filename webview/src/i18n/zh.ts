@@ -1073,6 +1073,19 @@ export const zh: Dict = {
   feed: {
     empty: { title: '问问 Claude 这个项目', hint: '@ 找文件 · / 用命令' },
     you: '你',
+    auto: {
+      label: '面板',
+      why: {
+        accountSwitch: '这不是你写的：切换账号打断了这一回合，面板自动让它继续',
+        limit: '这不是你写的：用量上限让这一回合停下了，一能继续，面板就自动让它继续',
+        restart: '这不是你写的：Claude Code 在对话下重启，后台代理丢失了，面板让它继续',
+      },
+    },
+    carryOn: {
+      planned: (clock: string): string => `将在 ${clock} 上限重置后自动继续这个对话`,
+      guessed: (clock: string): string => `将在 ${clock} 尝试自动继续这个对话，上限没有说明何时重置`,
+      cancel: '不要继续',
+    },
     jumpToLatest: '回到最新',
     copyBlock: '复制这段代码',
     copyReply: '复制整条回复',

@@ -131,6 +131,9 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
 
             "unqueuePrompt" -> hub.unqueuePrompt(sessionId, field("id"))
 
+            // "Don't carry on" under a limit's wait - see ClaudeSessionHub.cancelCarryOn.
+            "cancelCarryOn" -> hub.cancelCarryOn(sessionId)
+
             // The pencil on a queued message - the whole message back to the asker, to be edited in the field.
             "takeQueued" -> hub.takeQueued(clientId, sessionId, field("id"), asker)
 

@@ -2484,7 +2484,7 @@ internal class ScenarioEngine(
         restClock?.cancel(false)
         restClock = AppExecutorUtil.getAppScheduledExecutorService().schedule(
             { runCatching { wake() }.onFailure { thisLogger().warn("A scenario run could not wake from its limit", it) } },
-            (at - System.currentTimeMillis()).coerceAtLeast(0) + REST_SLACK_MS,
+            (at - System.currentTimeMillis()).coerceAtLeast(0) + LimitRelief.RESET_SLACK_MS,
             TimeUnit.MILLISECONDS,
         )
     }
@@ -2508,7 +2508,7 @@ internal class ScenarioEngine(
                     }
                 }.onFailure { thisLogger().warn("A scenario run could not pass on the person's words", it) }
             },
-            (until - System.currentTimeMillis()).coerceAtLeast(0) + REST_SLACK_MS,
+            (until - System.currentTimeMillis()).coerceAtLeast(0) + LimitRelief.RESET_SLACK_MS,
             TimeUnit.MILLISECONDS,
         )
     }
@@ -2992,12 +2992,6 @@ internal class ScenarioEngine(
 
         /** How long a move to another account waits for the turns it interrupted to close - a tab's eight seconds. */
         const val SWAP_GRACE_MS = 8_000L
-
-        /**
-         * How long after a limit's reset a resting run looks again. The reset is the server's clock, not ours, and a
-         * request a few seconds early is refused and puts the run back to waiting for nothing.
-         */
-        const val REST_SLACK_MS = 30_000L
 
         /**
          * How long an account the run moved to by itself, and found unable to take it, is left alone - long

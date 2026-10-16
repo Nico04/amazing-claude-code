@@ -3,6 +3,7 @@ import type {
   AgentRateLimitEvent,
   AgentSystemEvent,
   AgentUsage,
+  CarryOnReason,
   ContentBlock,
   MessageContent,
   TextBlock,
@@ -330,6 +331,9 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
     case 'stoppedForAccount':
       return { ...state, stoppedForAccount: true }
 
+    case 'carryOnWait':
+      return { ...state, carryOn: action.at === undefined ? undefined : { at: action.at, guess: action.guess === true } }
+
     case 'processExited':
       // The process is gone right in the middle of a pause before a retry - there is nobody left to
       // retry, and the card has to stop waiting along with it.
@@ -365,6 +369,7 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         ...(action.editor ? { editor: action.editor } : {}),
         ...(action.uuid ? { uuid: action.uuid } : {}),
         ...(action.steering ? { steering: true } : {}),
+        ...(action.auto ? { auto: action.auto } : {}),
       }
 
       // A message written into a running turn starts nothing afresh: the agent carries on with its own,
@@ -403,6 +408,9 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         // for it.
         tasksCarried: Object.keys(state.tasks).length > 0,
         pendingTasks: {},
+        // Whatever the IDE was going to carry on is spent or set aside by this turn - its own word comes after
+        // (see carryOnWait), and the row must not stand over the turn in the meantime.
+        carryOn: undefined,
       }
     }
 
@@ -2381,6 +2389,24 @@ const replayedPromptText = (blocks: ContentBlock[]): string => {
 }
 
 /**
+ * The panel's own "carry on", as a transcript keeps it (see CarryOnWords.kt, which writes the tag): the
+ * reason, then the words. The words are in whichever of ten languages the panel spoke; the tag is in one, and
+ * once the message is only a line on disk it is all that says the person did not write it. Its end is
+ * optional for the reason a service block's is (see SERVICE_BLOCK): a phone's frame can cut it.
+ */
+const CARRY_ON = /^<panel-carry-on(?: reason="([A-Za-z]*)")?>([\s\S]*?)(?:<\/panel-carry-on>|$)/
+
+const CARRY_ON_REASONS: readonly CarryOnReason[] = ['accountSwitch', 'limit', 'restart']
+
+/**
+ * The reason a carry-on was written with. A word this panel does not know - written by a newer plugin and read
+ * after going back to an older one - is still the panel's message: it says PANEL, and no reason it cannot vouch
+ * for (see UserItem.auto).
+ */
+const carryOnReason = (word: string | undefined): NonNullable<UserItem['auto']> =>
+  CARRY_ON_REASONS.find((reason) => reason === word) ?? 'unknown'
+
+/**
  * What the agent has already said in this conversation - what tells a quotation of its words from a
  * sentence somebody merely put in quotation marks (see replayedMessage).
  *
@@ -2431,10 +2457,18 @@ const addReplayedPrompt = (
   // whole past conversation would look like today's.
   const said = Date.parse(event.timestamp ?? '')
 
+  // The panel's own "carry on" is drawn as it was drawn live: its words, without the tag that tells whose they
+  // are, and PANEL over them with the reason (see CARRY_ON).
+  const carried = text.match(CARRY_ON)
+  const carryOn = carried?.[2]?.trim()
+
   // Back into the pieces it was sent as - a file, an image, a quote of the agent's words - rather than
   // as the one string a transcript keeps (see replayed.ts). Without it a conversation opened from the
   // history read as a wall of paths and quotation marks where at the desk it had been a line of chips.
-  const { tokens, quotes } = replayedMessage(text, agentAnswers(state))
+  const { tokens, quotes } =
+    carryOn !== undefined
+      ? { tokens: [{ kind: 'text', value: carryOn }] satisfies UserToken[], quotes: [] }
+      : replayedMessage(text, agentAnswers(state))
 
   // A transcript keeps no result of a turn, so a person's next message is where the turn before it ended -
   // and where its list of changed files goes (see closeChanges).
@@ -2447,6 +2481,7 @@ const addReplayedPrompt = (
     // The transcript's name for the line, so a search hit on it can be found in the feed (see rowOf).
     ...(event.uuid ? { uuid: event.uuid } : {}),
     ...(editor ? { editor } : {}),
+    ...(carried ? { auto: carryOnReason(carried[1]) } : {}),
   }))
 }
 

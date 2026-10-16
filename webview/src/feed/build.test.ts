@@ -1126,6 +1126,51 @@ describe('building the feed out of the agent stream', () => {
   })
 
   /**
+   * And then the IDE carries the turn on by itself (see ClaudeSessionHub.carryOn): the message starts a turn
+   * like any other, and is the panel's - nobody typed it, so the card must not say YOU over it.
+   */
+  it('carries a turn cut short by an account switch on as the panel\'s', () => {
+    let state = reducePanel(initialPanelState, { kind: 'stoppedForAccount' }, 1_700_000_000_000)
+    state = reducePanel(state, { kind: 'agent', event: resultEvent(400) }, 1_700_000_000_400)
+    state = reducePanel(state, { kind: 'status', status: 'idle' }, 1_700_000_000_500)
+    state = reducePanel(
+      state,
+      { kind: 'prompt', tokens: [{ kind: 'text', value: 'Carry on from where you stopped.' }], quotes: [], auto: 'accountSwitch' },
+      1_700_000_000_600,
+    )
+
+    const carried = state.items.filter((item): item is UserItem => item.kind === 'user')
+    expect(carried.at(-1)?.auto).toBe('accountSwitch')
+    expect(state.status).toBe('running')
+    // A message of the person's carries no such mark.
+    state = reducePanel(state, { kind: 'prompt', tokens: [{ kind: 'text', value: 'and then?' }], quotes: [] }, 1_700_000_001_000)
+    expect(state.items.filter((item): item is UserItem => item.kind === 'user').at(-1)?.auto).toBeUndefined()
+  })
+
+  /**
+   * A limit refused the turn, and the IDE plans to carry it on at the reset (see ClaudeSessionHub.noteLimitRefusal).
+   * The plan stands while nothing happens, goes when the IDE says it no longer stands, and goes with the next turn
+   * too - whoever starts it - so the row never stands over work that is already under way.
+   */
+  it('keeps the plan to carry on after a limit until it is spent', () => {
+    let state = reducePanel(initialPanelState, { kind: 'carryOnWait', at: 1_700_000_900_000 }, 1_700_000_000_000)
+    expect(state.carryOn).toEqual({ at: 1_700_000_900_000, guess: false })
+
+    state = reducePanel(state, { kind: 'carryOnWait' }, 1_700_000_100_000)
+    expect(state.carryOn).toBeUndefined()
+
+    state = reducePanel(state, { kind: 'carryOnWait', at: 1_700_000_900_000, guess: true }, 1_700_000_200_000)
+    expect(state.carryOn).toEqual({ at: 1_700_000_900_000, guess: true })
+
+    state = reducePanel(
+      state,
+      { kind: 'prompt', tokens: [{ kind: 'text', value: 'The usage limit has reset.' }], quotes: [], auto: 'limit' },
+      1_700_000_900_000,
+    )
+    expect(state.carryOn).toBeUndefined()
+  })
+
+  /**
    * The quiet half of an account switch: the tab was saying nothing, so no turn is interrupted and none
    * of the machinery above fires - while the fleet a workflow launched an hour ago dies with the process
    * all the same. Before this its card ticked on for the rest of the day against a CLI that was gone.
@@ -3914,6 +3959,46 @@ describe('the person lines in a replay', () => {
     expect(users(stopped)).toHaveLength(0)
     expect(users(subagent)).toHaveLength(0)
     expect(users(task)).toHaveLength(0)
+  })
+
+  /**
+   * The panel's own "carry on" (see CarryOnWords.kt). It is in the conversation - the agent read it and went on
+   * from it - so it stays a line of the feed, but read back off the disk it is drawn the way it was drawn live:
+   * the panel's, with its reason, and without the tag that says so.
+   */
+  it('reads the panel\'s own carry-on as the panel\'s', () => {
+    const words = 'Лимит, на котором ты остановился, сбросился. Продолжай с того места, где остановился.'
+    const state = replayUser(`<panel-carry-on reason="limit">${words}</panel-carry-on>`)
+
+    expect(users(state)).toHaveLength(1)
+    expect(users(state)[0]?.auto).toBe('limit')
+    expect(users(state)[0]?.tokens).toEqual([{ kind: 'text', value: words }])
+    expect(users(state)[0]?.quotes).toEqual([])
+  })
+
+  it('keeps each reason the carry-on was written with', () => {
+    expect(users(replayUser('<panel-carry-on reason="accountSwitch">go on</panel-carry-on>'))[0]?.auto).toBe('accountSwitch')
+    expect(users(replayUser('<panel-carry-on reason="restart">go on</panel-carry-on>'))[0]?.auto).toBe('restart')
+  })
+
+  // Written by a newer plugin and read by this one: still the panel's, and no reason it cannot vouch for.
+  it('says PANEL over a reason it does not know, and nothing more', () => {
+    expect(users(replayUser('<panel-carry-on reason="somethingNew">go on</panel-carry-on>'))[0]?.auto).toBe('unknown')
+  })
+
+  // A phone's frame can cut a long line, and the closing tag goes first (see SERVICE_BLOCK).
+  it('still knows the carry-on when its end was cut off', () => {
+    const state = replayUser('<panel-carry-on reason="accountSwitch">The interruption above was an automatic switch')
+
+    expect(users(state)[0]?.auto).toBe('accountSwitch')
+    expect(users(state)[0]?.tokens).toEqual([{ kind: 'text', value: 'The interruption above was an automatic switch' }])
+  })
+
+  // And only the tag makes it the panel's: the person writing about an account switch is still the person.
+  it('leaves a person\'s words about an account switch to the person', () => {
+    const state = replayUser('Switch the account and carry on')
+
+    expect(users(state)[0]?.auto).toBeUndefined()
   })
 
   it('still parses the call results', () => {

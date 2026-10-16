@@ -19,6 +19,7 @@ import { matchSpans } from '../feed/searchText'
 import { mathVersion, subscribeMath } from '../math'
 import type { PaintedTerm } from '../protocol'
 import type { FeedItem, FeedRowItem, ToolItem, UserItem } from '../feed/types'
+import type { PanelState } from '../feed/panelState'
 import type { CardState } from '../hooks/useCardState'
 import s from './feed.module.css'
 import { BashCard } from './items/BashCard'
@@ -27,6 +28,7 @@ import { FindingsCard } from './items/FindingsCard'
 import { PlanCard } from './items/PlanCard'
 import { TaskCard } from './items/TaskCard'
 import {
+  CarryOnRow,
   CheckpointRow,
   CompactRow,
   CrashRow,
@@ -212,6 +214,13 @@ interface FeedProps {
    * menu and no way to type a command without losing the draft, so the card carries the way in.
    */
   onActions?: (item: FeedItem) => void
+  /**
+   * When the IDE carries this conversation on by itself after a limit - see PanelState.carryOn. Drawn as the
+   * last row of the feed, with [onCancelCarryOn] as the way to say no.
+   */
+  carryOn?: PanelState['carryOn']
+  /** "Don't carry on" - without it the row only tells (a screen that cannot answer the IDE). */
+  onCancelCarryOn?: () => void
 }
 
 export const Feed = ({
@@ -244,6 +253,8 @@ export const Feed = ({
   pins,
   onPin,
   onActions,
+  carryOn,
+  onCancelCarryOn,
 }: FeedProps) => {
   const view = useRef<HTMLElement | null>(null)
   const t = useT()
@@ -890,6 +901,16 @@ export const Feed = ({
             />
           </div>
         ))}
+
+        {/* The plan to carry on after a limit stands below everything said so far, where the next turn will
+            begin: it is about what comes next, not about anything in the feed (see CarryOnRow). */}
+        {carryOn ? (
+          // The gutter every row of the feed stands in - but none of a row's marks: it is no line of the
+          // conversation, and nothing jumps to it or remembers it as a place to read.
+          <div className={s.row}>
+            <CarryOnRow carryOn={carryOn} running={streaming} onCancel={onCancelCarryOn} />
+          </div>
+        ) : null}
 
         {/* An empty status line means either that what is happening has already been said in the feed
             itself (as during a context compaction), or that there is nothing to say at all - the second

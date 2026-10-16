@@ -51,6 +51,10 @@ class TranscriptTextTest {
         assertNull(TranscriptText.messageOf("c1", assistant("""[{"type":"text","text":"(no content)"}]""")))
         assertNull(TranscriptText.messageOf("c1", user("\"<local-command-stdout>x</local-command-stdout>\"")))
         assertNull(TranscriptText.messageOf("c1", user("\"[Request interrupted by user]\"")))
+        // The panel's "carry on" - in the person's name, not in their words.
+        assertNull(TranscriptText.messageOf("c1", user("\"<panel-carry-on reason=\\\"limit\\\">Carry on from where you stopped.</panel-carry-on>\"")))
+        // And with a reminder of the CLI's put ahead of it - the feed takes the reminder off first, and so does this.
+        assertNull(TranscriptText.messageOf("c1", user("\"<system-reminder>x</system-reminder>\\n<panel-carry-on reason=\\\"limit\\\">Carry on.</panel-carry-on>\"")))
         assertNull(TranscriptText.messageOf("c1", """{"type":"ai-title","aiTitle":"Name","sessionId":"c1"}"""))
         assertNull(TranscriptText.messageOf("c1", "not json"))
     }

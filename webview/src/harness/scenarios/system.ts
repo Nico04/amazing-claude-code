@@ -460,6 +460,154 @@ export const scenariosSystem: Scenario[] = [
   ]),
 
   /**
+   * Choosing an account in the middle of the work. The IDE interrupts the running turn to move the tab, and
+   * then carries the turn on by itself (see ClaudeSessionHub.carryOn): the stop was nobody's, so nobody would
+   * come back to write "carry on" - before this, every tab that was working stood still until somebody went
+   * through them one by one. The message is the panel's, and the card says PANEL over it, with the reason in
+   * the hint; in the IDE the words come in the panel's language (see CarryOnWords.kt).
+   */
+  scenario('account-carry-on', 'A switch mid-turn carries the turn on', 'system', [
+    checkpoint('A turn is running on the first account', [
+      user('Make the checkout totals round to cents'),
+      wait(300),
+      ...textReply("I'll find where the totals are added up and run the tests around them."),
+      toolUse('Bash', { command: 'pnpm vitest run src/checkout' }, 'carry-1'),
+      wait(600),
+    ]),
+    checkpoint('Another account is chosen: the IDE stops the turn itself', [
+      shell({ type: 'turnStopped', sessionId: SESSION, reason: 'account' }),
+      wait(300),
+      turnResult(4200),
+      shell({ type: 'status', sessionId: SESSION, state: 'idle' }),
+      wait(300),
+    ]),
+    checkpoint('And carries it on by itself, on the account now chosen', [
+      shell({
+        type: 'promptEcho',
+        sessionId: SESSION,
+        tokens: [
+          {
+            kind: 'text',
+            value:
+              'The interruption above was an automatic switch to another account, not a request to stop. ' +
+              'Carry on from where you stopped. Anything you had running in the background did not survive ' +
+              'the switch: start again whatever you still need.',
+          },
+        ],
+        auto: 'accountSwitch',
+      }),
+      shell({ type: 'status', sessionId: SESSION, state: 'running' }),
+      wait(400),
+      ...textReply('Picking up where I was: the tests around the totals.'),
+      toolUse('Bash', { command: 'pnpm vitest run src/checkout' }, 'carry-2'),
+      toolResult('carry-2', '14 passed'),
+      ...textReply('All fourteen pass. The totals now round to cents in one place.'),
+      turnResult(9000),
+    ]),
+  ]),
+
+  /**
+   * The five-hour window runs out in the middle of a turn. The limit refuses the request, and the IDE plans to
+   * carry the turn on by itself once the window resets (see ClaudeSessionHub.noteLimitRefusal): a row at the end
+   * of the feed says when, with a way to say no - the player answers "Don't carry on" as the IDE would. At the
+   * reset the panel's message goes in, PANEL over it, and the work goes on.
+   */
+  scenario('limit-carry-on', 'A limit carries the turn on at the reset', 'system', [
+    checkpoint('A long turn is under way', [
+      user('Move the checkout totals onto the new money type'),
+      wait(300),
+      ...textReply("I'll start with the totals and work outwards through their callers."),
+      toolUse('Bash', { command: 'pnpm tsc --noEmit' }, 'limit-1'),
+      wait(400),
+      toolResult('limit-1', 'src/checkout/totals.ts(41,7): error TS2322'),
+    ]),
+    checkpoint('The five-hour limit refuses it: the IDE plans to carry on at the reset', [
+      rateLimit({ status: 'rejected', resetsInSeconds: 40 * 60 }),
+      agent({
+        type: 'assistant',
+        message: { model: '<synthetic>', content: [{ type: 'text', text: "You've hit your session limit · resets 11:20pm" }] },
+        error: 'rate_limit',
+      }),
+      agent({
+        type: 'result',
+        subtype: 'success',
+        is_error: true,
+        result: "You've hit your session limit · resets 11:20pm",
+        duration_ms: 4200,
+      }),
+      shell({ type: 'carryOnWait', sessionId: SESSION, until: Date.now() + 40 * 60 * 1000 + 30_000 }),
+      wait(500),
+    ]),
+    checkpoint('When the CLI did not say when it resets, the panel says it is trying', [
+      shell({ type: 'carryOnWait', sessionId: SESSION, until: Date.now() + 15 * 60 * 1000, guess: true }),
+      wait(500),
+    ]),
+    checkpoint('The window resets: the panel carries the turn on by itself', [
+      shell({ type: 'carryOnWait', sessionId: SESSION }),
+      shell({
+        type: 'promptEcho',
+        sessionId: SESSION,
+        tokens: [{ kind: 'text', value: 'The usage limit that stopped you has reset. Carry on from where you stopped.' }],
+        auto: 'limit',
+      }),
+      shell({ type: 'status', sessionId: SESSION, state: 'running' }),
+      wait(400),
+      ...textReply('Back at it: the type error in the totals is next.'),
+      turnResult(6000),
+    ]),
+  ]),
+
+  /**
+   * The process under an idle tab is replaced while agents work in its background - an account chosen, a
+   * sign-in renewed, an MCP server added. The agents die with it without a word, and the agent that started
+   * them would go on waiting for their reports for ever; the panel tells it what happened (see
+   * ClaudeSessionHub, onProcessDropping).
+   */
+  scenario('restart-carry-on', 'A restart loses the background agents', 'system', [
+    checkpoint('The turn ends with a review running in the background', [
+      user('Review the checkout branch'),
+      wait(300),
+      toolUse(
+        'Agent',
+        { subagent_type: 'general-purpose', description: 'Review the checkout branch', run_in_background: true },
+        'restart-1',
+      ),
+      agent({
+        type: 'system',
+        subtype: 'task_started',
+        task_id: 'restart-task',
+        tool_use_id: 'restart-1',
+        description: 'Review the checkout branch',
+        task_type: 'local_agent',
+      }),
+      toolResult('restart-1', 'Async agent launched successfully. Agent ID: a51c'),
+      ...textReply('The review is running in the background - I will report when it is back.'),
+      turnResult(3000),
+    ]),
+    checkpoint('Claude Code is restarted under it, and the panel says what was lost', [
+      shell({ type: 'processReplaced', sessionId: SESSION }),
+      wait(300),
+      shell({
+        type: 'promptEcho',
+        sessionId: SESSION,
+        tokens: [
+          {
+            kind: 'text',
+            value:
+              'Claude Code was restarted under this conversation, and the agents you had working in the ' +
+              'background did not survive it. Start again whatever you still need of them, and carry on.',
+          },
+        ],
+        auto: 'restart',
+      }),
+      shell({ type: 'status', sessionId: SESSION, state: 'running' }),
+      wait(400),
+      ...textReply('The review was lost with the restart - starting it again.'),
+      turnResult(5000),
+    ]),
+  ]),
+
+  /**
    * The token of the account in force has expired, and the panel is a sign-in screen again.
    *
    * The screen is here because it used to be a dead end. The sign-in fills the credential drawer of the

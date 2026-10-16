@@ -2724,6 +2724,63 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* --- The IDE carries the conversation on by itself (see CarryOnRow) ---------- */
+
+/* Built like .limit - one quiet line about the conversation itself - in the accent rather than the warning
+   colour: nothing is wrong, the panel is saying what it will do next. */
+.carryOn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 12px 0;
+  padding: 5px 6px 5px 9px;
+  border: 1px solid var(--acc-accent-line);
+  border-radius: var(--acc-r-md);
+  background: var(--acc-accent-08);
+}
+
+.carryOnLabel {
+  flex: none;
+  font: 600 9px/1 var(--acc-mono);
+  letter-spacing: 0.09em;
+  color: var(--acc-accent);
+}
+
+/* Wraps rather than cutting short: the time is the one thing on the line that must be read whole. */
+.carryOnText {
+  min-width: 0;
+  flex: 0 1 auto;
+  font-size: 11.5px;
+  color: var(--acc-fg-dim);
+}
+
+/* The secondary button's look at the height of the line it stands in - and a fingertip's on a phone, where the
+   row is shown so that the carry-on can be refused from there (see --acc-hit in tokens.css: 44 on a touchscreen,
+   nothing on a desktop). */
+.carryOnCancel {
+  flex: none;
+  height: 21px;
+  min-height: var(--acc-hit);
+  padding: 0 9px;
+  border: 1px solid var(--acc-line-strong);
+  border-radius: var(--acc-r-md);
+  font: 500 11px var(--acc-font);
+  color: var(--acc-fg-soft);
+}
+
+@media (hover: hover) {
+  .carryOnCancel:hover {
+    border-color: var(--acc-accent);
+    color: var(--acc-fg);
+  }
+}
+
+.carryOnCancel:active {
+  border-color: var(--acc-accent-active);
+  background: var(--acc-accent-12);
+  color: var(--acc-fg);
+}
+
 /* --- The model swapped by the CLI itself ----------------------------------- */
 
 /* Built like .compact and .retry - the same conversation about the conversation itself - but two-storey:

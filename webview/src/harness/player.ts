@@ -1514,6 +1514,12 @@ const answerQueue = (message: WebviewMessage): void => {
     return
   }
 
+  // "Don't carry on" under a limit's wait: the IDE lets the wait go and says so (see ClaudeSessionHub.cancelCarryOn).
+  if (message.type === 'cancelCarryOn') {
+    window.__accReceive?.({ type: 'carryOnWait', sessionId: message.sessionId })
+    return
+  }
+
   if (message.type === 'unqueuePrompt') {
     queues.set(message.sessionId, (queues.get(message.sessionId) ?? []).filter((item) => item.id !== message.id))
     sayQueue(message.sessionId)

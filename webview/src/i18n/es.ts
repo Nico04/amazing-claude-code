@@ -1080,6 +1080,19 @@ export const es: Dict = {
   feed: {
     empty: { title: 'Pregúntale a Claude sobre este proyecto', hint: '@ para archivos · / para comandos' },
     you: 'TÚ',
+    auto: {
+      label: 'PANEL',
+      why: {
+        accountSwitch: 'No lo escribiste tú: el cambio de cuenta cortó el turno y el panel lo continuó por su cuenta',
+        limit: 'No lo escribiste tú: el límite de uso detuvo el turno y el panel lo continuó por su cuenta en cuanto pudo',
+        restart: 'No lo escribiste tú: Claude Code se reinició bajo la conversación, se perdieron sus agentes en segundo plano y el panel le dijo que siguiera',
+      },
+    },
+    carryOn: {
+      planned: (clock: string): string => `Seguirá con esta conversación por su cuenta a las ${clock}, cuando se reinicie el límite`,
+      guessed: (clock: string): string => `Intentará seguir con esta conversación por su cuenta a las ${clock}: el límite no dijo cuándo se reinicia`,
+      cancel: 'No seguir',
+    },
     jumpToLatest: 'Ir a lo más reciente',
     copyBlock: 'Copiar este bloque',
     copyReply: 'Copiar toda la respuesta',

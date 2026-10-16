@@ -279,6 +279,21 @@ class ClaudeSessionsTest : BasePlatformTestCase() {
         assertEquals(0, dropped)
     }
 
+    /**
+     * Only a turn the switch interrupted is carried on afterwards (see CarryOns). A tab that was
+     * saying nothing when the account changed has no turn to finish, and a "carry on" into it would start work
+     * nobody asked for - in every idle tab of every project at once.
+     */
+    fun testAQuietMoveOwesNoCarryOn() {
+        val sessions = sessions()
+        sessions.setEffort("main", "low")
+
+        register("work")
+        sessions.switchAllTo()
+
+        assertNull(sessions.takeCarryOn("main"))
+    }
+
     /** A tab with no process has nothing to move, and no process is raised to move it. */
     fun testATabThatWasNeverOpenedIsLeftAlone() {
         val sessions = sessions()

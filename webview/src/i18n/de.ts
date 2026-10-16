@@ -1083,6 +1083,19 @@ export const de: Dict = {
   feed: {
     empty: { title: 'Frag Claude zu diesem Projekt', hint: '@ für Dateien · / für Befehle' },
     you: 'DU',
+    auto: {
+      label: 'PANEL',
+      why: {
+        accountSwitch: 'Nicht von dir geschrieben: Der Kontowechsel hat den Durchgang abgebrochen, und das Panel hat ihn von selbst fortgesetzt',
+        limit: 'Nicht von dir geschrieben: Das Nutzungslimit hat den Durchgang gestoppt, und das Panel hat ihn von selbst fortgesetzt, sobald es ging',
+        restart: 'Nicht von dir geschrieben: Claude Code wurde unter dem Gespräch neu gestartet, die Hintergrund-Agenten gingen verloren, und das Panel hat es weitermachen lassen',
+      },
+    },
+    carryOn: {
+      planned: (clock: string): string => `Setzt dieses Gespräch um ${clock} von selbst fort, sobald das Limit zurückgesetzt ist`,
+      guessed: (clock: string): string => `Versucht, dieses Gespräch um ${clock} von selbst fortzusetzen - das Limit hat nicht gesagt, wann es zurückgesetzt wird`,
+      cancel: 'Nicht fortsetzen',
+    },
     jumpToLatest: 'Zur neuesten Nachricht',
     copyBlock: 'Diesen Block kopieren',
     copyReply: 'Die ganze Antwort kopieren',

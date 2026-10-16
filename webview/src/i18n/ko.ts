@@ -1073,6 +1073,19 @@ export const ko: Dict = {
   feed: {
     empty: { title: '이 프로젝트에 대해 Claude에게 물어보세요', hint: '@ 파일 · / 명령' },
     you: '나',
+    auto: {
+      label: '패널',
+      why: {
+        accountSwitch: '내가 쓴 게 아니에요. 계정 전환으로 턴이 끊겨서 패널이 알아서 이어 갔어요',
+        limit: '내가 쓴 게 아니에요. 사용 한도로 턴이 멈춰서, 다시 할 수 있게 되자 패널이 알아서 이어 갔어요',
+        restart: '내가 쓴 게 아니에요. 대화 아래에서 Claude Code가 다시 시작돼 백그라운드 에이전트가 사라져서, 패널이 이어 가라고 했어요',
+      },
+    },
+    carryOn: {
+      planned: (clock: string): string => `한도가 초기화되는 ${clock}에 이 대화를 알아서 이어 가요`,
+      guessed: (clock: string): string => `${clock}에 이 대화를 알아서 이어 가 볼게요 - 한도가 언제 초기화되는지는 알려 주지 않았어요`,
+      cancel: '이어 가지 않기',
+    },
     jumpToLatest: '최신으로 이동',
     copyBlock: '이 블록 복사',
     copyReply: '답변 전체 복사',

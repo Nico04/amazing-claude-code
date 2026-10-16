@@ -111,6 +111,8 @@ const SHARED_WITH_ENGLISH: Record<string, Locale[]> = {
   'feed.limit.label': ['de'],
   'scenarios.run.limitLabel': ['de'],
   'scenarios.run.panelSaid': ['es', 'de'],
+  // The same word over a message the panel said itself in a chat (see UserItem.auto).
+  'feed.auto.label': ['es', 'de'],
   'feed.findings.label': ['de'],
   'feed.crash.label': ['fr'],
   // "Mods" is the word the Latin languages use for them as well.

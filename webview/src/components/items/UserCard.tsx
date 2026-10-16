@@ -101,7 +101,11 @@ export const UserCard = ({
   return (
   <div className={s.user}>
     <div className={s.userHead}>
-      <span className={s.label}>{userLabel ?? t.feed.you}</span>
+      {/* A message the panel said itself wears its own word, and the hint says why (see UserItem.auto): YOU
+          over words nobody typed is the one thing this head may not say. */}
+      <span className={s.label} data-tooltip={!userLabel && item.auto && item.auto !== 'unknown' ? t.feed.auto.why[item.auto] : undefined}>
+        {userLabel ?? (item.auto ? t.feed.auto.label : t.feed.you)}
+      </span>
       <span className={s.time}>{item.time}</span>
       <div className={s.spacer} />
 

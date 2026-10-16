@@ -90,6 +90,8 @@ interface ThreadProps {
   onDiscard: (id: string) => void
   /** The cross on a queued message. */
   onUnqueue: (id: string) => void
+  /** "Don't carry on" under a limit's wait - the same "no" as at the desk (see CarryOnRow). */
+  onCancelCarryOn: () => void
   /** Quoted out of the feed and waiting above the field - see the message sheet. */
   quotes: string[]
   onDropQuote: (index: number) => void
@@ -186,6 +188,7 @@ export const Thread = ({
   onRetry,
   onDiscard,
   onUnqueue,
+  onCancelCarryOn,
   onStop,
   onStopTask,
   onLoadEarlier,
@@ -416,6 +419,8 @@ export const Thread = ({
             focus={focus}
             onFocused={onFocused}
             paint={paint}
+            carryOn={feed.carryOn}
+            onCancelCarryOn={onCancelCarryOn}
           />
         )}
       </div>

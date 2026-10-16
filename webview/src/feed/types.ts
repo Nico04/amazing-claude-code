@@ -4,7 +4,7 @@
  * list, the plan, the questions), some from system events.
  */
 
-import type { EditorRef, FileEdit, RevertOutcome } from '../protocol'
+import type { CarryOnReason, EditorRef, FileEdit, RevertOutcome } from '../protocol'
 import type { WorkflowView } from './workflow'
 
 /**
@@ -254,6 +254,14 @@ export interface UserItem {
    * transcript for a past conversation (see feed/editorContext.ts).
    */
   editor?: EditorRef
+  /**
+   * Said by the panel rather than by the person, and why - drawn with PANEL over it where a message of
+   * theirs says YOU, the reason in the hint (see UserCard): an account switch cut the turn above short, a
+   * limit stopped it and has let go, or a restart lost its background agents - and nobody would have come
+   * back to say "carry on" (see CarryOnWords.kt). Read back out of a transcript by the tag the words went in
+   * under (see CARRY_ON in build.ts); `unknown` is a reason this panel has no words for.
+   */
+  auto?: CarryOnReason | 'unknown'
 }
 
 export interface TextItem {

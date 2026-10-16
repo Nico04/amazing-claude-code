@@ -9,6 +9,7 @@ import type {
   PermDecision,
   RetryReason,
   TodoEntry,
+  UserItem,
   UserToken,
 } from './types'
 
@@ -307,6 +308,12 @@ export interface PanelState {
    * instead of being left running against a process that is gone.
    */
   stoppedForAccount?: boolean
+  /**
+   * When the IDE carries this conversation on by itself - a limit refused its turn and the work resumes once
+   * the window resets (see the carryOnWait message). Drawn as a row at the end of the feed with a way to say
+   * no (see CarryOnRow); absent when nothing is planned. `guess`: the limit did not say when it resets.
+   */
+  carryOn?: { at: number; guess: boolean }
   /** The conversation's process has died on its own since the last turn - the tab has something to point at. */
   crashed: boolean
   /** A context compaction is running right now - the status line should name that rather than "working". */
@@ -427,7 +434,16 @@ export type PanelAction =
    * steps rather than start a new turn with it. Such a message is only added to the feed and interrupts
    * nothing in it.
    */
-  | { kind: 'prompt'; tokens: UserToken[]; quotes: string[]; steering?: boolean; editor?: EditorRef; uuid?: string }
+  | {
+      kind: 'prompt'
+      tokens: UserToken[]
+      quotes: string[]
+      steering?: boolean
+      editor?: EditorRef
+      uuid?: string
+      /** The panel said it, not the person - see UserItem.auto. */
+      auto?: UserItem['auto']
+    }
   /**
    * The conversation was cut back to before the message `uuid` - see the rewound message in protocol.ts and
    * applyRewound in feed/build.ts. `all`: the feed does not hold the message and everything it holds came
@@ -543,6 +559,8 @@ export type PanelAction =
   | { kind: 'stopRequested' }
   /** The IDE is stopping this turn to move the conversation to another account - see stoppedForAccount. */
   | { kind: 'stoppedForAccount' }
+  /** When the IDE carries this conversation on by itself, or that it no longer will - see PanelState.carryOn. */
+  | { kind: 'carryOnWait'; at?: number; guess?: boolean }
   /**
    * The tab's process is being replaced while the tab itself was saying nothing - see processReplaced in
    * protocol.ts. Everything the process was holding apart from a turn (a workflow's fleet, a background
