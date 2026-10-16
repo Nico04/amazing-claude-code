@@ -72,6 +72,7 @@ paths:
 - `claudeConfig*` состояние, `openClaudeConfig`, `case 'claudeConfig'`, `config` в `runLocal` - claude-config
 - хоткеи поверх панели, пока собирается иероглиф - composer-field
 - `pressPanelKey`, `pressPanelKeyRef`, `closeSession`, `closingWorking`, `queueToken`, `panelKeys`, `stillWorking`, `case 'panelKey'`/`'panelKeys'` - panel-keys
+- `reopenTab`, `reopenPanelTab`, `takeReopened`, `panelTabTitle`, `closedTabs`, `reopenable`, `closeTabHint`, `case 'closedTabs'`/`'tabReopened'`, досылка черновика в `closeSession`, `panelTabClosed` в `closePanelTab` - reopen-tabs
 - `revertChanges`, `sendRevert`, `case 'changesReverted'` - changed-files
 - `missingFiles`, `case 'fileMissing'`, очистка в `openFile` - open-in-editor
 - `sideThreads`, `askAside`, `forgetSide`, `case 'sideAnswer'`/`'sideProgress'`, Esc над карточкой вопроса сбоку, `SideQuestionCard` в `dockCards` - btw
@@ -93,9 +94,10 @@ paths:
 - `theme`, `setTheme`, `setTextSize`, размеры в `typography` - appearance
 - `claudeConfig`, `askClaudeConfig`, `setClaudeConfig`, `ClaudeConfigSetting` - claude-config
 - `activeTab`, `drafts`, `restoreTabs`, `saveDraft`, `tabShown`, `setRestoreTabs` - restore-tabs
+- `ClosedTab`, `closedTabs`, `tabReopened`, `reopenTab`, `panelTabClosed`, `TabPlace` (одно описание, `tabs.ts` его переэкспортирует), `held` у `queue` - reopen-tabs
 - `takeQueued`, `queuedTaken`, `before` у `queuePrompt` - queue-edit
 - `tool_use_result`, `ToolUseResult` (дифф правки и `type: 'create'`), `FileEdit`, `RevertOutcome`, `revertChanges`,
-  `changesReverted` - changed-files; `fileMissing` - open-in-editor
+  `changesReverted`, `FilesSettledEvent` - changed-files; `fileMissing` - open-in-editor
 - `EditorRef`, `editorContext`, `shareEditor`, `setShareEditor`, `editor` у `prompt`/`queuePrompt`/`promptEcho` - editor-context
 - `TitleSource` (`'user'`), `nameSession`, `titleSource` у `SearchHit` - tab-names
 - `usageStats`, `usageStatsReport`, `setUsageStats`, `usageStatsPreview`, `stat` с `kind: 'feature'` - usage-stats
@@ -120,6 +122,8 @@ paths:
 - `noteChanges` в `case 'user'`, `closeChanges` в `result`, тихой остановке, смерти и подмене процесса, `prompt`,
   `addReplayedPrompt`, `applyReplayFinished`; `turnChanges` в `/clear` - changed-files
 - `case 'changesReverted'` (итог отката файлов хода) - changed-files
+- `case 'files_settled'` (сверка файлов хода с диском, `settleChanges`) - changed-files
+- `queueHeld` в `case 'queue'` - reopen-tabs
 
 **`webview/src/feed/types.ts`** и **`webview/src/feed/panelState.ts`**:
 - `DraftEdit` - prompt-improver; `ErrorItem.signIn` - expired-sign-in; `ErrorItem.sampling` - setting-sources;
@@ -163,7 +167,7 @@ paths:
 диктовка - voice; `savePastedFile`, `clipboardWrite`/`clipboardRead` - clipboard; `saveImage` - stats;
 фидбэк - feedback; поиск - search; вход в аккаунт - expired-sign-in и accounts; транскрипт агента - subagents;
 `answerFork` (история и шов нового форка) - fork-tabs; `answerPanelKeys` (раскладка и перехват клавиш панели) -
-panel-keys.
+panel-keys; `answerClosedTabs` (зеркало полосы и закрытые вкладки), `drafts` на `ready` - reopen-tabs.
 
 **`ClaudeSessionHub.kt`** (сам по себе подгружает remote-access):
 - `prompt`: сохранение буферов - editor-sync; `sendStatus`, очередь, команда в идущий ход - turn-lifecycle
@@ -178,18 +182,20 @@ panel-keys.
   `refreshCommandHints` - slash-hints
 - `stats` - stats; круг сна простаивающих - idle-sleep; прогрев `ClaudeHome` - claude-home
 - `restoreTabs`, `rememberTabs`, `replayTranscript`, `lostTranscript`, `showTab`, `asleepUntilSeen` - restore-tabs
+- `closedTabs`, `keepClosed`, `reopenTab`, `bringBackClosed`, `notePanelTabClosed`, `sendClosedTabs`, `tabSnapshot`, `byPerson` у `closeSession`, придержанная очередь (`freeToSay`, `queued.release` в `deliverPrompt`, ветка в `enqueue`), `closedJournals` и `wiped` в `attach` - reopen-tabs
 - `nameSession`, `titleWanted`/`ownTitle` у `conversations` - tab-names
 - `rewind`, `previewRewind`, `cutBack`, `rewinding` (очередь и пуш ждут отката), `uuid` в `deliverPrompt` - rewind
 - `revertChanges` (откат файлов хода по его диффам) - changed-files
 - `undiffed` в `onAgentLine` (дифф большой правки, который CLI не прислал) - changed-files
+- `undiffed.settle` на `result` в подписчике строк (`files_settled` - что ход на деле сделал с файлами) - changed-files
 - `replayFork`, `forkOpenings` (ожидание в `deliverPrompt`), `unbornFork`, `bringBackFork`, форк в `restoreTabs` - fork-tabs
 
-**`ClaudeSession.kt`** (подгружает turn-lifecycle): `rename`, `nameAfterPerson`, `namedAs`, `ownTitle` - tab-names; `setEffort`, `effort` - models; `awaitingPermission` -
+**`ClaudeSession.kt`** (подгружает turn-lifecycle): `mute`, `heard` - reopen-tabs; `rename`, `nameAfterPerson`, `namedAs`, `ownTitle` - tab-names; `setEffort`, `effort` - models; `awaitingPermission` -
 permissions; окружение в `start` - task-list; `rememberConversation` - аргументы запуска в CLAUDE.md;
 `isBusy` - idle-sleep; `forkOrigin` - accounts и fork-tabs; `context` в `userMessage` (заметка редактора отдельным блоком) -
 editor-context; `rewind`, `previewRewind`, `cut`, `uuid` в `userMessage` - rewind; `forkLaunch`, `origin`, «родился ли» в `start` - fork-tabs.
 
-**`ClaudeSessions.kt`** (подгружает accounts и idle-sleep): `rename`, `ownTitle` - tab-names; `branchFrom` - fork-tabs; `adoptModel` - history;
+**`ClaudeSessions.kt`** (подгружает accounts и idle-sleep): `goesOn` у `close` (процесс закрытой вкладки молчит) - reopen-tabs; `rename`, `ownTitle` - tab-names; `branchFrom` - fork-tabs; `adoptModel` - history;
 `newSession`, `onBorn`, `setPermissionMode` - models; `renewAfterSignIn` - expired-sign-in;
 `releasedRole` и рамка в `prompt` - scenarios; `branchFrom(before)`, `originOf`, `restoreFork`, `forkOrigin` в `moveTo` - fork-tabs; `rewind`, `previewRewind` - rewind.
 
@@ -205,7 +211,7 @@ remote-access; остальное - по заметке фичи, которой
 **`toolwindow/ClaudePanel.kt`**: сообщения аккаунтов и `designLogin` у двери окна - accounts; `setCustomModels` -
 models; `openFile` - open-in-editor; фидбэк и лог незнакомого сообщения (только тип и длина) - feedback;
 `setHiddenIndicators` - indicators; `setTheme`, `setTextSize`, `sendTheme`, `appearanceChanged` - appearance;
-`saveDraft`, `tabShown`, `setRestoreTabs`, `sendDrafts` - restore-tabs; `watchEditor`, `sendEditorContext`,
+`saveDraft`, `tabShown`, `setRestoreTabs`, `sendDrafts` - restore-tabs; `reopenTab`, `panelTabClosed` - reopen-tabs; `watchEditor`, `sendEditorContext`,
 `setShareEditor` - editor-context; `setSpellcheck`, `spellcheckChanged` - composer-field; счёт фич `UsageFeatures.ofMessage` у двери окна, `setUsageStats`,
 `usageStatsPreview`, `usageChanged` - usage-stats; `PanelKeys.install`, `pressPanelKey`, `sendPanelKeys`,
 `watchKeymap`, `openKeymap` - panel-keys.

@@ -370,7 +370,7 @@ export const applyMessage = (
     // What this conversation is waiting to say. Held and fired by the IDE, so both screens show the same
     // list and a phone put back in a pocket does not take it along (see SessionQueue.kt).
     case 'queue':
-      return collect({ kind: 'queue', items: message.items })
+      return collect({ kind: 'queue', items: message.items, held: message.held })
 
     case 'context':
       return collect({ kind: 'context', used: message.used, max: message.max })

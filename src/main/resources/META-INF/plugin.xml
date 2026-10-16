@@ -109,14 +109,24 @@
                 text="Amazing Claude Code GUI: Close Tab"
                 description="Close the tab the Claude panel shows"
                 use-shortcut-of="CloseContent"/>
-        <!-- The terminal's keys for a new tab, the other tool window with tabs: one habit for both. -->
+        <!-- A new tab and the closed one back: the browser's pair, Ctrl+T and Ctrl+Shift+T (Cmd on a Mac).
+             Ctrl+T is Update Project and Ctrl+Shift+T Go to Test in the editor, and stay so there: these are
+             disabled outside the panel. -->
         <action id="AmazingClaudeCode.NewTab"
                 class="io.github.crmapache.amazingclaudecode.toolwindow.NewTabAction"
                 text="Amazing Claude Code GUI: New Tab"
                 description="Start a new conversation in the Claude panel">
-            <keyboard-shortcut first-keystroke="control shift T" keymap="$default"/>
+            <keyboard-shortcut first-keystroke="control T" keymap="$default"/>
             <keyboard-shortcut first-keystroke="meta T" keymap="Mac OS X" replace-all="true"/>
             <keyboard-shortcut first-keystroke="meta T" keymap="Mac OS X 10.5+" replace-all="true"/>
+        </action>
+        <action id="AmazingClaudeCode.ReopenTab"
+                class="io.github.crmapache.amazingclaudecode.toolwindow.ReopenTabAction"
+                text="Amazing Claude Code GUI: Reopen Closed Tab"
+                description="Open again the tab of the Claude panel closed last">
+            <keyboard-shortcut first-keystroke="control shift T" keymap="$default"/>
+            <keyboard-shortcut first-keystroke="meta shift T" keymap="Mac OS X" replace-all="true"/>
+            <keyboard-shortcut first-keystroke="meta shift T" keymap="Mac OS X 10.5+" replace-all="true"/>
         </action>
         <!-- Alt+Enter beside Enter: Enter sends into the running turn, this waits for it to finish. In the
              editor Alt+Enter stays the intentions' - the action is disabled there. -->

@@ -46,8 +46,42 @@ internal class SessionQueue {
 
     private val bySession = mutableMapOf<String, MutableList<Entry>>()
 
+    /**
+     * Conversations whose queue waits for the person rather than for the turn - see [hold].
+     */
+    private val held = mutableSetOf<String>()
+
     @Synchronized
     fun of(sessionId: String): List<Entry> = bySession[sessionId].orEmpty().toList()
+
+    /**
+     * A queue put back into a tab opened again after it was closed (see ClaudeSessionHub.reopenTab), held.
+     *
+     * Every message in it was written to follow a turn that the close killed. Fired the moment the
+     * conversation comes free - which is at once, it is idle - they would answer work that never finished,
+     * and nobody would have said a word. So they wait for the person's next turn instead (see [release]),
+     * and until then they can be taken out into the field or dropped like any queued message.
+     */
+    @Synchronized
+    fun hold(sessionId: String, entries: List<Entry>): List<Entry> {
+        if (entries.isEmpty()) return of(sessionId)
+
+        val list = bySession.getOrPut(sessionId) { mutableListOf() }
+        list.addAll(entries.filter { entry -> list.none { it.id == entry.id } })
+        held += sessionId
+        return list.toList()
+    }
+
+    /** Whether this conversation's queue is waiting for the person - see [hold]. */
+    @Synchronized
+    fun isHeld(sessionId: String): Boolean = sessionId in held && bySession[sessionId].orEmpty().isNotEmpty()
+
+    /**
+     * The person has started a turn: a held queue goes back to waiting for the turn, as any queue does. True
+     * when there was a hold to let go of - the list's mark has changed and every client should be told.
+     */
+    @Synchronized
+    fun release(sessionId: String): Boolean = held.remove(sessionId) && bySession[sessionId].orEmpty().isNotEmpty()
 
     /**
      * [before] is the place a message taken out for editing is going back to - the one that stood after it
@@ -62,6 +96,10 @@ internal class SessionQueue {
         // message: a phone that does not hear the answer resends, and two copies of one thought is worse
         // than none (see RemoteOutbox).
         if (list.any { it.id == entry.id }) return list.toList()
+        // A hold belongs to the messages that came back with the tab (see [hold]). An empty queue has none of them
+        // left - dropped, taken out, fired, cut back - and this message is not one of them. Said here, where the
+        // first message after any of those arrives, rather than on each of the roads that empty a queue.
+        if (list.isEmpty()) held.remove(sessionId)
 
         val at = before?.let { id -> list.indexOfFirst { it.id == id } } ?: -1
         if (at >= 0) list.add(at, entry) else list += entry
@@ -141,5 +179,8 @@ internal class SessionQueue {
 
     /** Everything this conversation was waiting to say, dropped. True when there was anything to drop. */
     @Synchronized
-    fun clear(sessionId: String): Boolean = bySession.remove(sessionId)?.isNotEmpty() == true
+    fun clear(sessionId: String): Boolean {
+        held.remove(sessionId)
+        return bySession.remove(sessionId)?.isNotEmpty() == true
+    }
 }

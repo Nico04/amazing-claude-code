@@ -6,7 +6,10 @@ import type {
   QueuedMessage,
   RewindCode,
   SearchHit,
+  SessionInfo,
   ShellMessage,
+  TabPlace,
+  TitleSource,
   VoiceHotkey,
   VoiceHotkeyCap,
   VoiceHotkeySlot,
@@ -1174,9 +1177,13 @@ type HeldQueued = QueuedMessage & { tokens: unknown; quotes: string[] }
 
 const queues = new Map<string, HeldQueued[]>()
 
+/** Queues waiting for the person's next message - the ones that came back with a reopened tab (see answerClosedTabs). */
+const heldQueues = new Set<string>()
+
 const sayQueue = (sessionId: string): void => {
   const items = (queues.get(sessionId) ?? []).map(({ id, text, attach, images }) => ({ id, text, attach, images }))
-  window.__accReceive?.({ type: 'queue', sessionId, items })
+  const held = heldQueues.has(sessionId) && items.length > 0
+  window.__accReceive?.({ type: 'queue', sessionId, items, ...(held ? { held } : {}) })
 }
 
 /**
@@ -1214,6 +1221,7 @@ const PANEL_KEYS = ((): {
         previousTab: [[cap('Shift'), cmd, cap('[')]],
         newTab: [[cmd, cap('T')]],
         closeTab: [[cmd, cap('W')]],
+        reopenTab: [[cap('Shift'), cmd, cap('T')]],
         queue: [[alt, enter]],
         openPanel: [],
       },
@@ -1221,6 +1229,7 @@ const PANEL_KEYS = ((): {
         if (event.metaKey && event.shiftKey && event.code === 'BracketRight') return 'nextTab'
         if (event.metaKey && event.shiftKey && event.code === 'BracketLeft') return 'previousTab'
         if (event.metaKey && !event.shiftKey && event.code === 'KeyT') return 'newTab'
+        if (event.metaKey && event.shiftKey && event.code === 'KeyT') return 'reopenTab'
         if (event.metaKey && !event.shiftKey && event.code === 'KeyW') return 'closeTab'
         if (event.altKey && event.key === 'Enter') return 'queue'
         return null
@@ -1232,15 +1241,17 @@ const PANEL_KEYS = ((): {
     keys: {
       nextTab: [[alt, cap('', 'right')]],
       previousTab: [[alt, cap('', 'left')]],
-      newTab: [[cap('Ctrl'), cap('Shift'), cap('T')]],
+      newTab: [[cap('Ctrl'), cap('T')]],
       closeTab: [[cap('Ctrl'), cap('F4')]],
+      reopenTab: [[cap('Ctrl'), cap('Shift'), cap('T')]],
       queue: [[alt, enter]],
       openPanel: [],
     },
     press: (event) => {
       if (event.altKey && event.key === 'ArrowRight') return 'nextTab'
       if (event.altKey && event.key === 'ArrowLeft') return 'previousTab'
-      if (event.ctrlKey && event.shiftKey && event.code === 'KeyT') return 'newTab'
+      if (event.ctrlKey && !event.shiftKey && event.code === 'KeyT') return 'newTab'
+      if (event.ctrlKey && event.shiftKey && event.code === 'KeyT') return 'reopenTab'
       if (event.ctrlKey && event.key === 'F4') return 'closeTab'
       if (event.altKey && event.key === 'Enter') return 'queue'
       return null
@@ -1270,6 +1281,213 @@ const answerPanelKeys = (message: WebviewMessage): void => {
     },
     true,
   )
+}
+
+/**
+ * Closed tabs, played the way ClaudeSessionHub plays them (see ClosedTabs.kt): a tab closed by hand is kept,
+ * the key or a row of "Recently closed" brings it back where it stood, with its field and its queue held.
+ *
+ * The IDE owns the strip and the harness does not, so the harness mirrors it from both ends - what a scenario
+ * says (`sessions`) and what the page asks for (a tab opened, closed, named). Bringing a tab back is then the
+ * IDE's answer as it is: the list with the tab in it, its field, a short stand-in for its transcript (the
+ * harness has none to read, as in answerResume), and which tab to show.
+ */
+type MirroredTab = { id: string; title: string; titleSource: TitleSource; groupId: string; depth: number; parentId?: string }
+
+type ClosedRecord =
+  | { kind: 'chat'; tab: MirroredTab; at: number; draft?: unknown; queue: HeldQueued[]; talked: boolean; closedAt: number }
+  | { kind: 'panel'; id: string; title: string; place: TabPlace; closedAt: number }
+
+const MAIN_TAB: MirroredTab = { id: SESSION, title: 'main session', titleSource: 'default', groupId: SESSION, depth: 0 }
+let strip: MirroredTab[] = [MAIN_TAB]
+let closedTabs: ClosedRecord[] = []
+const heldDrafts = new Map<string, unknown>()
+/** Tabs with something in their feed - a scenario's, a message sent, a past conversation opened. */
+const talked = new Set<string>([SESSION])
+
+const keyOfClosed = (record: ClosedRecord): string =>
+  record.kind === 'panel' ? `panel:${record.id}` : `chat:${record.tab.id}`
+
+const sayClosedTabs = (): void => {
+  window.__accReceive?.({
+    type: 'closedTabs',
+    tabs: closedTabs.map((record) =>
+      record.kind === 'panel'
+        ? { key: keyOfClosed(record), kind: 'panel', id: record.id, title: record.title, closedAt: record.closedAt }
+        : {
+            key: keyOfClosed(record),
+            kind: record.tab.depth > 0 ? 'fork' : 'chat',
+            title: record.tab.title,
+            closedAt: record.closedAt,
+          },
+    ),
+  })
+}
+
+const keepClosed = (record: ClosedRecord): void => {
+  closedTabs = [record, ...closedTabs.filter((other) => keyOfClosed(other) !== keyOfClosed(record))].slice(0, 20)
+  sayClosedTabs()
+}
+
+const sayStrip = (): void => {
+  window.__accReceive?.({
+    type: 'sessions',
+    sessions: strip.map((tab) => ({
+      ...tab,
+      kind: tab.depth > 0 ? 'branch' : 'main',
+      status: 'idle',
+      awaitsYou: false,
+    })),
+  })
+}
+
+/** What a scenario says the strip is, from then on the harness's mirror of it. */
+const mirrorStrip = (sessions: SessionInfo[]): void => {
+  strip = sessions.map(({ id, title, titleSource, groupId, depth, parentId }) => ({
+    id,
+    title,
+    titleSource,
+    groupId,
+    depth,
+    ...(parentId ? { parentId } : {}),
+  }))
+  sessions.forEach((session) => talked.add(session.id))
+}
+
+const bringBack = (record: ClosedRecord): void => {
+  if (record.kind === 'panel') {
+    window.__accReceive?.({ type: 'tabReopened', panel: record.id, place: record.place })
+    return
+  }
+
+  const { tab } = record
+  strip = [...strip.slice(0, record.at), tab, ...strip.slice(record.at)]
+  sayStrip()
+
+  if (record.draft) {
+    heldDrafts.set(tab.id, record.draft)
+    window.__accReceive?.({ type: 'drafts', drafts: { [tab.id]: record.draft as { tokens?: unknown } } })
+  }
+  if (record.queue.length > 0) {
+    queues.set(tab.id, record.queue)
+    heldQueues.add(tab.id)
+    sayQueue(tab.id)
+  }
+
+  window.__accReceive?.({ type: 'tabReopened', sessionId: tab.id })
+
+  if (!record.talked) return
+  setTimeout(() => {
+    const line = (event: unknown): void => {
+      window.__accReceive?.({ type: 'agent', sessionId: tab.id, event, replay: true } as never)
+    }
+    line({
+      type: 'user',
+      uuid: `c-${tab.id}-1`,
+      message: { role: 'user', content: [{ type: 'text', text: `Back to ${tab.title}.` }] },
+    })
+    line({
+      type: 'assistant',
+      uuid: `c-${tab.id}-2`,
+      message: { content: [{ type: 'text', text: 'Right where the tab was closed - nothing was lost.' }] },
+    })
+    window.__accReceive?.({ type: 'replayFinished', sessionId: tab.id } as never)
+  }, 200)
+}
+
+const answerClosedTabs = (message: WebviewMessage): void => {
+  switch (message.type) {
+    case 'ready':
+      // A beat later, for the reason the voice settings wait (see sendVoiceConfig).
+      setTimeout(() => {
+        sayClosedTabs()
+        // The drafts it holds, always, as the IDE does (see ClaudePanel.sendDrafts): the page reports its own
+        // fields only once it has heard this, so without it no draft would reach a tab closed to come back.
+        window.__accReceive?.({ type: 'drafts', drafts: Object.fromEntries(heldDrafts) as Record<string, { tokens?: unknown }> })
+      }, 60)
+      return
+
+    case 'newSession': {
+      const parent = message.parentId ? strip.find((tab) => tab.id === message.parentId) : undefined
+      const tab: MirroredTab = parent
+        ? { id: message.sessionId, title: message.title || 'fork', titleSource: 'default', groupId: parent.groupId, depth: parent.depth + 1, parentId: parent.id }
+        : { id: message.sessionId, title: message.title || 'new session', titleSource: 'default', groupId: message.sessionId, depth: 0 }
+      if (strip.some((one) => one.id === tab.id)) return
+
+      const last = parent ? strip.map((one) => one.groupId).lastIndexOf(parent.groupId) : -1
+      strip = last >= 0 ? [...strip.slice(0, last + 1), tab, ...strip.slice(last + 1)] : [...strip, tab]
+      if (parent) talked.add(tab.id)
+      return
+    }
+
+    case 'resumeSession':
+      if (!strip.some((tab) => tab.id === message.sessionId)) {
+        strip = [...strip, { id: message.sessionId, title: message.title ?? '', titleSource: message.titleSource ?? 'heuristic', groupId: message.sessionId, depth: 0 }]
+      } else if (message.title) {
+        strip = strip.map((tab) => (tab.id === message.sessionId ? { ...tab, title: message.title!, titleSource: message.titleSource ?? 'heuristic' } : tab))
+      }
+      talked.add(message.sessionId)
+      return
+
+    case 'prompt':
+    case 'queuePrompt':
+      talked.add(message.sessionId)
+      heldQueues.delete(message.sessionId)
+      return
+
+    case 'renameSession':
+    case 'nameSession':
+      strip = strip.map((tab) =>
+        tab.id === message.sessionId
+          ? { ...tab, title: message.title, titleSource: message.type === 'nameSession' ? 'user' : tab.titleSource }
+          : tab,
+      )
+      return
+
+    case 'saveDraft':
+      if (message.draft) heldDrafts.set(message.sessionId, message.draft)
+      else heldDrafts.delete(message.sessionId)
+      return
+
+    case 'closeSession': {
+      const at = strip.findIndex((tab) => tab.id === message.sessionId)
+      const tab = strip[at]
+      if (!tab) return
+
+      strip = strip.filter((one) => one.id !== tab.id)
+      const draft = heldDrafts.get(tab.id)
+      const queue = queues.get(tab.id) ?? []
+      heldDrafts.delete(tab.id)
+      queues.delete(tab.id)
+      // An empty "New chat" is not kept, as in the IDE: there is nothing of it to bring back.
+      if (!talked.has(tab.id) && !draft && tab.titleSource !== 'user' && queue.length === 0) return
+      keepClosed({ kind: 'chat', tab, at, draft, queue, talked: talked.has(tab.id), closedAt: Date.now() })
+      return
+    }
+
+    case 'panelTabClosed':
+      keepClosed({ kind: 'panel', id: message.id, title: message.title, place: message.place, closedAt: Date.now() })
+      return
+
+    case 'reopenTab': {
+      const open = (record: ClosedRecord) => record.kind === 'panel' && message.open.includes(record.id)
+      let record: ClosedRecord | undefined
+      if (message.key) {
+        record = closedTabs.find((one) => keyOfClosed(one) === message.key)
+        closedTabs = closedTabs.filter((one) => one !== record)
+        if (record && open(record)) record = undefined
+      } else {
+        while (closedTabs.length > 0 && !record) {
+          const [next, ...rest] = closedTabs
+          closedTabs = rest
+          if (next && !open(next)) record = next
+        }
+      }
+      sayClosedTabs()
+      if (record) bringBack(record)
+      return
+    }
+  }
 }
 
 /**
@@ -1414,6 +1632,12 @@ const listenToPanel = () => {
   lastSideRequest = undefined
   typedIntoFeed = []
   queues.clear()
+  heldQueues.clear()
+  strip = [MAIN_TAB]
+  closedTabs = []
+  heldDrafts.clear()
+  talked.clear()
+  talked.add(SESSION)
 
   if (window.__accSend) return
 
@@ -1610,6 +1834,7 @@ const listenToPanel = () => {
     if (message) answerRewind(message)
     if (message) answerRevert(message)
     if (message) answerPanelKeys(message)
+    if (message) answerClosedTabs(message)
   }
 
   window.dispatchEvent(new Event('acc:ready'))
@@ -1866,6 +2091,9 @@ export class ScenarioPlayer {
       const event = step.event as { type?: string; model?: string; message?: { model?: string } }
       streamSignature = event.message?.model ?? (event.type === 'system' ? event.model : undefined) ?? streamSignature
     }
+
+    // A strip a scenario puts up is the strip the harness mirrors from then on (see answerClosedTabs).
+    if (message.type === 'sessions') mirrorStrip(message.sessions)
 
     // A queue a scenario puts up is the queue the harness holds from then on (see answerQueue).
     if (message.type === 'queue') {

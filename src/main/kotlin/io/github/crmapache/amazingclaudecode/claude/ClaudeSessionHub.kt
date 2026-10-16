@@ -79,6 +79,8 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             onDiagnostic = { sessionId, text -> diagnostics.forEach { it(sessionId, text) } },
             onFinished = { sessionId ->
                 letModsGo(sessionId)
+                // A turn the process took with it ends here, with no result to settle its files by.
+                undiffed.turnOver(conversations.conversationIdOf(sessionId))
                 sendStatus(sessionId, SessionSnapshot.STATUS_IDLE)
             },
             onCrashed = { sessionId, exitCode -> sendProcessExited(sessionId, exitCode) },
@@ -99,6 +101,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             ownTitle = { sessionId -> tabs.ownTitle(sessionId) },
             onRenamed = { sessionId, title -> adoptOwnTitle(sessionId, title) },
             onTurnEnded = { sessionId ->
+                // A turn may end with no result to settle its files by - stopped, cut back by a rewind - and nothing of it
+                // is to be built on after (see UndiffedEdits.turnOver). After a result this has nothing left to do.
+                undiffed.turnOver(conversations.conversationIdOf(sessionId))
                 // Before the status goes out, and the order is load-bearing twice over. The status is
                 // what drains this tab's queue (see runQueued), and a message queued while the turn ran
                 // must go into the process the person's choice named rather than into the one it
@@ -243,7 +248,10 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
     private val disk: DiskRefresh = DiskRefresh(project.basePath, this)
 
     /** The diffs the CLI leaves out of big edits, worked out before the line goes anywhere (see UndiffedEdits). */
-    private val undiffed = UndiffedEdits { runCatching { ClaudeHome.of(project.basePath) }.getOrNull() }
+    private val undiffed = UndiffedEdits(
+        home = { runCatching { ClaudeHome.of(project.basePath) }.getOrNull() },
+        transcript = { conversationId -> ClaudeHistory.transcriptFile(project.basePath, conversationId) },
+    )
 
     /**
      * What this project contributes to the statistics tab. It is told about everything below - the
@@ -262,6 +270,14 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
     private val clients = ConcurrentHashMap<String, SessionClient>()
 
     private val journals = ConcurrentHashMap<String, SessionJournal>()
+
+    /**
+     * The numbering each closed tab's journal stopped at, by tab. A tab comes back under its own identifier (see
+     * [reopenTab]), and its new journal carries on from here rather than from one: a phone that was away across the
+     * close holds a number from the old journal, and a journal counting from one again had nothing after it - the
+     * phone settled on the old feed and never showed what came after the tab was back.
+     */
+    private val closedJournals = ConcurrentHashMap<String, Long>()
     private val snapshots = ConcurrentHashMap<String, AtomicReference<SessionSnapshot>>()
     private val streams = ConcurrentHashMap<String, SessionStream>()
 
@@ -366,6 +382,12 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      */
     private val forkOpenings = ConcurrentHashMap<String, CountDownLatch>()
 
+    /** The tabs closed by hand, to be opened again - see [ClosedTabs] and [reopenTab]. */
+    private val closedTabs = ClosedTabs()
+
+    /** Held while a closed tab is opened again: two presses of the key are two tabs, one after the other. */
+    private val reopening = Any()
+
     init {
         // Where the CLI keeps its files for this project is a process to find out on a WSL project, and
         // the history, the settings and the hint all ask it soon: paid now, off every thread anybody
@@ -420,7 +442,13 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             // ask the very process that has just finished for a fresh figure.
             if (line.contains(RESULT_MARKER)) {
                 usage.refreshContext(sessionId)
-                if (!replay) undiffed.turnEnded(conversations.conversationIdOf(sessionId))
+                // What the turn really did to its files, said before its result goes out and closes their list
+                // (see UndiffedEdits.settle). The result itself, not the marker: a tool's output may hold the same
+                // words, and settling mid-turn would let go of the edits the rest of the turn is built on.
+                if (!replay && AgentStream.isTurnResult(line)) {
+                    undiffed.settle(conversations.conversationIdOf(sessionId))
+                        ?.let { settled -> broadcast(sessionId, agentEnvelope(sessionId, settled)) }
+                }
                 if (!replay) {
                     // The subscription usage: the turn has just cost some of the limit, and the freshest
                     // share is precisely at this process - it got it in the answer. A past conversation's
@@ -497,6 +525,8 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         // Said to the panel alone - a phone chooses its own conversation - and said even when there is
         // none to name, because the panel waits for this word before reporting its own (see App).
         if (client.isLocal) batch += activeTabMessage()
+        // The tabs that can be opened again, for "Recently closed" - to the desk alone, like the tab on screen.
+        if (client.isLocal) batch += closedTabsMessage()
 
         // The registry's tabs, plus any conversation that has a journal without being in it. The second
         // part should never happen - a tab is opened before anything is said in it - but a feed that
@@ -505,8 +535,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         for (sessionId in known + journals.keys.filterNot { it in known }) {
             if (!catchUp.wants(sessionId)) continue
 
-            val seen = since[sessionId] ?: 0
             val journal = journal(sessionId)
+            // What a client holds of a feed the journal has started over from is nothing (see SessionJournal.wiped).
+            val seen = (since[sessionId] ?: 0).takeUnless(journal::wiped) ?: 0
             val tail = journal.tail(seen, catchUp.budget())
 
             batch += restoreStarted(sessionId, from = seen, truncated = tail.truncated)
@@ -1144,7 +1175,15 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         if (quote.isNotEmpty()) thisLogger().info("Session $id forked from $parentId")
     }
 
-    fun closeSession(id: String) {
+    /**
+     * [byPerson] is a close the person made - the cross, the panel's key - and only such a close is kept to be
+     * undone (see [reopenTab]). A tab the hub takes down itself, one whose conversation is gone from the disk
+     * after a restart (see [lostTranscript]), is not something anybody would want back.
+     */
+    fun closeSession(id: String, byPerson: Boolean = false) {
+        // While everything the tab held is still here: the draft, the queue, the conversation's id.
+        if (byPerson) keepClosed(id)
+
         // Before the conversation goes: a rewind it leaves unanswered is answered as the process goes (see
         // AwaitedControls), and finding its tab still holding a queue, it would send it - raising a process
         // for a tab nobody has any more.
@@ -1153,12 +1192,18 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         queued.clear(id)
         conversations.close(id)
         stats.noteSessionClosed(id)
-        // A tab closed is a tab forgotten: its draft goes with it, and the next start does not bring it back.
+        // Off the strip, and so off the list the next start brings back. What it held - its draft too - is kept with
+        // the tabs closed by hand when the person closed it (see keepClosed): it outlives a restart there, and is let
+        // go only when twenty newer closes push it out.
         remembered.remove(id)
         drafts.remove(id)
         asleepUntilSeen.remove(id)
         arrived.forget(id)
-        journals.remove(id)
+        // In one step with the removal: a journal asked for in between would count from one again.
+        journals.compute(id) { _, journal ->
+            journal?.let { closedJournals[id] = it.lastSeq() }
+            null
+        }
         snapshots.remove(id)
         streams.remove(id)
         modStates.clear(id)
@@ -1166,6 +1211,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         locks.remove(id)
         tabs.close(id)
         broadcastSessions()
+        if (byPerson) sendClosedTabs()
     }
 
     /**
@@ -1241,6 +1287,10 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         if (!ClaudePreferences.restoreTabs) return
 
         val saved = memory.load() ?: return
+        // The tabs closed by hand come back too, as tabs to be opened again: the one closed by mistake a
+        // minute before the IDE went down is exactly the one somebody reaches for after it is up.
+        closedTabs.load(saved.closed)
+
         val state = TabMemory.restorable(saved)
         if (state.tabs.isEmpty()) return
 
@@ -1366,29 +1416,38 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
     }
 
     private fun rememberTabsNow() {
-        val list = tabs.tabs().map { tab ->
-            val before = remembered[tab.id]
-            val conversationId = conversations.conversationIdOf(tab.id) ?: before?.conversationId
-            TabMemory.Tab(
-                id = tab.id,
-                parentId = tab.parentId,
-                // Kept for a born fork too: its process may have named a conversation that never reached the disk
-                // (see restoreTabs). Only when already known - this runs on any thread, the panel's included.
-                forkOrigin = conversations.forkOriginIfKnown(tab.id) ?: before?.forkOrigin,
-                // Only for a fork whose origin is not worked out yet - kept by an older panel, or asked a moment
-                // ago and still being resolved.
-                forkBefore = before?.forkBefore.takeIf { conversationId == null && before?.forkOrigin == null },
-                title = tab.title,
-                titleSource = tab.titleSource,
-                conversationId = conversationId,
-                model = conversations.model(tab.id) ?: before?.model.orEmpty(),
-                effort = conversations.effort(tab.id) ?: before?.effort.orEmpty(),
-                mode = conversations.permissionMode(tab.id) ?: before?.mode.orEmpty(),
-                draft = drafts[tab.id],
-            ).also { remembered[tab.id] = it.copy(draft = null) }
-        }
+        val list = tabs.tabs().map { tab -> tabSnapshot(tab).also { remembered[tab.id] = it.copy(draft = null) } }
 
-        memory.remember(TabMemory.State(active = activeTab?.takeIf { tabs.contains(it) }, tabs = list))
+        memory.remember(
+            TabMemory.State(active = activeTab?.takeIf { tabs.contains(it) }, tabs = list, closed = closedTabs.chats()),
+        )
+    }
+
+    /**
+     * One tab as it is kept - for the strip remembered across a restart, and for a tab closed by hand (see
+     * [keepClosed]): the same record, so that a tab comes back the same way whichever of the two brings it.
+     */
+    private fun tabSnapshot(tab: SessionRegistry.Tab): TabMemory.Tab {
+        val before = remembered[tab.id]
+        val conversationId = conversations.conversationIdOf(tab.id) ?: before?.conversationId
+
+        return TabMemory.Tab(
+            id = tab.id,
+            parentId = tab.parentId,
+            // Kept for a born fork too: its process may have named a conversation that never reached the disk
+            // (see restoreTabs). Only when already known - this runs on any thread, the panel's included.
+            forkOrigin = conversations.forkOriginIfKnown(tab.id) ?: before?.forkOrigin,
+            // Only for a fork whose origin is not worked out yet - kept by an older panel, or asked a moment
+            // ago and still being resolved.
+            forkBefore = before?.forkBefore.takeIf { conversationId == null && before?.forkOrigin == null },
+            title = tab.title,
+            titleSource = tab.titleSource,
+            conversationId = conversationId,
+            model = conversations.model(tab.id) ?: before?.model.orEmpty(),
+            effort = conversations.effort(tab.id) ?: before?.effort.orEmpty(),
+            mode = conversations.permissionMode(tab.id) ?: before?.mode.orEmpty(),
+            draft = drafts[tab.id],
+        )
     }
 
     /**
@@ -1404,6 +1463,235 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
 
     /** The drafts held for the panel, to hand to one that has just loaded (see ClaudePanel.sendDrafts). */
     fun heldDrafts(): Map<String, JsonObject> = drafts.filterKeys { tabs.contains(it) }
+
+    // --- Tabs closed by hand, to open again ------------------------------------------
+
+    /** What came back of a closed tab - see [reopenTab]. */
+    sealed interface Reopened {
+        /** A conversation's tab, back on the strip - and what was in its field, for the panel that asked. */
+        data class Chat(val sessionId: String, val draft: JsonObject?) : Reopened
+
+        /** One of the panel's own tabs, which only the page can open - where it stood, in the page's words. */
+        data class Panel(val id: String, val place: JsonObject?) : Reopened
+    }
+
+    /**
+     * A tab the person is closing, written down to be opened again - see [ClosedTabs].
+     *
+     * The record is the one the strip is remembered by across a restart (see [tabSnapshot]), and for the same
+     * reason: what a tab holds is the conversation, the name, the model, effort and mode it ran on, and the
+     * words in its field, and that is everything needed to put it back. Plus where it stood, so that it goes
+     * back there rather than to the end, and what it was waiting to say.
+     *
+     * A tab with none of it - an empty "New chat" - is not kept: opening it again would be a new tab, and a
+     * press of the key spent on one would bring back nothing anybody lost.
+     */
+    private fun keepClosed(id: String) {
+        val all = tabs.tabs()
+        val tab = all.firstOrNull { it.id == id } ?: return
+        val kept = tabSnapshot(tab)
+        val queue = queued.of(id)
+
+        val named = kept.titleSource == SessionSnapshot.TITLE_USER
+        if (kept.conversationId == null && kept.forkOrigin == null && !TabMemory.hasDraft(kept.draft) && !named && queue.isEmpty()) {
+            return
+        }
+
+        closedTabs.push(
+            ClosedTabs.Chat(
+                kept = TabMemory.Closed(
+                    tab = kept,
+                    groupId = tab.groupId,
+                    depth = tab.depth,
+                    groupsLeft = all.map { it.groupId }.distinct().takeWhile { it != tab.groupId },
+                    tabsLeft = all.filter { it.groupId == tab.groupId }.takeWhile { it.id != id }.map { it.id },
+                    closedAt = System.currentTimeMillis(),
+                ),
+                queue = queue,
+                countedOn = stats.countedOn(id),
+            ),
+        )
+    }
+
+    /**
+     * One of the panel's own tabs was closed - the statistics, the scenarios, a run being watched. Only the page
+     * knows it existed, so the page says so; kept here so that it takes its turn among the conversations (see
+     * [ClosedTabs]). What it is and where it stood are the page's words, carried back to it as they came.
+     */
+    fun notePanelTabClosed(id: String, title: String, place: JsonObject?) {
+        if (id.isEmpty() || id.length > PANEL_TAB_ID_LIMIT) return
+
+        closedTabs.push(
+            ClosedTabs.Panel(
+                id = id,
+                title = title.take(PANEL_TAB_TITLE_LIMIT),
+                place = place?.takeIf { it.toString().length <= PANEL_TAB_PLACE_LIMIT },
+                closedAt = System.currentTimeMillis(),
+            ),
+        )
+        sendClosedTabs()
+    }
+
+    /**
+     * Open a closed tab again - the latest one, or the one named by [key] (a row of "Recently closed" on the
+     * history screen). Null when there is nothing to bring back.
+     *
+     * [openPanels] are the panel's own tabs on the strip right now, which only the page knows: one of them
+     * closed and then opened from the menu is not opened a second time - the key moves on to the next tab
+     * instead (see ClosedTabs.take). A conversation open again in some tab is found the same way, here.
+     *
+     * Reads the disk (whether a conversation is still there), so not for the panel's thread. One at a time:
+     * a key held down is a row of tabs coming back in order, not two of them fighting over one place.
+     */
+    fun reopenTab(openPanels: Set<String>, key: String? = null): Reopened? = synchronized(reopening) {
+        var back: Reopened? = null
+
+        while (back == null) {
+            val entry = closedTabs.take(key) { stillOpen(it, openPanels) } ?: break
+            back = when (entry) {
+                is ClosedTabs.Panel -> Reopened.Panel(entry.id, entry.place)
+                is ClosedTabs.Chat -> bringBackClosed(entry)
+            }
+            // A row of the list names one tab: if that one cannot come back, the next is not what was asked for.
+            if (key != null) break
+        }
+
+        sendClosedTabs()
+        back
+    }
+
+    /** Whether what this entry would bring back is on the strip already - see [reopenTab]. */
+    private fun stillOpen(entry: ClosedTabs.Entry, openPanels: Set<String>): Boolean = when (entry) {
+        is ClosedTabs.Panel -> entry.id in openPanels
+        is ClosedTabs.Chat -> {
+            val conversation = entry.kept.tab.conversationId
+            conversation != null && tabs.tabs().any { tab ->
+                (conversations.conversationIdOf(tab.id) ?: remembered[tab.id]?.conversationId) == conversation
+            }
+        }
+    }
+
+    /**
+     * A conversation's tab back on the strip, where it stood and holding what it held - the same road a tab
+     * takes back after a restart (see [restoreTabs]): its own model, effort and mode rather than the
+     * transcript's, the transcript played in from the end, the process left down until the tab is looked at.
+     *
+     * Two things differ, and both are about the close it is undoing. Its queue comes back held (see
+     * SessionQueue.hold): the turn it was waiting for was killed by the close. And the identifier is the one it
+     * had, so its forks, still standing in its group, are its own again; only when that identifier is taken -
+     * the opening tab, after a restart that kept nothing else - does it get a new one.
+     *
+     * Whether its conversation is still on disk is asked first: the CLI clears out old transcripts, and the
+     * list remembers up to twenty tabs across restarts. A tab whose conversation is gone comes back if
+     * something else of it is worth having - words in its field, a name given by hand, a queue - and empty of
+     * the conversation; with none of that it does not come back at all, and the key moves on to the next.
+     */
+    private fun bringBackClosed(entry: ClosedTabs.Chat): Reopened.Chat? {
+        val kept = entry.kept
+        val record = kept.tab
+        val conversation = record.conversationId
+        val fork = record.forkOrigin
+
+        val onDisk = conversation != null && ClaudeHistory.transcriptFile(project.basePath, conversation) != null
+        val named = record.titleSource == SessionSnapshot.TITLE_USER
+        val held = TabMemory.hasDraft(record.draft) || named || entry.queue.isNotEmpty()
+        if (!onDisk && fork == null && !held) {
+            thisLogger().info("A closed tab's conversation is gone from disk - not brought back")
+            return null
+        }
+
+        val id = record.id.takeUnless { tabs.contains(it) } ?: "session-${System.currentTimeMillis()}"
+        val own = id == record.id
+        // A conversation gone from under a tab takes its name with it, unless the name was the person's.
+        val lost = conversation != null && !onDisk && fork == null
+        val title = if (lost && !named) "" else record.title
+        tabs.reopen(
+            id = id,
+            title = title,
+            titleSource = record.titleSource,
+            parentId = record.parentId.takeIf { own },
+            groupId = if (own) kept.groupId else id,
+            depth = if (own) kept.depth else 0,
+            groupsLeft = kept.groupsLeft,
+            tabsLeft = kept.tabsLeft,
+        )
+
+        remembered[id] = record.copy(
+            id = id,
+            parentId = tabs.tabs().firstOrNull { it.id == id }?.parentId,
+            conversationId = conversation.takeIf { onDisk },
+            draft = null,
+        )
+        record.draft?.let { drafts[id] = it }
+
+        val launch = SessionLaunch(model = record.model, effort = record.effort, mode = record.mode)
+        if (!launch.isEmpty) conversations.rememberLaunch(id, launch)
+        when {
+            onDisk -> conversations.resume(id, conversation!!)
+            fork != null -> conversations.restoreFork(id, fork)
+        }
+
+        // The tab starts from what its transcript holds, and every client lets go of what it held of the closed one.
+        // Its process said nothing after the close (see ClaudeSession.mute).
+        resetJournal(id)
+        if (entry.queue.isNotEmpty()) sendQueue(id, queued.hold(id, entry.queue))
+        stats.noteSessionReopened(id, entry.countedOn)
+        broadcastSessions()
+
+        when {
+            onDisk -> replayTranscript(
+                id,
+                conversation!!,
+                adoptTranscriptModel = record.model.isEmpty(),
+                wakeAfter = false,
+                whenMissing = fork?.let { origin -> { bringBackFork(id, origin, launch) } },
+            )
+
+            fork != null -> replayFork(id)
+        }
+
+        thisLogger().info("A closed tab was opened again")
+        return Reopened.Chat(id, record.draft)
+    }
+
+    /** The tabs that can be opened again, to the windows at this desk - see [closedTabsMessage]. */
+    private fun sendClosedTabs() {
+        val message = closedTabsMessage()
+        for (client in clients.values) {
+            if (!client.isLocal) continue
+            runCatching { client.deliver(listOf(message)) }
+                .onFailure { thisLogger().warn("A client could not take the closed tabs", it) }
+        }
+    }
+
+    /**
+     * The list behind "Recently closed" on the history screen, the latest first. Enough to draw a row and to
+     * tell whether the thing is open again - the conversation, or the panel tab's own identifier - and never
+     * what was in a field. To the desk alone: closing tabs is not a phone's business (see RemoteCommands).
+     */
+    private fun closedTabsMessage(): String = buildJsonObject {
+        put("type", "closedTabs")
+        putJsonArray("tabs") {
+            for (entry in closedTabs.list()) {
+                addJsonObject {
+                    put("key", entry.key)
+                    put("title", entry.title)
+                    put("closedAt", entry.closedAt)
+                    when (entry) {
+                        is ClosedTabs.Chat -> {
+                            put("kind", if (entry.kept.depth > 0) "fork" else "chat")
+                            entry.kept.tab.conversationId?.let { put("conversationId", it) }
+                        }
+
+                        is ClosedTabs.Panel -> {
+                            put("kind", "panel")
+                            put("id", entry.id)
+                        }
+                    }
+                }
+            }
+        }
+    }.toString()
 
     /**
      * The panel put this tab on screen. Remembered, so that it is the tab on screen after a restart, and
@@ -1613,6 +1901,10 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         // A fork whose inherited history is still being played in: the message goes under it, not above it.
         forkOpenings[sessionId]?.await(FORK_OPENING_WAIT_SECONDS, TimeUnit.SECONDS)
 
+        // The turn a held queue was waiting for (see SessionQueue.hold): the person has written again, and what
+        // is queued goes after this turn, as anything queued does.
+        if (queued.release(sessionId)) sendQueue(sessionId, queued.of(sessionId))
+
         stats.notePrompt(sessionId, text, images = images.size, remote = remote)
 
         // A message into a conversation nobody opened a tab for.
@@ -1710,6 +2002,15 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
     }
 
     private fun enqueue(sessionId: String, entry: SessionQueue.Entry, before: String?) {
+        // A queue held for the person's next turn (see SessionQueue.hold), and a message queued into a tab with
+        // nothing running - from a phone, whose Queue does not look at the turn. That message IS the next turn:
+        // it goes now, as a queued message to an idle conversation always does, and the held ones follow it.
+        // Not one taken out for editing and put back: that one belongs among the held, at its place.
+        if (before == null && queued.isHeld(sessionId) && freeToSay(sessionId)) {
+            deliverPrompt(sessionId, entry.text, entry.images, entry.echo, entry.remote, entry.context)
+            return
+        }
+
         sendQueue(sessionId, queued.add(sessionId, entry, before))
         runQueued(sessionId)
     }
@@ -1768,20 +2069,27 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      * PromptDelivery).
      */
     private fun runQueued(sessionId: String) {
-        if (snapshot(sessionId).get().status == SessionSnapshot.STATUS_RUNNING) return
-        // Between a tab's two processes there is nothing to send into: the old conversation is gone and
-        // the new one is not in yet, so this would raise a bare third one on no transcript at all. The
-        // move says so itself the moment it is done (see ClaudeSessions.onMoved).
-        if (conversations.isMoving(sessionId)) return
-        // A rewind of a conversation is on its way: what is queued was written after the messages it may be
-        // about to drop, and it waits for the answer - dropped with them, or sent once the rewind is refused
-        // (see [rewind]). The turn a rewind stops can end before the rewind answers, and that end would
-        // otherwise fire the queue into the conversation a moment before it is cut.
-        if (sessionId in rewinding) return
+        if (!freeToSay(sessionId)) return
+        // Waiting for the person rather than for the turn - see SessionQueue.hold.
+        if (queued.isHeld(sessionId)) return
 
         val (entry, rest) = queued.take(sessionId) ?: return
         sendQueue(sessionId, rest)
         deliverPrompt(sessionId, entry.text, entry.images, entry.echo, entry.remote, entry.context)
+    }
+
+    /** Whether something may be said into this conversation now, as far as the conversation is concerned. */
+    private fun freeToSay(sessionId: String): Boolean {
+        if (snapshot(sessionId).get().status == SessionSnapshot.STATUS_RUNNING) return false
+        // Between a tab's two processes there is nothing to send into: the old conversation is gone and
+        // the new one is not in yet, so this would raise a bare third one on no transcript at all. The
+        // move says so itself the moment it is done (see ClaudeSessions.onMoved).
+        if (conversations.isMoving(sessionId)) return false
+        // A rewind of a conversation is on its way: what is queued was written after the messages it may be
+        // about to drop, and it waits for the answer - dropped with them, or sent once the rewind is refused
+        // (see [rewind]). The turn a rewind stops can end before the rewind answers, and that end would
+        // otherwise fire the queue into the conversation a moment before it is cut.
+        return sessionId !in rewinding
     }
 
     private fun sendQueue(sessionId: String, items: List<SessionQueue.Entry>) {
@@ -1796,6 +2104,8 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         buildJsonObject {
             put("type", "queue")
             put("sessionId", sessionId)
+            // Waiting for the person's next turn rather than for the end of this one - see SessionQueue.hold.
+            if (queued.isHeld(sessionId)) put("held", true)
             putJsonArray("items") {
                 items.forEach { entry ->
                     addJsonObject {
@@ -2556,7 +2866,8 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         return IdleSleep.sleeps(
             snapshot,
             running = true,
-            queued = queued.of(sessionId).isNotEmpty(),
+            // A held queue waits for the person, not for this process: the next message raises one anyway.
+            queued = queued.of(sessionId).isNotEmpty() && !queued.isHeld(sessionId),
             awake = maxOf(snapshot.changedAt, startedAt),
             now = now,
         )
@@ -2697,7 +3008,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         }.toString()
 
     private fun journal(sessionId: String): SessionJournal =
-        journals.getOrPut(sessionId) { SessionJournal() }
+        journals.computeIfAbsent(sessionId) { SessionJournal(after = closedJournals.remove(it) ?: 0) }
 
     private fun snapshot(sessionId: String): AtomicReference<SessionSnapshot> =
         snapshots.getOrPut(sessionId) { AtomicReference(SessionSnapshot()) }
@@ -2760,6 +3071,15 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
          * place rather than held up.
          */
         private const val FORK_OPENING_WAIT_SECONDS = 10L
+
+        /**
+         * What the page may hand over about one of its own closed tabs (see [notePanelTabClosed]). Its words are
+         * carried back to it unread, and the limits are only there so that a page out of its mind cannot make
+         * this list heavy: a tab's identifier is a word and a run's id, a name is a line, a place a few ids.
+         */
+        private const val PANEL_TAB_ID_LIMIT = 200
+        private const val PANEL_TAB_TITLE_LIMIT = 200
+        private const val PANEL_TAB_PLACE_LIMIT = 8_000
 
         /**
          * Every conversation hub already alive on this machine.

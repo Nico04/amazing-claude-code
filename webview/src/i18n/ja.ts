@@ -263,6 +263,9 @@ export const ja: Dict = {
     empty: 'このプロジェクトにはまだ過去の会話がありません。',
     today: '今日',
     earlier: 'それ以前',
+    closed: '最近閉じたタブ',
+    reopen: (key) => (key ? `元の位置で開き直す · ${key}` : '元の位置で開き直す'),
+    fork: 'フォーク',
     messages: (n) => `${n} 件のメッセージ`,
   },
 
@@ -747,7 +750,10 @@ export const ja: Dict = {
       previousTab: '前のタブ',
       newTab: '新しいタブ',
       closeTab: 'タブを閉じる',
+      searchTabsWhen: '検索ウィンドウではそのタブ',
       closeTabWhen: 'エージェントが作業中なら確認します',
+      reopenTab: '閉じたタブを開き直す',
+      reopenTabWhen: '直近 20 件、履歴にも表示',
       openPanel: 'パネルを開く',
       openPanelWhen: 'IDE のどこからでも',
       send: '送信',
@@ -977,6 +983,7 @@ export const ja: Dict = {
     scenarios: 'シナリオ',
     closeScenarios: 'シナリオを閉じる',
     closeRun: 'この実行を閉じる',
+    closeHint: (close, reopen) => `${close} · ${reopen} で開き直せます`,
     conversations: '会話',
     newSession: '新しい会話',
     fork: 'この会話をフォーク：ここから続く新しいタブを開き、このタブはそのまま残します',
@@ -1311,6 +1318,7 @@ export const ja: Dict = {
     queue: {
       label: '待機中',
       hint: (n) => `${n} 件がこのターンの後に順番に送られます · ドラッグで並べ替え`,
+      held: (n) => `${n} 件は次のメッセージを送った後に順番に送られます（待っていたターンは停止済み） · ドラッグで並べ替え`,
       edit: '入力欄で編集',
       editing: (key, button) => `入力欄で編集中 · ${key} か「${button}」でここに戻ります`,
     },
@@ -1368,7 +1376,10 @@ export const ja: Dict = {
       stop: '停止',
       close: '閉じる',
       closeWorking: '作業中のタブを閉じますか？',
-      closeWorkingNote: 'エージェントは停止し、キューで待っているメッセージは破棄されます。会話自体は履歴に残ります。',
+      closeWorkingNote: (key) =>
+        key
+          ? `エージェントは停止します。${key} でタブを開き直せます。キューは次のメッセージまで待機します。`
+          : 'エージェントは停止します。タブは履歴から開き直せます。キューは次のメッセージまで待機します。',
     },
     noChats: { title: '一緒に作業できるのが楽しみです！', button: 'はじめる' },
     crash: {

@@ -265,6 +265,9 @@ export const fr: Dict = {
     empty: 'Aucune conversation passée ici pour l’instant.',
     today: 'AUJOURD’HUI',
     earlier: 'AVANT',
+    closed: 'FERMÉS RÉCEMMENT',
+    reopen: (key) => (key ? `Rouvrir à sa place · ${key}` : 'Rouvrir à sa place'),
+    fork: 'bifurcation',
     messages: (n) => (n === 1 ? `${n} message` : `${n} messages`),
   },
 
@@ -753,7 +756,10 @@ export const fr: Dict = {
       previousTab: 'Onglet précédent',
       newTab: 'Nouvel onglet',
       closeTab: "Fermer l'onglet",
+      searchTabsWhen: 'dans la recherche, ses onglets',
       closeTabWhen: "demande d'abord si l'agent travaille",
+      reopenTab: 'Rouvrir l’onglet fermé',
+      reopenTabWhen: 'les 20 derniers, aussi dans l’Historique',
       openPanel: 'Ouvrir le volet',
       openPanelWhen: "depuis n'importe où dans l'IDE",
       send: 'Envoyer',
@@ -985,6 +991,7 @@ export const fr: Dict = {
     scenarios: 'Scénarios',
     closeScenarios: 'Fermer les scénarios',
     closeRun: 'Fermer cette exécution',
+    closeHint: (close, reopen) => `${close} · ${reopen} le rouvre`,
     conversations: 'Conversations',
     newSession: 'Nouvelle conversation',
     fork: 'Forker cette conversation : un nouvel onglet qui reprend d’ici, pendant que celui-ci reste tel quel',
@@ -1321,6 +1328,7 @@ export const fr: Dict = {
     queue: {
       label: 'EN ATTENTE',
       hint: (n) => `${n} partiront dans l’ordre à la fin du tour · glissez pour réordonner`,
+      held: (n) => `${n} partiront dans l’ordre après votre prochain message - le tour qu’ils attendaient a été arrêté · glissez pour réordonner`,
       edit: 'Modifier dans le champ',
       editing: (key, button) => `En cours de modification dans le champ · ${key} ou « ${button} » le remet ici`,
     },
@@ -1378,8 +1386,10 @@ export const fr: Dict = {
       stop: 'Arrêter',
       close: 'Fermer',
       closeWorking: 'Fermer un onglet qui travaille encore ?',
-      closeWorkingNote:
-        "L'agent s'arrête et les messages en attente dans sa file sont perdus. La conversation reste dans l'Historique.",
+      closeWorkingNote: (key) =>
+        key
+          ? `L'agent s'arrête. ${key} rouvre l'onglet, sa file attendant votre prochain message.`
+          : "L'agent s'arrête. L'onglet peut être rouvert depuis l'Historique, sa file attendant votre prochain message.",
     },
     noChats: { title: 'Ravi de travailler ensemble !', button: "C'est parti" },
     crash: {

@@ -333,6 +333,12 @@ export const en = {
     empty: 'No past conversations here yet.',
     today: 'TODAY',
     earlier: 'EARLIER',
+    /** The tabs closed by hand above the past conversations - see ClosedTabs.kt. */
+    closed: 'RECENTLY CLOSED',
+    /** On a row of them; the key is named on the latest one alone, the one it brings back. */
+    reopen: (key: string): string => (key ? `Open again where it stood · ${key}` : 'Open again where it stood'),
+    /** Beside the time on a closed fork's row. */
+    fork: 'fork',
     messages: (n: number): string => (n === 1 ? `${n} message` : `${n} messages`),
   },
 
@@ -1013,7 +1019,10 @@ export const en = {
       previousTab: 'Previous tab',
       newTab: 'New tab',
       closeTab: 'Close tab',
+      searchTabsWhen: 'in the search window, its tabs',
       closeTabWhen: 'asks first if the agent is working',
+      reopenTab: 'Reopen closed tab',
+      reopenTabWhen: 'the last 20, also in History',
       openPanel: 'Open the panel',
       openPanelWhen: 'from anywhere in the IDE',
       send: 'Send',
@@ -1259,6 +1268,8 @@ export const en = {
     scenarios: 'Scenarios',
     closeScenarios: 'Close scenarios',
     closeRun: 'Close this run',
+    /** The hint on the open tab's cross: its key, and the one that opens it again once closed. */
+    closeHint: (close: string, reopen: string): string => `${close} · ${reopen} opens it again`,
     conversations: 'Conversations',
     newSession: 'New session',
     /** The button beside "+": a fork of the conversation on screen, whole - see App.fork. */
@@ -1728,6 +1739,9 @@ export const en = {
       label: 'QUEUED',
       hint: (n: number): string =>
         `${n} will fire in order when the run finishes · drag to reorder`,
+      /** A queue that came back with a tab opened again after it was closed while it worked (see SessionQueue.hold). */
+      held: (n: number): string =>
+        `${n} will fire in order after your next message - the turn they waited for was stopped · drag to reorder`,
       /** On the pencil beside a queued message: it goes back into the field to be corrected. */
       edit: 'Edit in the field',
       /**
@@ -1797,8 +1811,10 @@ export const en = {
       /** The panel's close key over a tab whose agent is still working - see closingWorking in App. */
       close: 'Close',
       closeWorking: 'Close a tab that is still working?',
-      closeWorkingNote:
-        'The agent stops, and messages waiting in its queue are dropped. The conversation itself stays in History.',
+      closeWorkingNote: (key: string): string =>
+        key
+          ? `The agent stops. ${key} brings the tab back, its queue waiting for your next message.`
+          : 'The agent stops. The tab can be opened again from History, its queue waiting for your next message.',
     },
     noChats: { title: 'Excited to work together!', button: "Let's start" },
     crash: {

@@ -25,6 +25,7 @@ internal object UsageFeatures {
     /** The features with a name of their own - every id the service words one by one. */
     val NAMED: Set<String> = setOf(
         "new_tab",
+        "reopen_tab",
         "panel_keys",
         "fork",
         "tab_rename",
@@ -249,6 +250,7 @@ internal object UsageFeatures {
      */
     fun ofMessage(type: String, payload: JsonObject): String? = when (type) {
         "newSession" -> if (payload.text("kind") == "branch") "fork" else "new_tab"
+        "reopenTab" -> "reopen_tab"
         "nameSession" -> "tab_rename"
         "reorderTabs", "reorderGroups" -> "tab_reorder"
         "queuePrompt" -> "queue"

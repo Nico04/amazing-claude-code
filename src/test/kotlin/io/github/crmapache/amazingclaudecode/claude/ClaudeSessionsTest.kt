@@ -221,6 +221,38 @@ class ClaudeSessionsTest : BasePlatformTestCase() {
     }
 
     /**
+     * A process does not die at once, and what it says after its tab is closed arrives under the tab's id - into
+     * the same tab opened again, under its replayed transcript. A conversation that goes on in its tab under a new
+     * process is another matter: its old process's last words are part of it.
+     */
+    fun testAClosedTabHearsNothingMoreFromItsProcessAndAMovedOneDoes() {
+        val heard = mutableListOf<String>()
+        val sessions = ClaudeSessions(
+            workingDirectory = null,
+            parentDisposable = testRootDisposable,
+            onEvent = { sessionId, _ -> heard += sessionId },
+            onError = { _, _ -> },
+            onFinished = {},
+        )
+        val line = "{\"type\":\"assistant\",\"message\":{\"content\":[]}}\n"
+
+        sessions.setEffort("closed", "low", remember = false)
+        val closing = sessions.conversation("closed")!!
+        closing.heard(line)
+        sessions.close("closed")
+        closing.heard(line)
+        assertEquals(listOf("closed"), heard)
+
+        sessions.setEffort("main", "low", remember = false)
+        val moving = sessions.conversation("main")!!
+        register("work")
+        sessions.switchAllTo()
+        assertNotSame(moving, sessions.conversation("main"))
+        moving.heard(line)
+        assertEquals(listOf("closed", "main"), heard)
+    }
+
+    /**
      * A tab whose process is replaced while it says nothing has to announce it all the same.
      *
      * A turn would be interrupted and every client told; a silent swap used to say nothing at all - and

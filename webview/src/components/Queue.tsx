@@ -26,9 +26,15 @@ interface QueueProps {
   editing: { before: string | null } | null
   /** The key that sends - while a message is being edited it puts it back instead, and the place says so. */
   sendKey: SendKey
+  /**
+   * The queue waits for the person's next message, not for a turn: it came back with a tab opened again after
+   * it was closed while working, and the turn it was queued behind died with the close (see
+   * SessionQueue.hold). Said in the head, or the rows would promise to fire on their own and never do.
+   */
+  held?: boolean
 }
 
-export const Queue = ({ items, onReorder, onRemove, onEdit, editing, sendKey }: QueueProps) => {
+export const Queue = ({ items, onReorder, onRemove, onEdit, editing, sendKey, held = false }: QueueProps) => {
   const t = useT()
   const [dragFrom, setDragFrom] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState<number | null>(null)
@@ -95,7 +101,9 @@ export const Queue = ({ items, onReorder, onRemove, onEdit, editing, sendKey }: 
       <div className={s.queueHead}>
         <span className={s.queueLabel}>{t.chrome.queue.label}</span>
         {/* Nothing to count and nothing to drag while the one message there is sits in the field. */}
-        {items.length > 0 ? <span className={s.queueHint}>{t.chrome.queue.hint(items.length)}</span> : null}
+        {items.length > 0 ? (
+          <span className={s.queueHint}>{held ? t.chrome.queue.held(items.length) : t.chrome.queue.hint(items.length)}</span>
+        ) : null}
         <div className={s.spacer} />
       </div>
 

@@ -612,6 +612,13 @@ internal class ClaudePanel(
 
             "tabShown" -> hub.showTab(field("sessionId"))
 
+            // A closed tab opened again, and one of the panel's own tabs closed so that it can be (see
+            // ClosedTabs). At this door for the reason the two above are: which tab a person closed by
+            // mistake at the desk is the desk's business, and a phone cannot close a tab at all.
+            "reopenTab" -> reopenTab(payload, field("key"))
+
+            "panelTabClosed" -> hub.notePanelTabClosed(field("id"), field("title"), payload["place"] as? JsonObject)
+
             // Whether a message carries what the editor shows (see EditorContext). Machine-wide, like the
             // one below: every window's chip and screen follow it.
             "setShareEditor" -> {
@@ -1171,6 +1178,46 @@ internal class ClaudePanel(
     }
 
     /**
+     * A closed tab opened again - the latest one, or the row of "Recently closed" named by [key] (see
+     * ClaudeSessionHub.reopenTab). Off the interface thread: whether the conversation is still on disk is asked
+     * first, and a pasted picture in the draft comes back with its bytes read off disk (see DraftImages).
+     *
+     * A conversation's tab is on the strip by the time this answers - the hub has sent the list - so the page is
+     * told which one to put on screen, and before that what was in its field. One of the panel's own tabs only
+     * the page can open, so it is told which and where.
+     */
+    private fun reopenTab(payload: JsonObject, key: String) {
+        val open = (payload["open"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.contentOrNull }.toSet()
+
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val back = runCatching { hub.reopenTab(open, key.ifEmpty { null }) }
+                .onFailure { thisLogger().warn("A closed tab could not be opened again", it) }
+                .getOrNull()
+                ?: return@executeOnPooledThread
+
+            when (back) {
+                is ClaudeSessionHub.Reopened.Chat -> {
+                    back.draft?.let { draft -> webview?.send(draftsMessage(mapOf(back.sessionId to draft))) }
+                    webview?.send(
+                        buildJsonObject {
+                            put("type", "tabReopened")
+                            put("sessionId", back.sessionId)
+                        }.toString(),
+                    )
+                }
+
+                is ClaudeSessionHub.Reopened.Panel -> webview?.send(
+                    buildJsonObject {
+                        put("type", "tabReopened")
+                        put("panel", back.id)
+                        back.place?.let { put("place", it) }
+                    }.toString(),
+                )
+            }
+        }
+    }
+
+    /**
      * The drafts the IDE holds for this project's tabs, handed to a page that has just loaded - after a
      * restart they come off disk, after a reload of the page alone they never left (see
      * ClaudeSessionHub.saveDraft).
@@ -1183,17 +1230,20 @@ internal class ClaudePanel(
     private fun sendDrafts() {
         val held = hub.heldDrafts()
 
-        ApplicationManager.getApplication().executeOnPooledThread {
-            val message = buildJsonObject {
-                put("type", "drafts")
-                putJsonObject("drafts") {
-                    held.forEach { (sessionId, draft) -> put(sessionId, DraftImages.rehydrate(draft)) }
-                }
-            }.toString()
-
-            webview?.send(message)
-        }
+        ApplicationManager.getApplication().executeOnPooledThread { webview?.send(draftsMessage(held)) }
     }
+
+    /**
+     * The drafts of these tabs as the page takes them back into their fields - one road for all the tabs a panel is
+     * handed as it loads and for the one tab opened again after a close, so that the two cannot come to differ. The
+     * images go back in by bytes (see DraftImages), and that reads files: not for the event thread.
+     */
+    private fun draftsMessage(drafts: Map<String, JsonObject>): String = buildJsonObject {
+        put("type", "drafts")
+        putJsonObject("drafts") {
+            drafts.forEach { (sessionId, draft) -> put(sessionId, DraftImages.rehydrate(draft)) }
+        }
+    }.toString()
 
     /**
      * The theme as the page needs it: the choice itself and the IDE's brightness, rather than the theme

@@ -1072,6 +1072,27 @@ internal class ClaudeSession(
         // for it, the funeral from the platform's process listener.
         Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
 
+    /**
+     * Whether what the process still says is passed on - see [mute]. Read on the thread that reads its output,
+     * set on whoever closes the tab.
+     */
+    @Volatile
+    private var muted = false
+
+    /**
+     * Nothing this conversation's process says from now on is passed on: its tab is closed, or holds another
+     * conversation now. A process does not die at once, and its last lines arrive after the close under the
+     * tab's id - into whatever the tab holds by then: the same tab opened again, a past conversation opened in
+     * it, the statistics. A conversation that goes on in its tab under a new process is not muted (see
+     * ClaudeSessions.close).
+     */
+    fun mute() {
+        muted = true
+    }
+
+    /** What the process wrote to its output. Its listener calls this - and the tests do, raising no process. */
+    internal fun heard(text: String) = lines.append(text)
+
     /** Stopping the conversation entirely: the process is taken down, the context is lost. */
     fun stop() {
         answer(takeDown())
@@ -1249,6 +1270,8 @@ internal class ClaudeSession(
      * is internal correspondence with the process.
      */
     private fun consume(line: String) {
+        if (muted) return
+
         // Not an event, just something said into the shared output: nothing to parse, and the feed has
         // as little use for it as for stderr (see noteDiagnostic).
         if (!line.startsWith("{")) {
@@ -1848,7 +1871,7 @@ internal class ClaudeSession(
             object : ProcessListener {
                 override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
                     when (outputType) {
-                        ProcessOutputTypes.STDOUT -> lines.append(event.text)
+                        ProcessOutputTypes.STDOUT -> heard(event.text)
                         ProcessOutputTypes.STDERR -> noteDiagnostic(event.text)
                     }
                 }

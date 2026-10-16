@@ -133,7 +133,7 @@ import { reusableMessage } from './feed/reuse'
 import { forkPointAfter, forkTakesCode, lastSeenUuid, newMessageUuid, type RewindChoice } from './feed/rewind'
 import { draftKey, restoredDraft, savableDraft, type SavedDraft } from './feed/draftMemory'
 import { isUntouchedTab, tabHolding, tabTakesConversation } from './feed/resume'
-import { chatHits, rowOf } from './feed/search'
+import { chatHits, rowOf, searchTabBeside } from './feed/search'
 import { openedAgentOf } from './feed/workflow'
 import { deriveSessionTitle, resumedTitle, searchHitTitleSource } from './feed/title'
 import {
@@ -175,6 +175,7 @@ import type { DraftEdit, FeedItem, FileChange, TaskItem, TodoItem, UserItem, Use
 import { emptyUsageBook, mergeUsageBook, usageOf, type UsageBook } from './feed/usage'
 import type {
   AvailablePluginInfo,
+  ClosedTab,
   HistoryEntry,
   InstalledPluginInfo,
   PaintedTerm,
@@ -200,7 +201,7 @@ import type {
   UsageStatsConsent,
   PanelKeyCommand,
 } from './protocol'
-import { keyText, type PanelKeys } from './panelKeys'
+import { keyText, reachesPastMenu, type PanelKeys } from './panelKeys'
 import {
   NO_SOUND_PREFS,
   SOUND_IDS,
@@ -235,6 +236,7 @@ import {
   moveTab,
   moveWithinGroup,
   placeAtEnd,
+  placeFromWire,
   placeIn,
   runOfTab,
   runTabId,
@@ -246,6 +248,7 @@ import {
   tabAfterElsewhere,
   tabBeside,
   type PanelTabPlace,
+  type TabPlace,
 } from './tabs'
 import {
   ScenariosTab,
@@ -833,6 +836,15 @@ export const App = () => {
    */
   const pressPanelKeyRef = useRef<(command: PanelKeyCommand) => void>(() => {})
   /**
+   * The tabs closed by hand that can be opened again, the latest first, as the IDE keeps them (see
+   * ClosedTabs.kt) - the rows of "Recently closed" on the history screen.
+   */
+  const [closedTabs, setClosedTabs] = useState<ClosedTab[]>([])
+  /** What a closed tab coming back does, as of the last render (see takeReopened) - for the same handler. */
+  const takeReopenedRef = useRef<(sessionId: string | undefined, panel: string | undefined, place: TabPlace | undefined) => void>(
+    () => {},
+  )
+  /**
    * The usage figures of every account, not just one set.
    *
    * Two accounts can be running at once - a conversation carries its account for its whole life - and
@@ -983,6 +995,11 @@ export const App = () => {
   }
 
   const closePanelTab = (id: string) => {
+    // Written down in the IDE before it goes, so the key that opens closed tabs again reaches it in its turn
+    // among the conversations (see ClosedTabs.kt) - with its name and place, which only this page knows.
+    const closing = panelTabsRef.current.find((tab) => tab.id === id)
+    if (closing) send({ type: 'panelTabClosed', id, title: panelTabTitle(id), place: closing.place })
+
     applyPanelTabs(panelTabsRef.current.filter((tab) => tab.id !== id))
     if (id === STATISTICS_GROUP) setStatsTab({ open: false, view: 'overview' })
     // The record of a run is kept only while something shows it: it is the heaviest thing this page
@@ -992,6 +1009,51 @@ export const App = () => {
     // The neighbour in the strip, whatever kind of tab it is - see tabAfterClosing - with the keyboard, as
     // after closing a conversation (see closeSession).
     if (active === id) pickTab(tabAfterClosing(sessions, panelTabs, id) || MAIN_SESSION)
+  }
+
+  /**
+   * The name one of the panel's own tabs wears - on the strip, and in "Recently closed" once it is closed (a run
+   * by its scenario and its mark, as the strip tells two runs of one scenario apart).
+   *
+   * The strip passes the runs and their marks the run's screen is drawn with (see runLabels): worked out apart,
+   * the two could name one run differently, and it is the heaviest sum of a render while a run beats. A close
+   * works them out for itself, once.
+   */
+  const panelTabTitle = (id: string, watching = watchedRuns(panelTabsRef.current, liveRuns, scenarioRuns), marks = runMarks(watching)): string => {
+    if (id === STATISTICS_GROUP) return t.header.statistics
+    if (id === SCENARIOS_GROUP) return t.header.scenarios
+
+    const run = watching.find((one) => one.id === runOfTab(id))
+    return run ? [run.scenarioName, marks[run.id]].filter(Boolean).join(' · ') : t.scenarios.run.title
+  }
+
+  /**
+   * One of the panel's own tabs, closed and opened again (see reopenTab): put back where it stood rather than at
+   * the end, and asked for what it shows the way it is on its first opening - the hub's list, a run's record.
+   * The statistics open on the overview, as they do after any close; the hub keeps whatever it was showing,
+   * since that is kept up here (see scenariosView); a run comes back to where it was being read.
+   */
+  const reopenPanelTab = (id: string, place: TabPlace | undefined) => {
+    const current = panelTabsRef.current
+    if (!current.some((tab) => tab.id === id)) {
+      applyPanelTabs([...current, { id, place: place ?? placeAtEnd(groupOrder(sessionsRef.current)) }])
+    }
+
+    if (id === STATISTICS_GROUP) setStatsTab((stats) => (stats.open ? stats : { ...stats, open: true }))
+    else if (id === SCENARIOS_GROUP) send({ type: 'scenarios' })
+    else if (runOfTab(id)) send({ type: 'scenarioOpen', runId: runOfTab(id) })
+
+    setActive(id)
+    setFocusToken((token) => token + 1)
+  }
+
+  /**
+   * Open a closed tab again - the one closed last, or the row of "Recently closed" named by `key`. The IDE keeps
+   * the list (see ClosedTabs.kt) and answers with the tab (see `tabReopened`); the panel's own tabs on the strip
+   * travel with the ask, since the IDE cannot know them and one of them is not to be opened twice.
+   */
+  const reopenTab = (key?: string) => {
+    send({ type: 'reopenTab', open: panelTabsRef.current.map((tab) => tab.id), ...(key ? { key } : {}) })
   }
 
   /**
@@ -2611,7 +2673,7 @@ export const App = () => {
 
           // What this conversation is waiting to say, as the IDE holds it - see SessionQueue.kt.
           case 'queue':
-            feed({ session: message.sessionId, action: { kind: 'queue', items: message.items } })
+            feed({ session: message.sessionId, action: { kind: 'queue', items: message.items, held: message.held } })
             break
 
           // The pencil on a queued message was pressed here - the message, whole, for the field.
@@ -3477,6 +3539,14 @@ export const App = () => {
           // does - through a ref, because this handler is built once and the strip changes under it.
           case 'panelKey':
             pressPanelKeyRef.current(message.command)
+            break
+
+          case 'closedTabs':
+            setClosedTabs(message.tabs)
+            break
+
+          case 'tabReopened':
+            takeReopenedRef.current(message.sessionId, message.panel, message.place)
             break
 
           case 'panelKeys':
@@ -6005,14 +6075,7 @@ export const App = () => {
         id: tab.id,
         at: placeIn(tab.place, groups),
         active: active === tab.id,
-        title:
-          tab.id === STATISTICS_GROUP
-            ? t.header.statistics
-            : tab.id === SCENARIOS_GROUP
-              ? t.header.scenarios
-              : run
-                ? [run.scenarioName, runLabels[run.id]].filter(Boolean).join(' · ')
-                : t.scenarios.run.title,
+        title: panelTabTitle(tab.id, watched, runLabels),
         color: tab.id === STATISTICS_GROUP ? STATISTICS_COLOR : SCENARIO_COLOR,
         closeLabel:
           tab.id === STATISTICS_GROUP
@@ -6058,6 +6121,32 @@ export const App = () => {
   )
 
   /**
+   * The closed tabs "Recently closed" offers - those not open again by some other road: a conversation picked
+   * in the history since, the statistics opened from the menu. The IDE skips them the same way when the key is
+   * pressed (see ClosedTabs.take), so the list and the key agree on what comes back next. The panel's own tabs
+   * wear their names in today's language, as on the strip; a run keeps the name it had.
+   */
+  const reopenable = ((): (ClosedTab & { name: string })[] => {
+    const held = new Set(sessions.map((session) => panels[session.id]?.sessionId).filter(Boolean))
+
+    return closedTabs
+      .filter((tab) =>
+        tab.kind === 'panel'
+          ? !panelTabs.some((open) => open.id === tab.id)
+          : !(tab.conversationId && held.has(tab.conversationId)),
+      )
+      .map((tab) => ({
+        ...tab,
+        name:
+          tab.id === STATISTICS_GROUP
+            ? t.header.statistics
+            : tab.id === SCENARIOS_GROUP
+              ? t.header.scenarios
+              : tab.title,
+      }))
+  })()
+
+  /**
    * Closing a conversation's tab - the cross on the tab and the panel's close key both come here.
    *
    * Any tab closes like an ordinary one, the last one included - then there is nothing to show, but the
@@ -6065,6 +6154,17 @@ export const App = () => {
    * open.
    */
   const closeSession = (id: string) => {
+    // The last words typed into its field go before the close does, rather than dying with the pause that was
+    // waiting to save them: the IDE keeps the closed tab to be opened again, field and all (see ClosedTabs.kt).
+    const pending = draftSaves.current[id]
+    if (pending) {
+      window.clearTimeout(pending.timer)
+      delete draftSaves.current[id]
+      send({ type: 'saveDraft', sessionId: id, draft: pending.draft })
+    }
+    // What the IDE was last told about this field is about a tab that is going; the field it may come back
+    // with is told afresh (see `drafts`).
+    delete draftsSent.current[id]
     send({ type: 'closeSession', sessionId: id })
     delete soundMemory.current[id]
     // Both the collected output and what is still running: without the second, a later answer from
@@ -6129,7 +6229,25 @@ export const App = () => {
    * the tabs are out of the mouse's reach, and they are out of the keys' too.
    */
   const pressPanelKey = (command: PanelKeyCommand) => {
-    if (sideMenu.open || document.querySelector('[aria-modal="true"]')) return
+    if (sideMenu.open) {
+      // As a press of the row it names would: the menu over the strip the tab comes back to goes away first.
+      if (reachesPastMenu(command, sideMenu.screen, reopenable.length) && !document.querySelector('[aria-modal="true"]')) {
+        setSideMenu({ open: false, screen: 'menu' })
+        reopenTab()
+      }
+      return
+    }
+
+    // Over the search window the tab keys walk its own tabs - the ones the mouse reaches there. Only when it is
+    // the one window up: a question standing over it keeps every key off what lies under it.
+    const windows = document.querySelectorAll('[aria-modal="true"]')
+    if (windows.length === 1 && windows[0]?.hasAttribute('data-acc-search')) {
+      if (command === 'nextTab' || command === 'previousTab') {
+        setSearch((current) => ({ ...current, tab: searchTabBeside(current.tab, command === 'nextTab' ? 1 : -1) }))
+      }
+      return
+    }
+    if (windows.length > 0) return
 
     switch (command) {
       case 'nextTab':
@@ -6143,6 +6261,11 @@ export const App = () => {
 
       case 'newTab':
         startSession(`session-${Date.now()}`)
+        return
+
+      // The one closed last, whatever kind - the IDE knows which (see ClosedTabs.kt).
+      case 'reopenTab':
+        reopenTab()
         return
 
       case 'closeTab':
@@ -6161,6 +6284,31 @@ export const App = () => {
     }
   }
   pressPanelKeyRef.current = pressPanelKey
+
+  /**
+   * A closed tab is back (see reopenTab). A conversation's tab is on the strip by now - the IDE sent the list
+   * first, and its field before this - so it only has to be put on screen, with the keyboard in its field as
+   * after any tab picked by hand (see pickTab). One of the panel's own tabs the page opens itself.
+   */
+  const takeReopened = (sessionId: string | undefined, panel: string | undefined, place: TabPlace | undefined) => {
+    if (sessionId) {
+      setActive(sessionId)
+      setFocusToken((current) => current + 1)
+      return
+    }
+    if (panel && isPanelTab(panel)) reopenPanelTab(panel, placeFromWire(place))
+  }
+  takeReopenedRef.current = takeReopened
+
+  /**
+   * The hint on the open tab's cross: its key, and the one that brings it back - said where a close is made,
+   * which is where somebody who closed the wrong tab looks first.
+   */
+  const closeTabHint = ((): string => {
+    const close = keyText(panelKeys.closeTab)
+    const reopen = keyText(panelKeys.reopenTab)
+    return close && reopen ? t.header.closeHint(close, reopen) : close
+  })()
 
   const header = (
     <Header
@@ -6183,7 +6331,7 @@ export const App = () => {
         onPickPanelTab={pickTab}
         onClosePanelTab={closePanelTab}
         newTabKey={keyText(panelKeys.newTab)}
-        closeTabKey={keyText(panelKeys.closeTab)}
+        closeTabKey={closeTabHint}
         calls={calls}
         watchers={watchers}
         gitBranch={branch.gitBranch}
@@ -6282,6 +6430,7 @@ export const App = () => {
         // and a place in a queue that has nothing to wait for would promise an order that does not exist.
         editing={running ? (queueEdits[active] ?? null) : null}
         sendKey={sendKey}
+        held={panel.queueHeld}
       />
 
       <Quotes
@@ -6336,7 +6485,7 @@ export const App = () => {
         <Confirm
           title={t.chrome.confirm.closeWorking}
           subject={sessions.find((session) => session.id === closingWorking)?.title ?? ''}
-          note={t.chrome.confirm.closeWorkingNote}
+          note={t.chrome.confirm.closeWorkingNote(keyText(panelKeys.reopenTab))}
           confirmLabel={t.chrome.confirm.close}
           onCancel={() => {
             setClosingWorking(null)
@@ -6848,7 +6997,17 @@ export const App = () => {
         {/* Only what is being looked at is built: the MCP and plugin screens are whole lists, and the
             menu is shut far more of the time than it is open. */}
         {sideMenu.open && sideMenu.screen === 'history' ? (
-          <History conversations={history} onOpen={resume} />
+          <History
+            conversations={history}
+            onOpen={resume}
+            closed={reopenable}
+            onReopen={(key) => {
+              // The tab comes back on the strip, and the menu over it would hide exactly that.
+              setSideMenu({ open: false, screen: 'menu' })
+              reopenTab(key)
+            }}
+            reopenKey={keyText(panelKeys.reopenTab)}
+          />
         ) : null}
 
         {sideMenu.open && sideMenu.screen === 'mcp' ? (

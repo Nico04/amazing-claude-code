@@ -292,6 +292,51 @@ describe('the files a turn changed, in the feed', () => {
     ])
   })
 
+  /**
+   * A formatter after the Write, the agent's own script, the CLI adding to a memory file: the file is not what its
+   * diffs say, and the IDE says what it is before the result closes the list (see UndiffedEdits.settle).
+   */
+  it('takes the figures and edits of a file the IDE settled at the end of the turn', () => {
+    const settled = { kind: 'patch' as const, hunks: [{ oldStart: 0, newStart: 1, lines: ['+a', '+b', '+c'] }] }
+    const state = reduce([
+      live(init),
+      live(call('w1', 'Write', { file_path: `${ROOT}/a.css`, content: 'a {}' })),
+      live(answer('w1', 'File created successfully', { type: 'create', filePath: `${ROOT}/a.css`, structuredPatch: [] })),
+      live(call('e1', 'Edit', { file_path: `${ROOT}/b.ts`, old_string: 'a', new_string: 'b' })),
+      live(answer('e1', 'ok', { filePath: `${ROOT}/b.ts`, structuredPatch: patch('-a', '+b') })),
+      live({
+        type: 'files_settled',
+        files: [
+          { path: `${ROOT}/a.css`, added: 3, removed: 0, edits: [{ kind: 'create', content: '' }, settled] },
+          // A file the list does not hold stays out of it.
+          { path: `${ROOT}/elsewhere.ts`, added: 1, removed: 0, edits: [settled] },
+        ],
+      }),
+      live(result),
+    ])
+
+    expect(lists(state.items)).toMatchObject([
+      [
+        { path: `${ROOT}/a.css`, added: 3, removed: 0, created: true, edits: [{ kind: 'create', content: '' }, settled] },
+        { path: `${ROOT}/b.ts`, added: 1, removed: 1, edits: [{ kind: 'patch' }] },
+      ],
+    ])
+  })
+
+  /** The phone is sent the figures without the edits when they would not fit its frame. */
+  it('takes the figures alone when the edits did not come, and offers no revert by the old ones', () => {
+    const state = reduce([
+      live(init),
+      live(call('e1', 'Edit', { file_path: `${ROOT}/b.ts`, old_string: 'a', new_string: 'b' })),
+      live(answer('e1', 'ok', { filePath: `${ROOT}/b.ts`, structuredPatch: patch('-a', '+b') })),
+      live({ type: 'files_settled', files: [{ path: `${ROOT}/b.ts`, added: 40, removed: 12 }] }),
+      live(result),
+    ])
+    const [file] = lists(state.items)[0] ?? []
+    expect(file).toMatchObject({ added: 40, removed: 12 })
+    expect(file?.edits).toBeUndefined()
+  })
+
   it('marks the rows the IDE says it put back, and leaves the rest', () => {
     const changed = reduce([
       live(init),

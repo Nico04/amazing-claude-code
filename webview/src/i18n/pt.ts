@@ -261,6 +261,9 @@ export const pt: Dict = {
     empty: 'Ainda não há conversas anteriores aqui.',
     today: 'HOJE',
     earlier: 'ANTES',
+    closed: 'FECHADAS RECENTEMENTE',
+    reopen: (key) => (key ? `Reabrir no mesmo lugar · ${key}` : 'Reabrir no mesmo lugar'),
+    fork: 'bifurcação',
     messages: (n) => (n === 1 ? `${n} mensagem` : `${n} mensagens`),
   },
 
@@ -749,7 +752,10 @@ export const pt: Dict = {
       previousTab: 'Aba anterior',
       newTab: 'Nova aba',
       closeTab: 'Fechar a aba',
+      searchTabsWhen: 'na janela de busca, as abas dela',
       closeTabWhen: 'pergunta antes se o agente estiver trabalhando',
+      reopenTab: 'Reabrir aba fechada',
+      reopenTabWhen: 'as últimas 20, também no Histórico',
       openPanel: 'Abrir o painel',
       openPanelWhen: 'de qualquer lugar do IDE',
       send: 'Enviar',
@@ -981,6 +987,7 @@ export const pt: Dict = {
     scenarios: 'Cenários',
     closeScenarios: 'Fechar os cenários',
     closeRun: 'Fechar esta execução',
+    closeHint: (close, reopen) => `${close} · ${reopen} reabre`,
     conversations: 'Conversas',
     newSession: 'Nova conversa',
     fork: 'Bifurcar esta conversa: uma aba nova que continua daqui, enquanto esta fica como está',
@@ -1317,6 +1324,7 @@ export const pt: Dict = {
     queue: {
       label: 'NA FILA',
       hint: (n) => `${n} vão sair em ordem quando a rodada terminar · arraste para reordenar`,
+      held: (n) => `${n} vão sair em ordem depois da sua próxima mensagem - a rodada que esperavam foi parada · arraste para reordenar`,
       edit: 'Editar no campo',
       editing: (key, button) => `Sendo editada no campo · ${key} ou “${button}” a devolve para cá`,
     },
@@ -1374,8 +1382,10 @@ export const pt: Dict = {
       stop: 'Parar',
       close: 'Fechar',
       closeWorking: 'Fechar uma aba que ainda está trabalhando?',
-      closeWorkingNote:
-        'O agente para, e as mensagens que esperam na fila são descartadas. A conversa continua no Histórico.',
+      closeWorkingNote: (key) =>
+        key
+          ? `O agente para. ${key} traz a aba de volta, com a fila esperando a sua próxima mensagem.`
+          : 'O agente para. A aba pode ser reaberta pelo Histórico, com a fila esperando a sua próxima mensagem.',
     },
     noChats: { title: 'Animado para trabalhar com você!', button: 'Vamos começar' },
     crash: {

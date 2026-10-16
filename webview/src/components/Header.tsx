@@ -178,7 +178,9 @@ interface HeaderProps {
   onClosePanelTab?: (id: string) => void
   /**
    * The panel's keys for a new tab and for closing the open one, as hover hints name them (see keyText) -
-   * empty while the IDE has not said, and then the hints say only what they always said.
+   * empty while the IDE has not said, and then the hints say only what they always said. The close key's hint
+   * names the key that opens the tab again as well (see closeTabHint in App): a close made by mistake is
+   * undone from where it was made.
    */
   newTabKey?: string
   closeTabKey?: string

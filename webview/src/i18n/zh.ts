@@ -261,6 +261,9 @@ export const zh: Dict = {
     empty: '这个项目还没有过去的对话。',
     today: '今天',
     earlier: '更早',
+    closed: '最近关闭',
+    reopen: (key) => (key ? `在原位置重新打开 · ${key}` : '在原位置重新打开'),
+    fork: '分叉',
     messages: (n) => `${n} 条消息`,
   },
 
@@ -745,7 +748,10 @@ export const zh: Dict = {
       previousTab: '上一个标签页',
       newTab: '新建标签页',
       closeTab: '关闭标签页',
+      searchTabsWhen: '在搜索窗口中切换其标签',
       closeTabWhen: '智能体工作时会先询问',
+      reopenTab: '重新打开已关闭的标签页',
+      reopenTabWhen: '最近 20 个，也在历史记录中',
       openPanel: '打开面板',
       openPanelWhen: '在 IDE 的任何位置',
       send: '发送',
@@ -975,6 +981,7 @@ export const zh: Dict = {
     scenarios: '场景',
     closeScenarios: '关闭场景',
     closeRun: '关闭这次运行',
+    closeHint: (close, reopen) => `${close} · ${reopen} 可重新打开`,
     conversations: '对话',
     newSession: '新建对话',
     fork: '分叉此对话：新标签页从这里接着聊，当前这个保持不变',
@@ -1309,6 +1316,7 @@ export const zh: Dict = {
     queue: {
       label: '排队中',
       hint: (n) => `${n} 条会在本轮结束后按顺序发出 · 拖动可调整顺序`,
+      held: (n) => `${n} 条会在你发出下一条消息后按顺序发出（它们等待的那一轮已停止） · 拖动可调整顺序`,
       edit: '在输入框中编辑',
       editing: (key, button) => `正在输入框中编辑 · 按 ${key} 或点「${button}」放回这里`,
     },
@@ -1366,7 +1374,10 @@ export const zh: Dict = {
       stop: '停止',
       close: '关闭',
       closeWorking: '关闭仍在工作的标签页？',
-      closeWorkingNote: '智能体会停止，队列中等待的消息会被丢弃。对话本身仍保留在历史记录中。',
+      closeWorkingNote: (key) =>
+        key
+          ? `智能体会停止。按 ${key} 可重新打开标签页，队列会等到你发出下一条消息。`
+          : '智能体会停止。可以从历史记录重新打开标签页，队列会等到你发出下一条消息。',
     },
     noChats: { title: '很高兴和你一起工作！', button: '开始吧' },
     crash: {

@@ -32,6 +32,7 @@ class PanelKeysTest {
             PanelKeys.Command.PREVIOUS_TAB to PreviousTabAction::class,
             PanelKeys.Command.NEW_TAB to NewTabAction::class,
             PanelKeys.Command.CLOSE_TAB to CloseTabAction::class,
+            PanelKeys.Command.REOPEN_TAB to ReopenTabAction::class,
             PanelKeys.Command.QUEUE to QueueMessageAction::class,
         )
 

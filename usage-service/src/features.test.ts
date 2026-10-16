@@ -42,10 +42,10 @@ describe('the two plugins', () => {
 
   it('differ in their features only where the agent underneath does', () => {
     expect(apart(FEATURES.acc, FEATURES.acx)).toEqual({
-      // panel_keys and revert_changes are not about the agent: the panel's keys and the list of a turn's
-      // changes came to ACC first, and wait for the fork until they are ported there - the cheat sheet's
-      // screen below with them.
-      missingHere: ['design_login', 'panel_keys', 'revert_changes', 'stop_task'],
+      // panel_keys, reopen_tab and revert_changes are not about the agent: the panel's keys, closed tabs
+      // opened again and the list of a turn's changes came to ACC first, and wait for the fork until they
+      // are ported there - the cheat sheet's screen below with them.
+      missingHere: ['design_login', 'panel_keys', 'reopen_tab', 'revert_changes', 'stop_task'],
       notInPlugin: ['project_trust'],
     })
     expect(apart(SCREENS.acc, SCREENS.acx)).toEqual({

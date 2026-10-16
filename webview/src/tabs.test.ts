@@ -6,6 +6,8 @@ import {
   moveTab,
   moveWithinGroup,
   placeAtEnd,
+  placeFromWire,
+  placeIn,
   runOfTab,
   runTabId,
   SCENARIOS_GROUP,
@@ -346,5 +348,31 @@ describe('tabAfterElsewhere', () => {
 
   it('leaves the screen empty when the news names nothing at all', () => {
     expect(tabAfterElsewhere([tab('main', 'main')], [], [], 'main')).toBe('')
+  })
+})
+
+// A closed tab of the panel's own comes back where it stood: the IDE kept the place and carries it back unread.
+describe('placeFromWire', () => {
+  it('takes a place the page wrote, and puts the tab back among the neighbours it had', () => {
+    const place = placeFromWire({ at: 2, among: ['a', 'b', 'c'] })
+    expect(place).toEqual({ at: 2, among: ['a', 'b', 'c'] })
+    // "b" was closed meanwhile: the tab stands after "a", where its left neighbours still are.
+    expect(placeIn(place!, ['a', 'c'])).toBe(1)
+  })
+
+  it('stays after the neighbour it stood after when a conversation comes back to the left of it', () => {
+    // The statistics were opened while the first conversation was closed; it came back in front of everything.
+    const place = { at: 3, among: ['r', 'm', 'e'] }
+    expect(placeIn(place, ['main', 'r', 'm', 'e'])).toBe(4)
+    expect(placeIn({ at: 1, among: ['r', 'm'] }, ['main', 'r', 'x', 'm'])).toBe(2)
+    expect(placeIn({ at: 0, among: ['r'] }, ['main', 'r'])).toBe(0)
+  })
+
+  it('refuses anything else rather than trusting it', () => {
+    expect(placeFromWire(undefined)).toBeUndefined()
+    expect(placeFromWire({ at: -1, among: [] })).toBeUndefined()
+    expect(placeFromWire({ at: 1.5, among: [] })).toBeUndefined()
+    expect(placeFromWire({ at: 0, among: [1] })).toBeUndefined()
+    expect(placeFromWire({ at: 0 })).toBeUndefined()
   })
 })

@@ -285,6 +285,43 @@ class SessionFanOutTest : BasePlatformTestCase() {
     }
 
     /**
+     * A tab closed and opened again comes back under its own identifier, with a journal of its own. A phone that
+     * was away across both returns with a number from the old journal - and is handed the new one afresh, not
+     * "nothing after your number" from a journal that counts from one again. So too while the journal of the tab
+     * that came back is still empty: kept, the phone's screen would go on showing the tab that was closed.
+     */
+    fun testAPhoneAwayWhileATabWasClosedAndOpenedAgainIsHandedItAfresh() {
+        val hub = hub()
+        hub.openSession("again", parentId = null, title = "", quote = "")
+        repeat(4) { status(hub, "again", SessionSnapshot.STATUS_RUNNING) }
+        val away = hub.lastSeq("again")
+        hub.saveDraft(
+            "again",
+            buildJsonObject {
+                put("tokens", kotlinx.serialization.json.buildJsonArray { add(buildJsonObject { put("kind", "text"); put("value", "words") }) })
+            },
+        )
+
+        hub.closeSession("again", byPerson = true)
+        assertEquals("again", (hub.reopenTab(emptySet()) as ClaudeSessionHub.Reopened.Chat).sessionId)
+
+        fun restoreFor(name: String): List<String> {
+            val phone = Recorder(name)
+            hub.register(phone)
+            hub.attach(phone.id, since = mapOf("again" to away))
+            return phone.received.filter { it.contains("\"sessionId\":\"again\"") }
+        }
+
+        assertTrue(restoreFor("away-early").first { it.contains("\"type\":\"restoreStarted\"") }.contains("\"from\":0"))
+
+        status(hub, "again", SessionSnapshot.STATUS_IDLE)
+        assertTrue(hub.lastSeq("again") > away)
+        val later = restoreFor("away-later")
+        assertTrue(later.first { it.contains("\"type\":\"restoreStarted\"") }.contains("\"from\":0"))
+        assertTrue(later.any { it.contains("\"type\":\"status\"") && it.contains("\"state\":\"idle\"") })
+    }
+
+    /**
      * A conversation that has been wiped or replaced must not come back from the journal: the feed it
      * left describes something that no longer exists.
      */

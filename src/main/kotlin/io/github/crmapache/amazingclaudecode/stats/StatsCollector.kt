@@ -474,6 +474,19 @@ internal class StatsCollector(
         }
     }
 
+    /**
+     * The day this tab's conversation was counted on, if it was - asked as the tab closes, so that the tab
+     * opened again after a close made by mistake (see ClaudeSessionHub.reopenTab) is not counted a second time
+     * the next time somebody writes into it: [noteSessionClosed] forgets the mark, on the promise that the
+     * identifier is never handed out again, and a reopened tab keeps its identifier.
+     */
+    fun countedOn(sessionId: String): String? = countedSessions[sessionId]
+
+    /** The mark [countedOn] read, put back on the tab that came back - see there. */
+    fun noteSessionReopened(sessionId: String, countedOn: String?) {
+        if (countedOn != null) countedSessions[sessionId] = countedOn
+    }
+
     fun noteSessionClosed(sessionId: String) {
         conversations.remove(sessionId)
         running.remove(sessionId)

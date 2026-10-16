@@ -261,6 +261,9 @@ export const es: Dict = {
     empty: 'Aquí todavía no hay conversaciones anteriores.',
     today: 'HOY',
     earlier: 'ANTES',
+    closed: 'CERRADAS RECIENTEMENTE',
+    reopen: (key) => (key ? `Volver a abrir en su sitio · ${key}` : 'Volver a abrir en su sitio'),
+    fork: 'bifurcación',
     messages: (n) => (n === 1 ? `${n} mensaje` : `${n} mensajes`),
   },
 
@@ -749,7 +752,10 @@ export const es: Dict = {
       previousTab: 'Pestaña anterior',
       newTab: 'Pestaña nueva',
       closeTab: 'Cerrar la pestaña',
+      searchTabsWhen: 'en la búsqueda, sus pestañas',
       closeTabWhen: 'pregunta antes si el agente trabaja',
+      reopenTab: 'Reabrir pestaña cerrada',
+      reopenTabWhen: 'las últimas 20, también en Historial',
       openPanel: 'Abrir el panel',
       openPanelWhen: 'desde cualquier lugar del IDE',
       send: 'Enviar',
@@ -981,6 +987,7 @@ export const es: Dict = {
     scenarios: 'Escenarios',
     closeScenarios: 'Cerrar los escenarios',
     closeRun: 'Cerrar esta ejecución',
+    closeHint: (close, reopen) => `${close} · ${reopen} la vuelve a abrir`,
     conversations: 'Conversaciones',
     newSession: 'Conversación nueva',
     fork: 'Bifurcar esta conversación: una pestaña nueva que sigue desde aquí, mientras esta queda como está',
@@ -1317,6 +1324,7 @@ export const es: Dict = {
     queue: {
       label: 'EN COLA',
       hint: (n) => `${n} saldrán en orden cuando termine la ejecución · arrastra para reordenar`,
+      held: (n) => `${n} saldrán en orden tras tu próximo mensaje - la ejecución que esperaban se detuvo · arrastra para reordenar`,
       edit: 'Editar en el campo',
       editing: (key, button) => `Se está editando en el campo · ${key} o «${button}» lo devuelve aquí`,
     },
@@ -1374,8 +1382,10 @@ export const es: Dict = {
       stop: 'Parar',
       close: 'Cerrar',
       closeWorking: '¿Cerrar una pestaña que sigue trabajando?',
-      closeWorkingNote:
-        'El agente se detiene y los mensajes que esperan en su cola se pierden. La conversación queda en el Historial.',
+      closeWorkingNote: (key) =>
+        key
+          ? `El agente se detiene. ${key} recupera la pestaña, con su cola esperando tu próximo mensaje.`
+          : 'El agente se detiene. La pestaña se puede volver a abrir desde el Historial, con su cola esperando tu próximo mensaje.',
     },
     noChats: { title: '¡Con ganas de trabajar juntos!', button: 'Empecemos' },
     crash: {

@@ -438,6 +438,13 @@ internal object RemoteCommands {
         "tabShown",
         "setRestoreTabs",
         /**
+         * A closed tab opened again, and one of the desk panel's own tabs reported closed (see ClosedTabs).
+         * A phone cannot close a tab (`closeSession` above), so it has nothing to undo; and opening one again
+         * puts a tab on the desk's strip, with the draft that was in it, which is the desk's to decide.
+         */
+        "reopenTab",
+        "panelTabClosed",
+        /**
          * The pencil on a queued message: the whole message back into the asker's field (see
          * ClaudeSessionHub.takeQueued). Refused because the phone has no such button, not on principle -
          * the door is no wider than "unqueuePrompt", which is allowed. What stands in the way of the button

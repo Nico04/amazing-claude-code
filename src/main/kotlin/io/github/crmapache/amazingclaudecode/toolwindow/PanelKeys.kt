@@ -25,7 +25,8 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
 /**
- * The panel's own keys: the next and the previous tab, a new one, closing the one on screen, and Queue.
+ * The panel's own keys: the next and the previous tab, a new one, closing the one on screen, opening again the
+ * one closed last, and Queue.
  *
  * They are actions of the IDE rather than keys the page listens for, because the IDE has the keyboard
  * first. A press reaches the keymap before the embedded browser sees it, so a page listening for Cmd+W
@@ -35,8 +36,9 @@ import kotlinx.serialization.json.putJsonObject
  *
  * Three of them take the keys of the IDE's own tab actions (`use-shortcut-of` in plugin.xml): whatever
  * moves between and closes editor tabs in this person's keymap does the same to the panel's tabs while
- * the focus is in the panel, and follows when that keymap changes. New tab takes the terminal's keys - the
- * other tool window with tabs of its own, so one habit opens a tab in either.
+ * the focus is in the panel, and follows when that keymap changes. New tab and the closed one opened again take
+ * the browser's pair - Cmd+T and Cmd+Shift+T on a Mac, Ctrl+T and Ctrl+Shift+T elsewhere: the second one is a
+ * reflex long before anybody looks for it in a cheat sheet, and the reflex is the whole of what it is for.
  *
  * Two roads lead to the same command. A press inside the panel is caught by an action registered on the
  * browser itself ([install]): the IDE asks the focused component's own shortcuts before the keymap's, so
@@ -52,6 +54,7 @@ internal object PanelKeys {
         PREVIOUS_TAB("AmazingClaudeCode.PreviousTab", "previousTab"),
         NEW_TAB("AmazingClaudeCode.NewTab", "newTab"),
         CLOSE_TAB("AmazingClaudeCode.CloseTab", "closeTab"),
+        REOPEN_TAB("AmazingClaudeCode.ReopenTab", "reopenTab"),
         QUEUE("AmazingClaudeCode.QueueMessage", "queue"),
     }
 
@@ -136,7 +139,7 @@ internal object PanelKeys {
     /**
      * Settings | Keymap, opened on the panel's own actions - the cheat sheet's way to "change these".
      *
-     * By selecting the first of them: Keymap unfolds the plugin's node around it, so all five stand on the
+     * By selecting the first of them: Keymap unfolds the plugin's node around it, so all of them stand on the
      * screen at once, ready to be rebound. Keymap's `selectAction` is made for being asked before the page is
      * built - it holds the id and applies it once a keymap is loaded.
      *
@@ -191,5 +194,7 @@ internal class PreviousTabAction : PanelKeyAction(PanelKeys.Command.PREVIOUS_TAB
 internal class NewTabAction : PanelKeyAction(PanelKeys.Command.NEW_TAB)
 
 internal class CloseTabAction : PanelKeyAction(PanelKeys.Command.CLOSE_TAB)
+
+internal class ReopenTabAction : PanelKeyAction(PanelKeys.Command.REOPEN_TAB)
 
 internal class QueueMessageAction : PanelKeyAction(PanelKeys.Command.QUEUE)

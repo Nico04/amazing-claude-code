@@ -47,8 +47,15 @@ const REVEAL_LIMIT = 12_000
  * the duration of the animation, and the line around it trembles with rewraps. Opacity with a light blur
  * is enough for "appearing out of nowhere", while the feed stays still.
  */
+/**
+ * What appears as one piece: whole words, the wave this card draws. The pace the answer is printed at reads the same
+ * setting (see useSmoothStream in Feed) - with the pace stopping between characters, a word arrived in two or three
+ * pieces, each with a wave of its own, and could wrap mid-animation (smooth-stream-text 0.2.0).
+ */
+export const REVEAL_UNIT = 'word'
+
 const REVEAL = {
-  unit: 'word',
+  unit: REVEAL_UNIT,
   durationMs: 340,
   staggerMs: 14,
   blurPx: 4,

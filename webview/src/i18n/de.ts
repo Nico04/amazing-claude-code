@@ -264,6 +264,9 @@ export const de: Dict = {
     empty: 'Hier gibt es noch keine früheren Gespräche.',
     today: 'HEUTE',
     earlier: 'FRÜHER',
+    closed: 'ZULETZT GESCHLOSSEN',
+    reopen: (key) => (key ? `An alter Stelle wieder öffnen · ${key}` : 'An alter Stelle wieder öffnen'),
+    fork: 'Fork',
     messages: (n) => (n === 1 ? `${n} Nachricht` : `${n} Nachrichten`),
   },
 
@@ -752,7 +755,10 @@ export const de: Dict = {
       previousTab: 'Vorheriger Tab',
       newTab: 'Neuer Tab',
       closeTab: 'Tab schließen',
+      searchTabsWhen: 'im Suchfenster dessen Tabs',
       closeTabWhen: 'fragt nach, wenn der Agent arbeitet',
+      reopenTab: 'Geschlossenen Tab öffnen',
+      reopenTabWhen: 'die letzten 20, auch im Verlauf',
       openPanel: 'Panel öffnen',
       openPanelWhen: 'von überall in der IDE',
       send: 'Senden',
@@ -984,6 +990,7 @@ export const de: Dict = {
     scenarios: 'Szenarien',
     closeScenarios: 'Szenarien schließen',
     closeRun: 'Diesen Lauf schließen',
+    closeHint: (close, reopen) => `${close} · ${reopen} öffnet wieder`,
     conversations: 'Gespräche',
     newSession: 'Neues Gespräch',
     fork: 'Diese Unterhaltung forken: ein neuer Tab, der von hier aus weitermacht, während dieser bleibt, wie er ist',
@@ -1320,6 +1327,7 @@ export const de: Dict = {
     queue: {
       label: 'IN DER WARTESCHLANGE',
       hint: (n) => `${n} gehen der Reihe nach raus, sobald der Lauf fertig ist · zum Umsortieren ziehen`,
+      held: (n) => `${n} gehen der Reihe nach nach deiner nächsten Nachricht raus - der Lauf, auf den sie warteten, wurde gestoppt · zum Umsortieren ziehen`,
       edit: 'Im Eingabefeld bearbeiten',
       editing: (key, button) => `Wird im Eingabefeld bearbeitet · ${key} oder „${button}“ stellt sie wieder hierher`,
     },
@@ -1377,8 +1385,10 @@ export const de: Dict = {
       stop: 'Stoppen',
       close: 'Schließen',
       closeWorking: 'Einen Tab schließen, in dem noch gearbeitet wird?',
-      closeWorkingNote:
-        'Der Agent stoppt, und Nachrichten in seiner Warteschlange gehen verloren. Das Gespräch selbst bleibt im Verlauf.',
+      closeWorkingNote: (key) =>
+        key
+          ? `Der Agent stoppt. ${key} holt den Tab zurück, seine Warteschlange wartet auf deine nächste Nachricht.`
+          : 'Der Agent stoppt. Der Tab lässt sich im Verlauf wieder öffnen, seine Warteschlange wartet auf deine nächste Nachricht.',
     },
     noChats: { title: 'Freue mich auf die Zusammenarbeit!', button: "Los geht's" },
     crash: {

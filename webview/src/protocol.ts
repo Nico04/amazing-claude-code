@@ -138,6 +138,43 @@ export interface ExtraUsage {
   percent?: number
 }
 
+/**
+ * A tab closed by hand that can be opened again - a row of "Recently closed" on the history screen, the latest
+ * first (see ClosedTabs.kt). What was in its field stays in the IDE until it is opened again.
+ */
+export interface ClosedTab {
+  /** What the row asks the IDE for (see reopenTab) - one per thing, however often it was closed. */
+  key: string
+  /** A conversation, a fork of one, or one of the panel's own tabs - the statistics, the scenarios, a run. */
+  kind: 'chat' | 'fork' | 'panel'
+  title: string
+  closedAt: number
+  /** The conversation it held, if one was born in it - so a row of something open again can be left out. */
+  conversationId?: string
+  /** For one of the panel's own tabs: its identifier on the strip (see isPanelTab in tabs.ts). */
+  id?: string
+}
+
+/**
+ * Where a tab that belongs to no conversation stands: how many groups were to its left, and which groups
+ * the strip held when that was decided (read by placeIn in tabs.ts). Here rather than there because it travels:
+ * the IDE keeps it for a closed tab of the panel's and hands it back untouched (see panelTabClosed, tabReopened).
+ *
+ * The snapshot is what makes the place survive the list changing underneath it, and a bare number does
+ * not: with the statistics standing second and the conversation before it closed, "second" now points
+ * past its former neighbour and the tab drifts to the right on its own. Standing instead right after the
+ * last of the neighbours it was put after, it stays where the hand left it - and a conversation opened
+ * afterwards, being nobody it knows, appears to its right.
+ *
+ * After the last of them, not "after as many groups as are left of them": a closed conversation opened
+ * again (see ClosedTabs.kt) comes back where it stood, which may be anywhere on the strip, and counted it
+ * would shift the tab one place left of its neighbour whenever it came back somewhere the tab never knew it.
+ */
+export interface TabPlace {
+  at: number
+  among: string[]
+}
+
 /** A past conversation: the person's first message serves as its title. */
 export interface HistoryEntry {
   id: string
@@ -1171,7 +1208,16 @@ type ShellMessageBody =
    * them may have been the one to change it. The bytes of a queued photo stay in the IDE - a row needs to
    * know that there is one, not what is in it.
    */
-  | { type: 'queue'; sessionId: string; items: QueuedMessage[] }
+  | {
+      type: 'queue'
+      sessionId: string
+      items: QueuedMessage[]
+      /**
+       * Waiting for the person's next message rather than for the turn: the queue of a tab closed while it
+       * worked and opened again, whose turn the close killed (see SessionQueue.hold). Gone once anything is sent.
+       */
+      held?: boolean
+    }
   /**
    * A queued message taken out to be edited (see takeQueued), to whoever pressed the pencil and to nobody
    * else - it is going into one field.
@@ -1290,6 +1336,17 @@ type ShellMessageBody =
    * a draft it has not been handed yet.
    */
   | { type: 'drafts'; drafts: Record<string, { tokens?: unknown; quotes?: unknown }> }
+  /**
+   * The tabs that can be opened again, the latest first - on joining and on every change (see ClosedTab). To
+   * the desk alone: a phone cannot close a tab.
+   */
+  | { type: 'closedTabs'; tabs: ClosedTab[] }
+  /**
+   * A closed tab came back, to the window that asked (see reopenTab). A conversation's tab is on the strip by
+   * now - the list came first, and before this what was in its field - and is put on screen. One of the panel's
+   * own tabs only the page can open: which one, and where it stood.
+   */
+  | { type: 'tabReopened'; sessionId?: string; panel?: string; place?: TabPlace }
   /** Whether the tabs come back after a restart - told to every window when it is switched. */
   | { type: 'restoreTabs'; on: boolean }
   /** The same, for whether a message carries what the editor shows - changed in this or another window. */
@@ -2311,6 +2368,17 @@ export type WebviewMessage =
     }
   | { type: 'closeSession'; sessionId: string }
   /**
+   * Open a closed tab again: the one closed last, or the row named by `key`. `open` is the panel's own tabs
+   * standing on the strip now - the IDE cannot know them, and one of them closed and opened again from the
+   * menu since is skipped rather than opened twice (see ClosedTabs.take).
+   */
+  | { type: 'reopenTab'; open: string[]; key?: string }
+  /**
+   * One of the panel's own tabs was closed - the statistics, the scenarios, a run being watched - so that it
+   * takes its turn among the closed tabs. Its name and place are carried back to the page as they are.
+   */
+  | { type: 'panelTabClosed'; id: string; title: string; place: TabPlace }
+  /**
    * The name the interface guessed from the first message (see deriveSessionTitle). The guessing stays
    * here rather than moving to the shell: the rule already exists here, both clients have to use the
    * same one, and a copy of it in another language would drift from this one.
@@ -3064,7 +3132,7 @@ export type VoiceHotkeyGlyph = '' | 'option' | 'command' | 'win' | 'mouse' | 'le
  * The panel's own keys (see PanelKeys.kt): the IDE's actions, named the way the page is told about them.
  * The ids are the wire's - the Kotlin enum spells them the same.
  */
-export type PanelKeyCommand = 'nextTab' | 'previousTab' | 'newTab' | 'closeTab' | 'queue'
+export type PanelKeyCommand = 'nextTab' | 'previousTab' | 'newTab' | 'closeTab' | 'reopenTab' | 'queue'
 
 /**
  * Every key the IDE names for the page: the commands above, and the IDE's own action that brings the panel
@@ -3514,9 +3582,22 @@ export interface ForkSeamEvent {
   cut: boolean
 }
 
+/**
+ * What a turn really did to the files whose diffs do not say it - a line of the panel's own, sent by the IDE right
+ * before the turn's result (see UndiffedEdits.settle in the plugin). A formatter run after each edit, the agent's
+ * own script, the CLI itself adding to a memory file: each leaves a file other than its edits say. The figures and
+ * the edits are the file's whole change in the turn, from what the turn found to what it left. The phone gets the
+ * figures alone when the edits would not fit its frame.
+ */
+export interface FilesSettledEvent {
+  type: 'files_settled'
+  files: { path: string; added: number; removed: number; edits?: FileEdit[] }[]
+}
+
 export type AgentEvent =
   | AgentSystemEvent
   | ForkSeamEvent
+  | FilesSettledEvent
   | AgentAssistantEvent
   | AgentUserEvent
   | AgentResultEvent

@@ -3,6 +3,7 @@ import { HotkeyCaps, type KeyCap } from './HotkeyCaps'
 import { useT } from '../i18n'
 import { onMac, type SendKey } from '../sendKey'
 import { pageCaps, type PanelKeys } from '../panelKeys'
+import { searchKeys } from './Search'
 import type { PanelKeyName, PanelKeyStroke, VoiceHotkeyCap } from '../protocol'
 import s from './sideMenu.module.css'
 
@@ -55,10 +56,11 @@ export const KeysScreen = ({ keys, sendKey, voice, onOpenKeymap }: KeysScreenPro
     {
       title: w.groups.tabs,
       rows: [
-        { label: w.rows.nextTab, strokes: ide('nextTab') },
-        { label: w.rows.previousTab, strokes: ide('previousTab') },
+        { label: w.rows.nextTab, when: w.rows.searchTabsWhen, strokes: ide('nextTab') },
+        { label: w.rows.previousTab, when: w.rows.searchTabsWhen, strokes: ide('previousTab') },
         { label: w.rows.newTab, strokes: ide('newTab') },
         { label: w.rows.closeTab, when: w.rows.closeTabWhen, strokes: ide('closeTab') },
+        { label: w.rows.reopenTab, when: w.rows.reopenTabWhen, strokes: ide('reopenTab') },
         { label: w.rows.openPanel, when: w.rows.openPanelWhen, strokes: ide('openPanel') },
       ],
     },
@@ -98,6 +100,17 @@ export const KeysScreen = ({ keys, sendKey, voice, onOpenKeymap }: KeysScreenPro
         // The dictation keys only when bound: unbound they are a setting of the voice screen, not a key.
         ...(voice && voice.push.length > 0 ? [{ label: t.voice.push, chords: [voice.push] }] : []),
         ...(voice && voice.hold.length > 0 ? [{ label: t.voice.hold, chords: [voice.hold] }] : []),
+      ],
+    },
+    {
+      // The search window's own keys, named by what stands on its tabs and switches (see searchKeys).
+      title: t.search.title,
+      rows: [
+        { label: t.search.tabs.chat, chords: [searchKeys.tab('chat')] },
+        { label: t.search.tabs.project, chords: [searchKeys.tab('project')] },
+        { label: t.search.tabs.ai, chords: [searchKeys.tab('ai')] },
+        { label: t.search.matchCase, chords: [searchKeys.matchCase()] },
+        { label: t.search.wholeWords, chords: [searchKeys.wholeWords()] },
       ],
     },
   ]

@@ -260,7 +260,8 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
                 }
             }
 
-            "closeSession" -> hub.closeSession(sessionId)
+            // A close somebody made, kept to be undone (see ClaudeSessionHub.reopenTab).
+            "closeSession" -> hub.closeSession(sessionId, byPerson = true)
 
             /**
              * The name the interface guessed from the first message. It is worked out there rather than

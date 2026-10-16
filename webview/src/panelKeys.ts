@@ -1,5 +1,5 @@
 import type { KeyCap } from './components/HotkeyCaps'
-import type { PanelKeyName, PanelKeyStroke, VoiceHotkeyCap } from './protocol'
+import type { PanelKeyCommand, PanelKeyName, PanelKeyStroke, VoiceHotkeyCap } from './protocol'
 import { onMac } from './sendKey'
 
 /**
@@ -10,13 +10,22 @@ import { onMac } from './sendKey'
 export type PanelKeys = Partial<Record<PanelKeyName, PanelKeyStroke[]>>
 
 /**
- * A key as one line of text, for a hover hint: "Cmd+Shift+]", "Alt+Left", "Ctrl+F4".
+ * Whether a panel key reaches past the side menu. Over it the keys reach nothing the mouse could not (see
+ * pressPanelKey in App) - and on the history screen the row that brings back the tab closed last is right under the
+ * hand, its hint naming this very key (see History). [reopenable] is how many rows "Recently closed" shows.
+ */
+export const reachesPastMenu = (command: PanelKeyCommand, screen: string, reopenable: number): boolean =>
+  command === 'reopenTab' && screen === 'history' && reopenable > 0
+
+/**
+ * A key as one line of text, for a hover hint: "Cmd+Shift+]", "Alt+Left", "Ctrl+F4" - the IDE's, or one the
+ * page listens for itself (see pageCaps).
  *
  * Words rather than signs, for the reason the send key's hint gives (see sendKey.ts): ⌘ and ⌥ are not in
  * the panel's font, and a hint is a line of text with nowhere to put a drawing. The cheat sheet draws the
  * same keys as caps (see HotkeyCaps). Empty when the command has no key, so a caller can leave it out.
  */
-export const keyText = (strokes: PanelKeyStroke[] | undefined): string =>
+export const keyText = (strokes: readonly (readonly (VoiceHotkeyCap | KeyCap)[])[] | undefined): string =>
   (strokes ?? []).map((stroke) => stroke.map(capWord).join('+')).join(', ')
 
 const capWord = (cap: VoiceHotkeyCap | KeyCap): string => {

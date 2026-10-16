@@ -253,6 +253,12 @@ export interface PanelState {
    */
   queue: QueuedMessage[]
   /**
+   * The queue waits for the person's next message rather than for the turn: it came back with a tab closed
+   * while it worked and opened again, and the turn it was queued behind died with the close (see
+   * SessionQueue.hold on the plugin's side).
+   */
+  queueHeld: boolean
+  /**
    * The files the turn going on now has changed so far - laid into the feed as one row when it ends (see
    * closeChanges in feed/changes.ts), and empty again after that.
    *
@@ -528,7 +534,7 @@ export type PanelAction =
    */
   | { kind: 'effortApplied'; effort: string }
   /** The queue as the IDE now holds it - the whole list, from whichever window last changed it. */
-  | { kind: 'queue'; items: QueuedMessage[] }
+  | { kind: 'queue'; items: QueuedMessage[]; held?: boolean }
   /** A mark from the panel in the feed: that this conversation was branched off another, for instance. */
   | { kind: 'checkpoint'; chip: string; target: string; targetKey?: CheckpointItem['targetKey'] }
   /** Once a second it pulls up the duration of the calls that have not finished. */
@@ -588,6 +594,7 @@ export const initialPanelState: PanelState = {
   pendingTasks: {},
   pausedMs: 0,
   queue: [],
+  queueHeld: false,
   turnChanges: [],
   reachedStart: false,
   earlierPages: 0,

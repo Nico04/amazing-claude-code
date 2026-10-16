@@ -1,4 +1,4 @@
-import type { AgentUserEvent, ContentBlock, FileEdit, RevertOutcome, ToolUseResult } from '../protocol'
+import type { AgentUserEvent, ContentBlock, FileEdit, FilesSettledEvent, RevertOutcome, ToolUseResult } from '../protocol'
 import type { PanelState } from './panelState'
 import { isOpenablePath } from './paths'
 import { hunksFor, resultToText, shortenPath } from './tools'
@@ -237,6 +237,26 @@ const withHeadCounts = (items: FeedItem[], heads: Map<string, { added: number; r
         }
       : item,
   )
+
+/**
+ * The turn's list with each file the IDE settled taking its figures and edits from it (see FilesSettledEvent): the
+ * file's whole change in the turn, measured on the disk, in place of the sum of its diffs - which did not take the
+ * file to what stands there, so a revert by them could only refuse. A file the list does not hold stays out of it:
+ * the IDE settles every file the turn's edits named, and the list leaves out the ones that changed nothing.
+ */
+export const settleChanges = (state: PanelState, files: FilesSettledEvent['files']): PanelState => {
+  if (!state.turnChanges.some((file) => files.some((settled) => settled.path === file.path))) return state
+
+  return {
+    ...state,
+    turnChanges: state.turnChanges.map((file) => {
+      const settled = files.find((candidate) => candidate.path === file.path)
+      if (!settled) return file
+      const { uncounted: _uncounted, ...counted } = file
+      return { ...counted, added: settled.added, removed: settled.removed, edits: settled.edits }
+    }),
+  }
+}
 
 /**
  * [path] from the project's root, when the file lies inside the project - and nothing when it does not, so the

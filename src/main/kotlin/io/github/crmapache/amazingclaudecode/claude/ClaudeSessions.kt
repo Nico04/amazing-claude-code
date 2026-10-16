@@ -568,7 +568,7 @@ internal class ClaudeSessions(
 
         moving.add(sessionId)
         try {
-            close(sessionId)
+            close(sessionId, goesOn = true)
             launches[sessionId] = carried
 
             sessions[sessionId] = newSession(
@@ -1168,7 +1168,13 @@ internal class ClaudeSessions(
         session(sessionId).requestUsage(onUsage, onFailure)
     }
 
-    fun close(sessionId: String) {
+    /**
+     * The tab's conversation taken down. [goesOn] - the same conversation goes on in this tab under a new process
+     * (a move to another account), and what the old one still says on its way out is part of it: it happened,
+     * and the feed is a record. Otherwise the tab is closed, or is given another conversation, and the old
+     * process is muted first (see ClaudeSession.mute).
+     */
+    fun close(sessionId: String, goesOn: Boolean = false) {
         // A tab closed before anything was written into it takes its unspent choice with it.
         launches.remove(sessionId)
         // And what its conversation used to be: the next one opened here is somebody else's (see
@@ -1183,10 +1189,14 @@ internal class ClaudeSessions(
         forcedMoves.remove(sessionId)?.cancel(false)
 
         sessions.remove(sessionId)?.let { session ->
+            if (!goesOn) session.mute()
             session.stop()
             Disposer.dispose(session)
         }
     }
+
+    /** The conversation behind a tab - for the tests, which feed it what a process would say. */
+    internal fun conversation(sessionId: String): ClaudeSession? = sessions[sessionId]
 
     override fun dispose() {
         sessions.keys.toList().forEach(::close)
@@ -1212,6 +1222,8 @@ internal class ClaudeSessions(
          *
          * Only the callbacks that speak about the tab's STATE are held to this. What the dying process
          * still has to say - its last lines, its crash - is said: it happened, and the feed is a record.
+         * Unless the tab was closed or given another conversation: then there is nobody it is said to (see
+         * [close]).
          */
         val slot = arrayOfNulls<ClaudeSession>(1)
         val current = { sessions[sessionId] === slot[0] }

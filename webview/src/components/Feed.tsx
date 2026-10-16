@@ -41,7 +41,7 @@ import {
   ThinkRow,
 } from './items/Rows'
 import type { SignInOffer } from './items/Rows'
-import { TextCard } from './items/TextCard'
+import { REVEAL_UNIT, TextCard } from './items/TextCard'
 import { ToolGroupCard } from './items/ToolGroupCard'
 import { UserCard } from './items/UserCard'
 import { PinnedBar } from './PinnedBar'
@@ -282,7 +282,7 @@ export const Feed = ({
    * back at itself must not show while it streams either - see spokenAnswer, and the same call in
    * applyAssistant for the finished block.
    */
-  const { text: pacedText } = useSmoothStream(spokenAnswer(streamingText), { done: !streaming })
+  const { text: pacedText } = useSmoothStream(spokenAnswer(streamingText), { done: !streaming, unit: REVEAL_UNIT })
 
   /**
    * The printing thought and answer live in the same list as everything else rather than as separate

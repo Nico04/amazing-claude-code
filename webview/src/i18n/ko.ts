@@ -261,6 +261,9 @@ export const ko: Dict = {
     empty: '이 프로젝트에는 아직 지난 대화가 없어요.',
     today: '오늘',
     earlier: '이전',
+    closed: '최근 닫은 탭',
+    reopen: (key) => (key ? `원래 자리에 다시 열기 · ${key}` : '원래 자리에 다시 열기'),
+    fork: '포크',
     messages: (n) => `메시지 ${n}개`,
   },
 
@@ -745,7 +748,10 @@ export const ko: Dict = {
       previousTab: '이전 탭',
       newTab: '새 탭',
       closeTab: '탭 닫기',
+      searchTabsWhen: '검색 창에서는 그 탭',
       closeTabWhen: '에이전트가 작업 중이면 먼저 물어봐요',
+      reopenTab: '닫은 탭 다시 열기',
+      reopenTabWhen: '최근 20개, 기록에도 있어요',
       openPanel: '패널 열기',
       openPanelWhen: 'IDE 어디에서나',
       send: '보내기',
@@ -975,6 +981,7 @@ export const ko: Dict = {
     scenarios: '시나리오',
     closeScenarios: '시나리오 닫기',
     closeRun: '이 실행 닫기',
+    closeHint: (close, reopen) => `${close} · 다시 열기: ${reopen}`,
     conversations: '대화',
     newSession: '새 대화',
     fork: '이 대화를 포크: 여기서 이어지는 새 탭을 열고, 이 탭은 그대로 둡니다',
@@ -1309,6 +1316,7 @@ export const ko: Dict = {
     queue: {
       label: '대기 중',
       hint: (n) => `${n}개가 이번 실행이 끝나면 차례로 나가요 · 끌어서 순서 변경`,
+      held: (n) => `${n}개가 다음 메시지를 보낸 뒤 차례로 나가요 (기다리던 실행은 멈췄어요) · 끌어서 순서 변경`,
       edit: '입력창에서 편집',
       editing: (key, button) => `입력창에서 편집 중 · ${key} 또는 '${button}'을 누르면 이 자리로 돌아와요`,
     },
@@ -1366,7 +1374,10 @@ export const ko: Dict = {
       stop: '멈추기',
       close: '닫기',
       closeWorking: '아직 작업 중인 탭을 닫을까요?',
-      closeWorkingNote: '에이전트가 멈추고 대기열에서 기다리던 메시지는 사라집니다. 대화 자체는 기록에 남습니다.',
+      closeWorkingNote: (key) =>
+        key
+          ? `에이전트가 멈춥니다. ${key}로 탭을 다시 열 수 있고, 대기열은 다음 메시지를 기다립니다.`
+          : '에이전트가 멈춥니다. 탭은 기록에서 다시 열 수 있고, 대기열은 다음 메시지를 기다립니다.',
     },
     noChats: { title: '함께 일하게 되어 기뻐요!', button: '시작하기' },
     crash: {

@@ -24,7 +24,7 @@ import {
   noteSubagent,
 } from './tasks'
 import { replayedMessage } from './replayed'
-import { applyChangesReverted, closeChanges, noteChanges } from './changes'
+import { applyChangesReverted, closeChanges, noteChanges, settleChanges } from './changes'
 import { editorOfBlocks } from './editorContext'
 import { applyModEvent } from './mods'
 import { readPlan, readQuestions, readTodos } from './toolInput'
@@ -551,7 +551,7 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
     // The whole list rather than a change to it: the IDE holds the queue, either window may have been
     // the one that changed it, and what arrives is how it stands now (see SessionQueue.kt).
     case 'queue':
-      return { ...state, queue: action.items }
+      return { ...state, queue: action.items, queueHeld: action.held === true }
 
     case 'agent':
       return noteOldest(applyAgentEvent(state, action.event, now, action.replay === true), action.event)
@@ -1393,6 +1393,13 @@ const applyAgentEvent = (
         targetKey: event.cut ? 'forkedAt' : 'forked',
         source: event.source,
       }))
+
+    /**
+     * What the turn really did to the files its diffs do not account for - said by the IDE right before the
+     * result that closes their list (see settleChanges).
+     */
+    case 'files_settled':
+      return settleChanges(state, event.files)
 
     /**
      * The subscription limit. The event arrives in ordinary life too - with a "let through" status - and
