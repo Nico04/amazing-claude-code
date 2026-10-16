@@ -9,6 +9,11 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.41] - 2026-10-16
+
+- Changed: an answer appears character by character again, each character fading in place, instead of a whole word at a time as in 0.13.40. The text still keeps pace with the answer as it arrives.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.40] - 2026-10-16
 
 - Added: a tab closed by mistake opens again with Cmd+Shift+T on a Mac and Ctrl+Shift+T elsewhere, as in a browser. The next press brings back the tab closed before it, up to twenty back, and any tab works: a conversation, a fork, the statistics, the scenarios, a run being watched. The tab comes back where it stood on the strip, with what was typed in its field, its model, effort and mode, and its forks under it again. The same list is at the top of the history screen as "Recently closed", where a click brings back that very tab. Closed conversations are remembered across a restart of the IDE. Messages that were queued in a tab closed while it worked come back too, and wait for your next message rather than going off on their own: the turn they were queued behind was stopped by the close. On Windows and Linux a new tab moves from Ctrl+Shift+T to Ctrl+T, so the pair is the one browsers use.
@@ -1023,7 +1028,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.40...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.41...HEAD
+[0.13.41]: https://github.com/crmapache/amazing-claude-code/compare/0.13.40...0.13.41
 [0.13.40]: https://github.com/crmapache/amazing-claude-code/compare/0.13.39...0.13.40
 [0.13.39]: https://github.com/crmapache/amazing-claude-code/compare/0.13.38...0.13.39
 [0.13.38]: https://github.com/crmapache/amazing-claude-code/compare/0.13.37...0.13.38
