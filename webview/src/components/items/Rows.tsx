@@ -6,6 +6,7 @@ import { plainLine } from '../../feed/markdown'
 import { formatTokens } from '../../feed/build'
 import { limitWindowName } from '../../feed/usage'
 import { carryOnShown } from '../../feed/carryOn'
+import { fastReasonText } from '../../feed/fastMode'
 import { useNow } from '../../hooks/useNow'
 import { useT } from '../../i18n'
 import type { Dict } from '../../i18n/en'
@@ -18,6 +19,8 @@ import type {
   MetaItem,
   ModLogItem,
   ModelStuckItem,
+  FastModeItem,
+  SessionInfoItem,
   ModelSwitchItem,
   OutrankedItem,
   RetryItem,
@@ -25,6 +28,7 @@ import type {
 } from '../../feed/types'
 import s from '../feed.module.css'
 import { Caret } from './Caret'
+import { CopyButton } from './CopyButton'
 import { FORK_WHOLE, forkCodeOf } from '../../feed/rewind'
 import { refusalWords } from '../RewindDialog'
 
@@ -376,6 +380,27 @@ export const ModelStuckRow = ({ item }: { item: ModelStuckItem }) => {
 }
 
 /**
+ * Fast mode was asked for, and the CLI says it cannot serve (see FastModeItem): why, in the panel's words, and what
+ * that means for the turns going on - the same quiet shape as the row above it.
+ */
+export const FastModeRow = ({ item }: { item: FastModeItem }) => {
+  const t = useT()
+
+  return (
+    <div className={s.modelSwitch}>
+      <span className={s.modelSwitchLabel}>{t.fast.row.label}</span>
+      <div className={s.modelSwitchBody}>
+        <p className={s.modelSwitchLine}>
+          <span className={s.modelSwitchTo}>{t.fast.row.title}</span>
+          <span className={s.modelSwitchNote}>{fastReasonText(t, item.reason)}</span>
+        </p>
+        <p className={s.modelSwitchReason}>{t.fast.row.hint}</p>
+      </div>
+    </div>
+  )
+}
+
+/**
  * What a compaction card says: the panel's own words, built from the figures the CLI gave.
  *
  * `target` is only ever the CLI's own line (the error of a failed compaction) and is shown as it came.
@@ -547,6 +572,59 @@ export const OutrankedRow = ({ item, onOpen }: { item: OutrankedItem; onOpen?: (
           {t.feed.outranked.open}
         </button>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * `/status`: the conversation's id, and the command that resumes it in a terminal opened in the project's
+ * folder - where the CLI looks for its transcript.
+ *
+ * A title and fields under it rather than a table: each field is a caption saying what the value is for, and
+ * the value itself as a plate that copies whole on a click - copying is all these lines are for, and a plate is
+ * a bigger target than a square beside a long id. Stacked, the card reads the same at any width.
+ */
+export const SessionInfoRow = ({ item }: { item: SessionInfoItem }) => {
+  const t = useT()
+  const words = t.feed.session
+
+  return (
+    <div className={s.sessionInfo}>
+      <span className={s.sessionInfoTitle}>{words.label}</span>
+      {item.conversationId ? (
+        <>
+          <SessionInfoField name={words.id} value={item.conversationId} />
+          <SessionInfoField
+            name={words.terminal}
+            note={words.terminalNote}
+            value={`claude --resume ${item.conversationId}`}
+          />
+        </>
+      ) : (
+        <p className={s.sessionInfoEmpty}>{words.none}</p>
+      )}
+    </div>
+  )
+}
+
+/** One field of SessionInfoRow: what the value is, what it is for, and the value as a plate that copies. */
+const SessionInfoField = ({ name, note, value }: { name: string; note?: string; value: string }) => {
+  const t = useT()
+
+  return (
+    <div className={s.sessionInfoField}>
+      <p className={s.sessionInfoCaption}>
+        <span className={s.sessionInfoName}>{name}</span>
+        {note ? <span className={s.sessionInfoNote}>{note}</span> : null}
+      </p>
+      <CopyButton
+        text={value}
+        className={s.sessionInfoValue}
+        iconClassName={s.sessionInfoIcon}
+        title={t.feed.copy.click}
+      >
+        <code className={s.sessionInfoText}>{value}</code>
+      </CopyButton>
     </div>
   )
 }

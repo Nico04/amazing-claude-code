@@ -1366,6 +1366,77 @@ describe('building the feed out of the agent stream', () => {
     expect(contextOf(state, 200_000)).toEqual({ used: 200_000, limit: 1_000_000, percent: 20 })
   })
 
+  /**
+   * The phone opened in the middle of a long turn after a compaction: the journal's end it was handed held
+   * the agent's answers and not one exact figure, so the estimate was divided by a window guessed from the
+   * model's name - two hundred thousand for Opus 5.5, whose window is a million. 287 thousand read as a red
+   * 100% beside a desk showing 29%. Every turn's result names the window the CLI gives the model.
+   */
+  it('divides the estimate by the window a turn named rather than by one guessed from the model', () => {
+    const answer = (input: number): AgentEvent => ({
+      type: 'assistant',
+      message: { model: 'claude-opus-5-5', content: [{ type: 'text', text: '…' }], usage: { input_tokens: input } },
+    })
+    const result: AgentEvent = {
+      type: 'result',
+      subtype: 'success',
+      num_turns: 1,
+      modelUsage: { 'claude-opus-5-5': { contextWindow: 1_000_000 }, 'claude-haiku-5-5': { contextWindow: 200_000 } },
+    }
+
+    let state = reducePanel(initialPanelState, { kind: 'agent', event: answer(287_000) }, 1_700_000_000_000)
+    expect(contextOf(state, 200_000).percent).toBe(100)
+
+    state = reducePanel(state, { kind: 'agent', event: result }, 1_700_000_000_100)
+    state = reducePanel(state, { kind: 'agent', event: answer(290_000) }, 1_700_000_000_200)
+
+    expect(contextOf(state, 200_000)).toEqual({ used: 290_000, limit: 1_000_000, percent: 29 })
+  })
+
+  it('finds the named window under the mark the CLI may keep on its key', () => {
+    const result: AgentEvent = {
+      type: 'result',
+      subtype: 'success',
+      modelUsage: { 'claude-opus-5[1m]': { contextWindow: 1_000_000 } },
+    }
+    let state = reducePanel(initialPanelState, { kind: 'agent', event: result, replay: true }, 1_700_000_000_000)
+    state = reducePanel(
+      state,
+      {
+        kind: 'agent',
+        event: {
+          type: 'assistant',
+          message: { model: 'claude-opus-5', content: [{ type: 'text', text: '…' }], usage: { input_tokens: 300_000 } },
+        },
+      },
+      1_700_000_000_100,
+    )
+
+    expect(contextOf(state, 200_000).limit).toBe(1_000_000)
+  })
+
+  // A pick of another model on its way: the window known is the old model's, and the new one's name says more.
+  it('does not measure a pending pick by the window of the model it replaces', () => {
+    const result: AgentEvent = {
+      type: 'result',
+      subtype: 'success',
+      modelUsage: { 'claude-opus-5-5': { contextWindow: 1_000_000 } },
+    }
+    let state = reducePanel(
+      initialPanelState,
+      {
+        kind: 'agent',
+        event: { type: 'assistant', message: { model: 'claude-opus-5-5', content: [{ type: 'text', text: '…' }] } },
+      },
+      1_700_000_000_000,
+    )
+    state = reducePanel(state, { kind: 'agent', event: result }, 1_700_000_000_100)
+    expect(contextOf(state, 500_000).limit).toBe(1_000_000)
+
+    state = { ...state, pendingModel: 'claude-sonnet-4-6' }
+    expect(contextOf(state, 500_000).limit).toBe(200_000)
+  })
+
   it('does not zero the gauge on a service answer that never reached the model', () => {
     let state = reducePanel(initialPanelState, { kind: 'context', used: 90_000, max: 200_000 }, 1_700_000_000_000)
     state = reducePanel(
@@ -4452,5 +4523,29 @@ describe('a fork\'s seam', () => {
       .filter((item) => item.kind === 'text' || (item.kind === 'checkpoint' && item.chip === 'FORK'))
       .map((item) => (item.kind === 'checkpoint' ? 'SEAM' : (item as TextItem).source))
     expect(order).toEqual(['inherited answer', 'SEAM', 'the fork\'s own answer'])
+  })
+})
+
+describe('the answer to /status', () => {
+  const rows = (state: PanelState) => state.items.filter((item) => item.kind === 'session')
+
+  it('stands in the feed with the id the IDE gave', () => {
+    const state = reducePanel(initialPanelState, { kind: 'sessionInfo', conversationId: 'abc-123' })
+
+    expect(rows(state)).toEqual([expect.objectContaining({ kind: 'session', conversationId: 'abc-123' })])
+  })
+
+  // An IDE that could not name it (an older one, a tab between processes) leaves the panel's own note of it.
+  it('falls back to the conversation the panel knows', () => {
+    const known: PanelState = { ...initialPanelState, sessionId: 'known-id' }
+    const state = reducePanel(known, { kind: 'sessionInfo' })
+
+    expect(rows(state)).toEqual([expect.objectContaining({ kind: 'session', conversationId: 'known-id' })])
+  })
+
+  it('says there is no id yet for a tab nobody has written in', () => {
+    const state = reducePanel(initialPanelState, { kind: 'sessionInfo' })
+
+    expect(rows(state)[0]).not.toHaveProperty('conversationId')
   })
 })

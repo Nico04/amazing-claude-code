@@ -12,6 +12,7 @@ import type {
 } from '../protocol'
 import { ClockContext } from '../hooks/useNow'
 import { asideQuestion, NO_THREAD, sideHistory, sideThread, type SideAction, type SideExchange, type SideThread } from '../feed/side'
+import { fastAsked, fastCommand, fastModeShown } from '../feed/fastMode'
 import { planDecisionOf, useCardState } from '../hooks/useCardState'
 import { applyFact, customModelsOf, emptyFacts, factsFor, isFact, liveRunsOf, type ProjectFacts } from './facts'
 import { shelfHome, type RepositoryChoice, type ShelfChoice } from './scenarios'
@@ -2921,6 +2922,18 @@ export const App = () => {
             voice={dictation}
             dictates={inventories[screen.agentId]?.voice}
             onSend={(prompt: OutgoingPrompt) => {
+              // Fast mode is the conversation's switch rather than a message: the CLI's own `/fast` refuses
+              // under a stream (see fastCommand).
+              const fast = fastCommand(prompt.text)
+              if (fast !== null) {
+                command(screen.agentId, screen.projectKey, {
+                  type: 'setFastMode',
+                  sessionId: screen.sessionId,
+                  on: fastAsked(fast, feed.state.fastMode),
+                })
+                return
+              }
+
               // A side question goes beside the work, the panel's way, and never as a message: the agent
               // would only answer "/btw isn't available in this environment" (see feed/side).
               const aside = asideQuestion(prompt.text)
@@ -2976,6 +2989,17 @@ export const App = () => {
             }
             onAsideClose={() => sideStep(chatKey(screen.agentId, screen.projectKey, screen.sessionId), { kind: 'hide' })}
             onQueue={(prompt: OutgoingPrompt) => {
+              // Not a message either way - queued, it would wait for the turn only to be refused by the CLI.
+              const fast = fastCommand(prompt.text)
+              if (fast !== null) {
+                command(screen.agentId, screen.projectKey, {
+                  type: 'setFastMode',
+                  sessionId: screen.sessionId,
+                  on: fastAsked(fast, feed.state.fastMode),
+                })
+                return
+              }
+
               const aside = asideQuestion(prompt.text)
               if (aside !== null) {
                 // Queue is not offered for one (see Composer), but the send key may still bring it here.
@@ -3161,6 +3185,7 @@ export const App = () => {
           model={feed.state.model ?? ''}
           effort={feed.state.effort ?? ''}
           mode={feed.state.permissionMode ?? ''}
+          fast={fastModeShown(feed.state.fastMode, feed.state.fastReport)}
           onApply={(change) => {
             setSheet('')
             if (change.model !== undefined) {
@@ -3175,6 +3200,13 @@ export const App = () => {
                 type: 'setEffort',
                 sessionId: onThread.sessionId,
                 effort: change.effort,
+              })
+            }
+            if (change.fast !== undefined) {
+              command(onThread.agentId, onThread.projectKey, {
+                type: 'setFastMode',
+                sessionId: onThread.sessionId,
+                on: change.fast,
               })
             }
           }}

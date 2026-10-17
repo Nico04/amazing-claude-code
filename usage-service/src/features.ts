@@ -104,6 +104,10 @@ export const FEATURES: Record<Product, Record<string, FeatureLabel>> = {
   acc: {
     ...SHARED_FEATURES,
     stop_task: { group: 'conversation', label: 'Stop a background task' },
+    // Claude Code's /fast - Opus faster, paid from usage credits; the Codex fork has no such switch.
+    fast_mode: { group: 'conversation', label: 'Turn on fast mode' },
+    // /status and the id copied from the right-click menu came to ACC first - for one session to send to another.
+    session_info: { group: 'conversation', label: "Look up or copy a conversation's id" },
     // The panel's keys came to ACC first, and wait for the fork until they are ported there.
     panel_keys: { group: 'conversation', label: 'Switch, open or close tabs, or queue, by a key' },
     // Closed tabs opened again - by the key or from "Recently closed" in the history - came to ACC first.

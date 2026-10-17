@@ -22,7 +22,7 @@ class AccountChoiceTest : BasePlatformTestCase() {
 
     private val accounts: ClaudeAccounts get() = ClaudeAccounts.getInstance()
 
-    private fun sessions(onBorn: (String, String, String, String) -> Unit = { _, _, _, _ -> }) = ClaudeSessions(
+    private fun sessions(onBorn: (String, String, String, String, Boolean) -> Unit = { _, _, _, _, _ -> }) = ClaudeSessions(
         workingDirectory = null,
         parentDisposable = testRootDisposable,
         onEvent = { _, _ -> },
@@ -162,7 +162,7 @@ class AccountChoiceTest : BasePlatformTestCase() {
         working("work")
 
         var births = 0
-        val sessions = sessions(onBorn = { _, _, _, _ -> births++ })
+        val sessions = sessions(onBorn = { _, _, _, _, _ -> births++ })
         sessions.resume("main", "transcript-1")
         assertEquals(1, births)
 

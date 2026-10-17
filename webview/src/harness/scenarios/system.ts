@@ -729,6 +729,54 @@ export const scenariosSystem: Scenario[] = [
     ]),
   ]),
 
+  /**
+   * Fast mode (see feed/fastMode.ts): asked for in the model menu, the CLI says at each turn's start and end
+   * whether it serves. The first turn runs fast - the mark on MODEL lights up; at the second the account's
+   * usage credits are off, and the feed says so once rather than at every turn. The switch is live from the
+   * first checkpoint: the model menu's "Fast mode", or `/fast` in the field.
+   */
+  scenario('fast-mode', 'Fast mode, on and then unavailable', 'system', [
+    checkpoint('Fast mode is asked for, and the turn runs fast', [
+      shell({ type: 'fastMode', sessionId: SESSION, on: true }),
+      user('Rename formatPrice to formatAmount everywhere'),
+      wait(300),
+      agent({ type: 'system', subtype: 'init', session_id: 'demo-session', model: 'claude-opus-5-5', fast_mode_state: 'on' }),
+      ...textReply('Renamed in four files - the tests still pass.'),
+      agent({
+        type: 'result',
+        subtype: 'success',
+        duration_ms: 1400,
+        num_turns: 1,
+        result: 'Renamed in four files.',
+        session_id: 'demo-session',
+        fast_mode_state: 'on',
+      }),
+    ]),
+    checkpoint('Usage credits are off: it does not turn on', [
+      user('Now the same for formatDate'),
+      wait(300),
+      agent({
+        type: 'system',
+        subtype: 'init',
+        session_id: 'demo-session',
+        model: 'claude-opus-5-5',
+        fast_mode_state: 'off',
+        fast_mode_disabled_reason: 'extra_usage_disabled',
+      }),
+      ...textReply('Renamed in two files.'),
+      agent({
+        type: 'result',
+        subtype: 'success',
+        duration_ms: 3100,
+        num_turns: 1,
+        result: 'Renamed in two files.',
+        session_id: 'demo-session',
+        fast_mode_state: 'off',
+        fast_mode_disabled_reason: 'extra_usage_disabled',
+      }),
+    ]),
+  ]),
+
   scenario('clear-conversation', '/clear wipes the conversation', 'system', [
     checkpoint('The user asks about the history', [user('Tell me what we have already discussed'), wait(500)]),
     checkpoint('The finished answer', [

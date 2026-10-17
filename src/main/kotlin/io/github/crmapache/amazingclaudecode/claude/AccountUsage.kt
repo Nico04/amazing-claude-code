@@ -94,15 +94,46 @@ internal class AccountUsage(
         var forgottenFor: String? = null
 
         /**
-         * Until when this account's own limit is known to refuse requests, in milliseconds, and 0 when
-         * nothing says it does.
+         * The refusals this account's own limit is known to give: until when each holds, in milliseconds,
+         * against when it was heard. Empty when nothing says it refuses.
          *
          * Learned from the refusals themselves rather than only from the shares, because the shares lag:
          * the rings of an account that is not the current one are filled by an occasional ping, and a tab or
          * a scenario run that has just been refused knows it before any answer to `get_usage` does. Read by
          * a run looking for an account with room left (see [standing]).
+         *
+         * Kept one by one rather than as the latest end of them all, because a refusal can end before its
+         * reset - a one-off reset of the limit empties the window under it (see [liftRefusals]) - and the one
+         * the server has taken back must not take a five-hour refusal beside it along.
          */
-        var refusedUntil = 0L
+        val refusals = HashMap<Long, Long>()
+
+        /**
+         * The refusals the server has taken back since they were heard: its own answer, sure to be about a
+         * later moment than the refusal (see ClaudeUsage.SERVER_ANSWER_MAX_AGE_MS), puts the refused window
+         * under a hundred percent.
+         *
+         * Within its window a refusal does not end by itself, so this is the one-off reset of the limit the
+         * account page offers. Without this the account read as refused until the old reset, days on for a
+         * weekly limit: a scenario run waited those days rather than go on it, and a tab moved onto it
+         * waited for the reset rather than carry on. A seeded answer lifts nothing - it may be from before
+         * the refusal itself.
+         */
+        fun liftRefusals(snapshot: ClaudeUsage.Snapshot, now: Long) {
+            if (!snapshot.fromServer) return
+
+            val roomy = listOfNotNull(snapshot.session, snapshot.week).filter { it.percent < 100 }
+            refusals.entries.removeIf { (until, heard) ->
+                now - heard > ClaudeUsage.SERVER_ANSWER_MAX_AGE_MS &&
+                    roomy.any { it.resetsAround(Instant.ofEpochMilli(until)) }
+            }
+        }
+
+        /** A refusal heard at [now], holding [until]; the ones whose end has passed go with it. */
+        fun noteRefusal(until: Long, now: Long) {
+            refusals.entries.removeIf { it.key <= now }
+            refusals[until] = now
+        }
     }
 
     /**
@@ -123,12 +154,13 @@ internal class AccountUsage(
      * An answer to `get_usage` about [account], whichever project asked and by whichever route: folded
      * into what is known and sent to everyone as the account's picture.
      */
-    fun fold(account: String, snapshot: ClaudeUsage.Snapshot) {
+    fun fold(account: String, snapshot: ClaudeUsage.Snapshot, now: Long = System.currentTimeMillis()) {
         val message = synchronized(this) {
             val held = book(account)
             // What goes out is not the raw answer but one checked against what was seen before: on its own
             // a snapshot does not say whether it is about the present window (see ClaudeUsage.Tracker).
-            val merged = held.windows.merge(snapshot)
+            val merged = held.windows.merge(snapshot, Instant.ofEpochMilli(now))
+            held.liftRefusals(snapshot, now)
 
             // A one-off ping answers about extra usage as fully as a live conversation does, while an
             // answer from a process that has not yet learned the account's settings carries no such block
@@ -175,7 +207,11 @@ internal class AccountUsage(
      * the first event after a launch, whatever it says (see [Book.extraActive]), nor twice for one window
      * (see [ExtraUsageAnnouncements]).
      */
-    fun noteRateLimit(account: String, verdict: ClaudeRateLimit.Verdict): Boolean {
+    fun noteRateLimit(
+        account: String,
+        verdict: ClaudeRateLimit.Verdict,
+        now: Long = System.currentTimeMillis(),
+    ): Boolean {
         val active = verdict.extraUsage
         val window = if (active) verdict.window else ""
 
@@ -185,7 +221,7 @@ internal class AccountUsage(
             // heard it: the next run to look for room must not land where a tab has just run out. A model's
             // own week is not: it refuses that model, and the account goes on serving the others.
             if (verdict.stopped && verdict.resetsAt != null && verdict.window in SHARED_WINDOWS) {
-                held.refusedUntil = maxOf(held.refusedUntil, verdict.resetsAt)
+                held.noteRefusal(verdict.resetsAt, now)
             }
 
             val was = held.extraActive
@@ -244,7 +280,7 @@ internal class AccountUsage(
             held.extraKnown = null
             held.extraActive = null
             held.extraWindow = ""
-            held.refusedUntil = 0
+            held.refusals.clear()
 
             // The panels are told to forget too, and told separately: their own state is merged field by
             // field (see mergeUsage in feed/usage.ts), so silence about a window means "nothing new", not
@@ -266,9 +302,8 @@ internal class AccountUsage(
      * [until] is the caller's own guess at when to look again; a known reset later than it stays.
      */
     @Synchronized
-    fun noteRefused(account: String, until: Long) {
-        val held = book(account)
-        held.refusedUntil = maxOf(held.refusedUntil, until)
+    fun noteRefused(account: String, until: Long, now: Long = System.currentTimeMillis()) {
+        book(account).noteRefusal(until, now)
     }
 
     /**
@@ -276,7 +311,7 @@ internal class AccountUsage(
      *
      * Only the five-hour and the weekly windows count as full. A model's own week (Fable) refuses only the
      * models it is about, and which models those are the answer does not say - a run that needs one of them
-     * learns it from the refusal itself, which [Book.refusedUntil] keeps. Nor does a full window refuse while
+     * learns it from the refusal itself, which [Book.refusals] keeps. Nor does a full window refuse while
      * extra usage is being spent past it: the work goes on, billed on top of the plan (see ClaudeRateLimit).
      */
     @Synchronized
@@ -287,7 +322,7 @@ internal class AccountUsage(
         val fullUntil = present.filter { it.percent >= 100 && held.extraActive != true }
             .mapNotNull { it.resetsAt?.toEpochMilli() }
             .maxOrNull()
-        val refused = held.refusedUntil.takeIf { it > now }
+        val refused = held.refusals.keys.filter { it > now }.maxOrNull()
 
         return Standing(
             refusedUntil = listOfNotNull(fullUntil, refused).maxOrNull(),

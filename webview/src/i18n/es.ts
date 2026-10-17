@@ -178,7 +178,7 @@ export const es: Dict = {
   shareEditor: {
     label: 'Enviar el editor con el mensaje',
     hint: 'Cada mensaje lleva el archivo abierto en el editor y las líneas seleccionadas en él, como lo hace Claude Code en una terminal',
-    note: 'Solo desde este panel: un mensaje escrito en el teléfono no lleva nada del editor. Un mensaje puede ir sin él: pulsa el chip del archivo en el campo de entrada.',
+    note: 'Solo desde este panel: un mensaje escrito en el teléfono no lleva nada del editor. El chip del archivo en el campo de entrada tiene este mismo interruptor, y allí un solo mensaje puede ir sin él o, al revés, con él.',
     on: 'Activado',
     off: 'Desactivado',
   },
@@ -947,6 +947,31 @@ export const es: Dict = {
     addSub: 'Uno que Claude Code no ofrece',
   },
 
+  fast: {
+    label: 'Modo rápido',
+    offSub: 'Desactivado · Opus hasta 2,5× más rápido, se paga con créditos de uso',
+    waitingSub: 'Activo desde el próximo mensaje · se paga con créditos de uso',
+    onSub: 'Activo · se paga con créditos de uso',
+    cooldownSub: 'En pausa tras un límite - vuelve solo',
+    unavailableSub: (reason) => `No disponible. ${reason}`,
+    chipOn: 'El modo rápido está activo',
+    chipWaiting: 'El modo rápido se activa con el próximo mensaje',
+    chipCooldown: 'El modo rápido está en pausa tras un límite',
+    chipUnavailable: (reason) => `El modo rápido no está disponible. ${reason}`,
+    row: { label: 'RÁPIDO', title: 'El modo rápido no se activó', hint: 'Esta conversación sigue a velocidad normal.' },
+    reasons: {
+      extraUsageDisabled: 'Se paga con créditos de uso, que están desactivados en esta cuenta.',
+      free: 'Necesita un plan de pago.',
+      preference: 'Tu organización lo desactivó.',
+      networkError: 'Claude Code no pudo comprobarlo: un problema de red.',
+      notFirstParty: 'Solo funciona con la API de Anthropic directamente.',
+      disabledByEnv: 'Está desactivado en esta máquina.',
+      modelNotAllowed: 'Opus no está entre los modelos que permite tu organización.',
+      unknown: 'Ahora mismo no está disponible.',
+    },
+    phone: { on: 'Activo', off: 'Desactivado', note: 'Opus hasta 2,5× más rápido, se paga con créditos de uso - solo para esta conversación.' },
+  },
+
   composer: {
     placeholder: 'Pregunta, o describe un cambio…',
     placeholderPlan: 'Describe qué planificar…',
@@ -971,8 +996,19 @@ export const es: Dict = {
     voice: 'Dictar',
     voiceStop: 'Terminar el dictado',
     editor: {
-      on: (place) => `Claude ve ${place} con este mensaje · haz clic para dejarlo fuera`,
-      off: (place) => `${place} no va con este mensaje · haz clic para enviarlo`,
+      on: (place) => `Claude ve ${place} con este mensaje · haz clic para elegir`,
+      off: (place) => `${place} no va con este mensaje · haz clic para elegir`,
+      muted: (place) => `${place} no se envía: el envío del editor está desactivado · haz clic para elegir`,
+      menu: {
+        always: 'Enviar con cada mensaje',
+        alwaysSub: 'El archivo abierto y las líneas seleccionadas, en todas las pestañas',
+        skip: 'No enviar con este mensaje',
+        skipSub: 'El siguiente mensaje lo vuelve a llevar',
+        only: 'Enviar solo con este mensaje',
+        onlySub: 'El siguiente vuelve a ir sin él',
+        never: 'No enviar nunca',
+        neverSub: 'En todas las pestañas, hasta que lo vuelvas a activar: el mismo interruptor que en la configuración',
+      },
     },
   },
 
@@ -1251,6 +1287,14 @@ export const es: Dict = {
       textWithCode: (code) => `Claude Code se cerró de forma inesperada (código ${code}).`,
     },
 
+    session: {
+      label: 'SESIÓN',
+      id: 'ID de sesión',
+      terminal: 'En una terminal',
+      copyId: 'Copiar ID de sesión',
+      terminalNote: 'Continúa esta conversación en una terminal abierta en la carpeta del proyecto',
+      none: 'Aún no hay ID: la conversación recibe uno con su primer mensaje',
+    },
     outranked: {
       label: 'AJUSTES',
       text: 'Este repositorio anula la cuenta elegida aquí:',
@@ -1434,6 +1478,7 @@ export const es: Dict = {
     absent: 'No hay credencial guardada. Vuelve a iniciar sesión para usar esta cuenta.',
     fiveHour: '5 h',
     weekly: 'sem.',
+    usableAgainIn: (left) => `Límite alcanzado · disponible de nuevo en ${left}`,
     row: {
       one: 'Una cuenta',
       adding: 'Iniciando sesión…',
@@ -1994,6 +2039,8 @@ export const es: Dict = {
     config: 'ajustes de Claude Code - los abre en el menú',
     btw: 'una pregunta rápida al margen - el trabajo sigue',
     btwArgument: '<pregunta>',
+    fast: 'activar o desactivar el modo rápido - Opus hasta 2,5× más rápido, se paga con créditos de uso',
+    status: 'el ID de esta conversación y el comando para seguirla en una terminal',
     model: 'cambiar el modelo de esta sesión',
     effort: 'ajustar cuánto piensa Claude antes de actuar',
     context: 'qué ocupa ahora mismo la ventana de contexto',

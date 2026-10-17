@@ -3,6 +3,7 @@ import type { AvailablePluginInfo, InstalledPluginInfo, PluginMarketplaceInfo } 
 import { Back } from './Back'
 import m from '../mobile.module.css'
 import { useT } from '../../i18n'
+import { EmptyPlate } from './EmptyPlate'
 
 type Tab = 'installed' | 'browse' | 'markets'
 
@@ -70,7 +71,7 @@ export const Plugins = ({ installed, available, marketplaces, project, onBack }:
 
         {tab === 'installed' && installed !== null && (
           installed.length === 0 ? (
-            <p className={m.empty}>{t.mobile.plugins.noneInstalled}</p>
+            <EmptyPlate title={t.mobile.plugins.noneInstalled} />
           ) : (
             <div className={m.card}>
               {installed.map((plugin) => (
@@ -105,7 +106,7 @@ export const Plugins = ({ installed, available, marketplaces, project, onBack }:
             </div>
 
             {matches.length === 0 ? (
-              <p className={m.empty}>{t.mobile.plugins.nothingFound}</p>
+              <EmptyPlate title={t.mobile.plugins.nothingFound} />
             ) : (
               <div className={m.card}>
                 {matches.map((plugin) => (
@@ -129,7 +130,7 @@ export const Plugins = ({ installed, available, marketplaces, project, onBack }:
 
         {tab === 'markets' && (
           marketplaces === null || marketplaces.length === 0 ? (
-            <p className={m.empty}>{t.mobile.plugins.noMarkets}</p>
+            <EmptyPlate title={t.mobile.plugins.noMarkets} />
           ) : (
             <div className={m.card}>
               {marketplaces.map((market) => (

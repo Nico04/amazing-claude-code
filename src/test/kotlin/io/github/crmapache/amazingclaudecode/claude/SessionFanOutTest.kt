@@ -207,6 +207,65 @@ class SessionFanOutTest : BasePlatformTestCase() {
         assertTrue(watched.any { it.contains("\"type\":\"restoreStarted\"") && it.contains("\"truncated\":true") })
     }
 
+    private fun context(sessionId: String, used: Int, max: Int) = buildJsonObject {
+        put("type", "context")
+        put("sessionId", sessionId)
+        put("used", used)
+        put("max", max)
+    }.toString()
+
+    /**
+     * The exact figure of the window comes at a turn's end, and the end of a long turn handed to a phone held
+     * none: its meter divided the agent's latest answer by a window guessed from the model's name and stood at
+     * a red 100% over a conversation at 29%. A feed built from nothing gets the last figure first, ahead of
+     * the tail, so that what the tail says still lands over it.
+     */
+    fun testAFeedBuiltFromNothingIsHandedTheWindowsLastFigureFirst() {
+        val hub = hub()
+        hub.broadcast("long", context("long", 21_000, 1_000_000))
+        repeat(10) { status(hub, "long", SessionSnapshot.STATUS_RUNNING) }
+
+        val phone = Recorder("phone-mid-turn")
+        hub.register(phone)
+        hub.attach(phone.id, catchUp = ClaudeSessionHub.CatchUp(sessions = setOf("long"), maxEntries = 3))
+
+        val feed = phone.received.filter { it.contains("\"sessionId\":\"long\"") }
+        val started = feed.indexOfFirst { it.contains("\"type\":\"restoreStarted\"") }
+        val figure = feed.indexOfFirst { it.contains("\"type\":\"context\"") }
+        val firstEntry = feed.indexOfFirst { it.contains("\"type\":\"status\"") }
+
+        assertTrue(feed.toString(), started in 0 until figure && figure < firstEntry)
+        assertTrue(feed[figure], feed[figure].contains("\"used\":21000") && feed[figure].contains("\"max\":1000000"))
+    }
+
+    /** One holding the conversation holds the figure too, and a stale one after its estimate would set it back. */
+    fun testAClientCatchingUpIsNotHandedTheFigureAgain() {
+        val hub = hub()
+        hub.broadcast("held", context("held", 21_000, 1_000_000))
+        val seen = hub.lastSeq("held")
+        status(hub, "held", SessionSnapshot.STATUS_RUNNING)
+
+        val returning = Recorder("returning-held")
+        hub.register(returning)
+        hub.attach(returning.id, since = mapOf("held" to seen))
+
+        assertFalse(returning.received.any { it.contains("\"sessionId\":\"held\"") && it.contains("\"type\":\"context\"") })
+    }
+
+    /** `/clear` starts the conversation over, and the figure about the one that went must not come back. */
+    fun testACleanSlateHandsNoFigureOfTheConversationThatWent() {
+        val hub = hub()
+        hub.broadcast("cleared", context("cleared", 400_000, 1_000_000))
+        hub.resetJournal("cleared")
+        status(hub, "cleared", SessionSnapshot.STATUS_IDLE)
+
+        val joining = Recorder("joining-cleared")
+        hub.register(joining)
+        hub.attach(joining.id)
+
+        assertFalse(joining.received.any { it.contains("\"sessionId\":\"cleared\"") && it.contains("\"type\":\"context\"") })
+    }
+
     /** The number to come back with is the journal's last, not the last one handed over. */
     fun testAPhoneIsCaughtUpToTheJournalsEndEvenWhenTrimmed() {
         val hub = hub()

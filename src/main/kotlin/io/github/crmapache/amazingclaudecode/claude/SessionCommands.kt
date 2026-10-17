@@ -356,6 +356,9 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
 
             "setEffort" -> hub.changeEffort(sessionId, field("effort"), remember = local)
 
+            // This conversation alone, from either door - fast mode writes no setting (see SessionLaunch.fast).
+            "setFastMode" -> hub.changeFastMode(sessionId, flag(payload, "on"))
+
             /*
              * The accounts screen, bar the two halves that end in a terminal on that machine (see
              * ClaudePanel, which keeps `accountAdd`, `accountCancel` and `designLogin`).

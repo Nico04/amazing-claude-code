@@ -374,7 +374,7 @@ export const modeOptions = (t: Dict): MenuOption[] => [
  *
  * The built-in list was checked against a live agent: not all of them are available in streaming mode -
  * `/clear`, `/compact`, `/resume`, `/export`, `/permissions`, `/status` are interactive there and answer
- * with a refusal, so they are not here.
+ * with a refusal, so they are not here - `/resume` and `/status` are the panel's own instead (see panelCommands).
  */
 export interface CommandOption {
   id: string
@@ -424,6 +424,18 @@ export const panelCommands = (t: Dict): CommandOption[] => [
    * conversation (see feed/side). It is the one panel command the phone keeps (see phoneCommands).
    */
   { id: ASIDE_COMMAND, hint: t.commands.btw, local: true, argumentHint: t.commands.btwArgument },
+  /*
+   * The panel's, because the CLI's refuses under a stream: until its host opts in it answers "Fast mode is not
+   * available in the Agent SDK". The panel's is the switch in the model menu - the same ask, held by the IDE
+   * for this conversation (see feed/fastMode.ts), so it survives a restart of the process and moves with a fork.
+   */
+  { id: 'fast', hint: t.commands.fast, local: true, argumentHint: '[on|off]' },
+  /*
+   * The panel's, because the CLI's is a screen and refuses under a stream (see CommandOption). Here it is a
+   * row in the feed with what another session or a terminal needs to reach this conversation: its id, the
+   * name other sessions send to it by, the command that resumes it (see SessionInfoRow).
+   */
+  { id: 'status', hint: t.commands.status, local: true },
 ]
 
 export const builtinCommands = (t: Dict): CommandOption[] => [

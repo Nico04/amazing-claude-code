@@ -150,6 +150,8 @@ internal class WebviewHost(
     parentDisposable: Disposable,
     /** The theme the page opens in - see [startUrl]. */
     private val startTheme: String,
+    /** The id of the conversation on screen went to the clipboard from the right-click menu (see PanelContextMenu). */
+    private val onSessionIdCopied: () -> Unit = {},
     private val onMessage: (String) -> Unit,
 ) : Disposable {
 
@@ -182,6 +184,14 @@ internal class WebviewHost(
 
     /** When a whole frame was last asked to be redrawn - see [heal]. */
     private var lastHealAt = 0L
+
+    /**
+     * The conversation on screen, for the right-click menu to offer its id (see PanelContextMenu). Told by the
+     * page whenever the tab or its conversation changes, rather than asked when the menu opens: the menu is
+     * built on the browser's own thread, and an answer from the page could not reach it in time.
+     */
+    @Volatile
+    var sessionMenu: SessionMenu? = null
 
     val component: JComponent get() = browser.component
 
@@ -242,6 +252,8 @@ internal class WebviewHost(
         )
 
         keepNavigationOutside()
+
+        browser.jbCefClient.addContextMenuHandler(PanelContextMenu({ sessionMenu }, onSessionIdCopied), browser.cefBrowser)
 
         thisLogger().info("Webview renders offscreen: ${browser.isOffScreenRendering}")
 

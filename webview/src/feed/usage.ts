@@ -262,11 +262,11 @@ export const contextGlow = (percent: number): { strong: string; soft: string } =
  * knows yet: a window that has just reset has no next reset time until the very first turn, and
  * "resets soon" would then mean exactly the opposite of the truth.
  */
-export const timeLeft = (resets: string): string | null => {
+export const timeLeft = (resets: string, now: number = Date.now()): string | null => {
   const resetMs = resets ? new Date(resets).getTime() : Number.NaN
   if (Number.isNaN(resetMs)) return null
 
-  const minutes = Math.round((resetMs - Date.now()) / 60_000)
+  const minutes = Math.round((resetMs - now) / 60_000)
   if (minutes <= 0) return null
 
   const hours = Math.floor(minutes / 60)
@@ -275,6 +275,29 @@ export const timeLeft = (resets: string): string | null => {
   // A weekly window is measured in days for most of its life, and "97h 12m" is a number one has to
   // divide in one's head before it means anything.
   return `${Math.floor(hours / 24)}d ${hours % 24}h`
+}
+
+/**
+ * How long until an account at its limit takes work again - null when it is not at one, or when nobody can say.
+ *
+ * Asked on the accounts screen about an account that is not the one in use (feedback from 0.13.36: account A
+ * at 100%, the person moved to B, and wants to know when A comes back - without switching to it, which is the
+ * one thing that cannot be done to find out). Only the two windows the whole plan is measured by count: a
+ * model's own week (Fable) refuses that model alone. Both full - the later reset, since the earlier one opens
+ * nothing while the other still refuses. Extra usage being spent past the limit means the account works on,
+ * billed on top, so it is not waiting for anything; and a full window whose reset the server did not name has
+ * no answer to give.
+ */
+export const usableAgainIn = (facts: UsageFacts, now: number = Date.now()): string | null => {
+  if (facts.extra?.active === true) return null
+
+  const full = [facts.session, facts.week].filter((window): window is UsageWindow => window !== undefined && window.percent >= 100)
+  if (full.length === 0) return null
+
+  const resets = full.map((window) => (window.resets ? new Date(window.resets).getTime() : Number.NaN))
+  if (resets.some(Number.isNaN)) return null
+
+  return timeLeft(new Date(Math.max(...resets)).toISOString(), now)
 }
 
 /**

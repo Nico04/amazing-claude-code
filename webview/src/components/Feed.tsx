@@ -37,6 +37,8 @@ import {
   MetaRow,
   ModLogRow,
   ModelStuckRow,
+  FastModeRow,
+  SessionInfoRow,
   ModelSwitchRow,
   OutrankedRow,
   RetryRow,
@@ -1107,6 +1109,12 @@ const ItemView = memo(({
 
     case 'modelStuck':
       return <ModelStuckRow item={item} />
+
+    case 'fast':
+      return <FastModeRow item={item} />
+
+    case 'session':
+      return <SessionInfoRow item={item} />
 
     case 'changes':
       return <ChangesRow item={item} root={projectRoot} onRevert={onRevertChanges} />

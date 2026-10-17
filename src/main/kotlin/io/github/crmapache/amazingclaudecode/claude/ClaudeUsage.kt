@@ -1,5 +1,6 @@
 package io.github.crmapache.amazingclaudecode.claude
 
+import java.time.Duration
 import java.time.Instant
 import java.time.OffsetDateTime
 import kotlin.math.abs
@@ -41,11 +42,17 @@ internal object ClaudeUsage {
          * Two readers: the memory below, which must not reset itself at every step, and UsageProbes,
          * which recognises one account's window turning up under another account's name.
          */
-        fun sameWindowAs(other: Window): Boolean {
-            val here = resetsAt ?: return false
-            val there = other.resetsAt ?: return false
+        fun sameWindowAs(other: Window): Boolean = other.resetsAt?.let(::resetsAround) == true
 
-            return abs(here.toEpochMilli() - there.toEpochMilli()) <= SAME_WINDOW_TOLERANCE_MS
+        /**
+         * Whether this window resets at [moment], to within the same minutes as [sameWindowAs]. A limit
+         * event names its window's reset in milliseconds rather than as a window, and AccountUsage tells by
+         * this which window a refusal it holds was about.
+         */
+        fun resetsAround(moment: Instant): Boolean {
+            val here = resetsAt ?: return false
+
+            return abs(here.toEpochMilli() - moment.toEpochMilli()) <= SAME_WINDOW_TOLERANCE_MS
         }
     }
 
@@ -71,6 +78,16 @@ internal object ClaudeUsage {
      * nothing about per-model windows (an answer out of a cache, or a process that is handing over its
      * last response's headers), an empty list means the server was asked and named none. The first must
      * not wipe what is known, the second must.
+     *
+     * [fromServer] says whether these are the server's own figures about now, rather than figures of an age
+     * nobody states. When the usage endpoint refuses, the CLI does not say so: it answers success, "seeded"
+     * out of the headers of its process's last model response or out of its cache on disk, up to an hour
+     * old. Only the server's own answer may take a share down within a window (see [Tracker]), so the two
+     * have to be told apart, and the one thing that tells them is the server's `limits` list: the CLI passes
+     * it through with the server's answer - and with its own snapshot of one, under a minute old - and takes
+     * it off a seeded one (CLI 2.1.293, `bun` in the binary). Read the other way, an answer is seeded until
+     * it proves otherwise: a CLI that one day stopped passing the list would leave the rings only going up
+     * within a window, as they did before, rather than taking them down on figures an hour old.
      */
     data class Snapshot(
         val session: Window?,
@@ -78,6 +95,7 @@ internal object ClaudeUsage {
         val contextWindow: Int?,
         val extra: Extra? = null,
         val models: List<ModelWindow>? = null,
+        val fromServer: Boolean = false,
     ) {
         /**
          * Whether the limits themselves have arrived. Without them the panel asks again: usually it
@@ -105,6 +123,7 @@ internal object ClaudeUsage {
             contextWindow = contextWindow(usage),
             extra = limits?.let { extra(it) },
             models = limits?.let { modelWindows(it) },
+            fromServer = limits?.items("limits") != null,
         )
     }
 
@@ -124,21 +143,32 @@ internal object ClaudeUsage {
      * So a window is recognised by its reset time, and a share is not taken at its word:
      * - the reset has already passed - the snapshot is from a window that no longer exists, and its
      *   share says nothing about the present one; the present one is empty until real data arrives;
-     * - the same window (the reset times match) - we take the largest share seen: within a window usage
-     *   only grows, and the disagreement between the routes is one of them lagging, not usage rolling
-     *   back;
+     * - the same window (the reset times match) - a larger share is taken from anyone, a smaller one only
+     *   from the server itself, and only once it is sure to be newer than the larger one (see [within]);
      * - a window newer than the known one - we start counting afresh, from it.
+     *
+     * A smaller share used to be nobody's: within a window usage only grows, and a smaller figure was one
+     * of the routes lagging. It does not only grow. A one-off reset of the limit (the gift reset the account
+     * page offers) empties the window without moving its reset time, and on 16 October the weekly ring held
+     * 99% for a day over a window the server had long put at 23%: every answer since was "the same window,
+     * a smaller share", in every tab and every tab opened after, until the IDE was restarted.
      *
      * One instance per account for the whole IDE (see AccountUsage): this is the memory of what has
      * already been seen, and every open project's answers are folded into the same one.
      */
     class Tracker {
 
-        private var session: Window? = null
-        private var week: Window? = null
+        /**
+         * A window as it is held, and when the server last vouched for its share - null while the share
+         * rests on seeded answers alone (see [Snapshot.fromServer]).
+         */
+        private data class Held(val window: Window, val toldAt: Instant? = null)
+
+        private var session: Held? = null
+        private var week: Held? = null
 
         /** The per-model weekly windows, by the server's label - each folded by the same rule as the week. */
-        private var models: Map<String, Window> = emptyMap()
+        private var models: Map<String, Held> = emptyMap()
 
         /**
          * The same snapshot, but with its windows checked against everything seen before.
@@ -148,11 +178,16 @@ internal object ClaudeUsage {
          */
         @Synchronized
         fun merge(snapshot: Snapshot, now: Instant = Instant.now()): Snapshot {
-            session = fold(session, snapshot.session, now)
-            week = fold(week, snapshot.week, now)
-            models = foldModels(snapshot.models, now)
+            val told = now.takeIf { snapshot.fromServer }
+            session = fold(session, snapshot.session, told, now)
+            week = fold(week, snapshot.week, told, now)
+            models = foldModels(snapshot.models, told, now)
 
-            return snapshot.copy(session = session, week = week, models = models.map { ModelWindow(it.key, it.value) })
+            return snapshot.copy(
+                session = session?.window,
+                week = week?.window,
+                models = models.map { ModelWindow(it.key, it.value.window) },
+            )
         }
 
         /**
@@ -161,14 +196,14 @@ internal object ClaudeUsage {
          * the same way the shared week does; an answer that named none clears them - the plan no longer
          * has such a week, and a ring for it would be a ring about nothing.
          */
-        private fun foldModels(incoming: List<ModelWindow>?, now: Instant): Map<String, Window> {
+        private fun foldModels(incoming: List<ModelWindow>?, told: Instant?, now: Instant): Map<String, Held> {
             if (incoming != null && incoming.isEmpty()) return emptyMap()
 
             val named = incoming?.associate { it.label to it.window }.orEmpty()
             val labels = if (incoming == null) models.keys else named.keys
 
             return labels
-                .mapNotNull { label -> fold(models[label], named[label], now)?.let { label to it } }
+                .mapNotNull { label -> fold(models[label], named[label], told, now)?.let { label to it } }
                 .toMap()
         }
 
@@ -187,10 +222,11 @@ internal object ClaudeUsage {
             models = emptyMap()
         }
 
-        private fun fold(known: Window?, incoming: Window?, now: Instant): Window? {
+        /** [told] is the moment of this answer if the server gave it, null if it is seeded. */
+        private fun fold(known: Held?, incoming: Window?, told: Instant?, now: Instant): Held? {
             // The known window, but only while it is the present one: at the moment of the reset its
             // share stops meaning anything, even if there is no new data.
-            val current = known?.takeIf { it.isCurrent(now) }
+            val current = known?.takeIf { it.window.isCurrent(now) }
 
             val incomingAt = incoming?.resetsAt
             if (incomingAt == null) {
@@ -198,30 +234,62 @@ internal object ClaudeUsage {
                 // a process that has made no requests answers. A share without a window, on the other
                 // hand, has nothing to attach to, and must not override what is known.
                 return current
-                    ?: incoming?.takeIf { it.percent == 0 }
+                    ?: incoming?.takeIf { it.percent == 0 }?.let { Held(it) }
                     // We knew a window and it has ended: in the new one usage starts from zero.
-                    ?: RESET.takeIf { known != null }
+                    ?: Held(RESET).takeIf { known != null }
             }
 
             // A snapshot from a window that has already reset: its share is about the past, and about
             // the present window it says exactly one thing - it has started afresh. That is precisely
             // how a frozen answer from a process that worked before the reset arrives.
-            if (!incomingAt.isAfter(now)) return current ?: RESET
+            if (!incomingAt.isAfter(now)) return current ?: Held(RESET)
 
-            val currentAt = current?.resetsAt ?: return incoming
+            val currentAt = current?.window?.resetsAt ?: return Held(incoming, told)
 
             return when {
-                // One and the same window (see Window.sameWindowAs): the disagreement between the two
-                // routes is one of them lagging, so the larger share is the true one.
-                current.sameWindowAs(incoming) ->
-                    incoming.copy(percent = maxOf(current.percent, incoming.percent))
+                // One and the same window (see Window.sameWindowAs).
+                current.window.sameWindowAs(incoming) -> within(current, incoming, told, now)
                 // A window newer than the known one - the reset happened, we count afresh from it.
-                incomingAt.isAfter(currentAt) -> incoming
+                incomingAt.isAfter(currentAt) -> Held(incoming, told)
                 // Otherwise the snapshot is a whole window behind: we keep what we already know.
                 else -> current
             }
         }
+
+        /**
+         * Two shares of one window. A larger one is taken from anyone: usage grows, and the route that saw
+         * it first is simply ahead. A smaller one is taken only from the server, and only when it is sure to
+         * be about a later moment than the share it replaces:
+         * - a seeded answer may be an hour old, and a process that worked before a reset of the limit hands
+         *   over the share from before it - taken down by that, the ring would go back to 99% from 23%;
+         * - the server's own answer may be up to a minute old as well, because the CLI answers out of its
+         *   snapshot while that is under a minute old ([SERVER_ANSWER_MAX_AGE_MS]). Two server answers that
+         *   reached us further apart than that are in order; closer together, the smaller one may be the
+         *   older, and taking it would flicker the ring a percent down and back up at the end of a turn.
+         *
+         * So a smaller share from the server waits out that minute after the server last vouched for the
+         * held one. A share that rests on seeded answers alone was vouched for by nobody, and gives way at
+         * once.
+         */
+        private fun within(current: Held, incoming: Window, told: Instant?, now: Instant): Held {
+            if (incoming.percent >= current.window.percent) return Held(incoming, told ?: current.toldAt)
+
+            val vouched = current.toldAt
+            val newer = told != null &&
+                (vouched == null || Duration.between(vouched, now).toMillis() > SERVER_ANSWER_MAX_AGE_MS)
+
+            // The reset time from the newer answer either way: the same window, written by whoever was last.
+            return if (newer) Held(incoming, told) else Held(incoming.copy(percent = current.window.percent), vouched)
+        }
     }
+
+    /**
+     * How old the server's own figures can be by the time they reach us: the CLI answers out of its snapshot
+     * of the server's last answer while that is under a minute old (60 seconds, CLI 2.1.293), and a few
+     * seconds go on starting a process and on the pipe. Two server answers that reached us further apart than
+     * this are in order - the later one is about a later moment.
+     */
+    const val SERVER_ANSWER_MAX_AGE_MS = 75_000L
 
     /**
      * The window has reset and there is no fresh data yet: usage in the new window is zero, and when it

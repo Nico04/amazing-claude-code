@@ -229,6 +229,77 @@ class AccountUsageTest {
         assertEquals(now + 15 * 60 * 1000L, usage.standing("work", now).refusedUntil)
     }
 
+    // --- A one-off reset of the limit (the gift reset on the account page) ------------------------------
+
+    private fun week(percent: Int, resets: Long, fromServer: Boolean = true) = ClaudeUsage.Snapshot(
+        session = null,
+        week = ClaudeUsage.Window(percent, Instant.ofEpochMilli(resets).toString()),
+        contextWindow = null,
+        fromServer = fromServer,
+    )
+
+    private fun weeklyStop(resets: Long) =
+        ClaudeRateLimit.Verdict(extraUsage = false, stopped = true, window = "seven_day", resetsAt = resets)
+
+    /**
+     * The week ran out, a tab was refused, and the person reset the limit from the account page. The window's
+     * reset time does not move, so without the server's word the account read as refused for the days left
+     * until it: a scenario run waited them out rather than go on it.
+     */
+    @Test
+    fun `the server putting a refused window back under a hundred lifts the refusal`() {
+        val now = System.currentTimeMillis()
+        val reset = now + 2 * 24 * 60 * 60 * 1000L
+        usage.noteRateLimit("work", weeklyStop(reset), now)
+        usage.fold("work", week(100, reset), now)
+
+        val after = now + ClaudeUsage.SERVER_ANSWER_MAX_AGE_MS + 1
+        usage.fold("work", week(0, reset), after)
+
+        assertNull(usage.standing("work", after).refusedUntil)
+        assertEquals(0, usage.standing("work", after).fullest)
+    }
+
+    // Inside the CLI's one-minute snapshot the server's answer may be from before the refusal itself.
+    @Test
+    fun `a server answer that may predate the refusal lifts nothing`() {
+        val now = System.currentTimeMillis()
+        val reset = now + 2 * 24 * 60 * 60 * 1000L
+        usage.noteRateLimit("work", weeklyStop(reset), now)
+
+        usage.fold("work", week(97, reset), now + 30_000)
+
+        assertEquals(reset, usage.standing("work", now + 30_000).refusedUntil)
+    }
+
+    // A seeded answer is of an age nobody states: the refusal may well be newer than it.
+    @Test
+    fun `a seeded answer lifts nothing`() {
+        val now = System.currentTimeMillis()
+        val reset = now + 2 * 24 * 60 * 60 * 1000L
+        usage.noteRateLimit("work", weeklyStop(reset), now)
+
+        val after = now + 10 * 60 * 1000L
+        usage.fold("work", week(0, reset, fromServer = false), after)
+
+        assertEquals(reset, usage.standing("work", after).refusedUntil)
+    }
+
+    // Room in the week says nothing about the five hours: each refusal is lifted by its own window.
+    @Test
+    fun `room in one window does not lift the other window's refusal`() {
+        val now = System.currentTimeMillis()
+        val weekly = now + 2 * 24 * 60 * 60 * 1000L
+        val hours = now + 2 * 60 * 60 * 1000L
+        usage.noteRateLimit("work", weeklyStop(weekly), now)
+        usage.noteRateLimit("work", ClaudeRateLimit.Verdict(extraUsage = false, stopped = true, window = "five_hour", resetsAt = hours), now)
+
+        val after = now + 10 * 60 * 1000L
+        usage.fold("work", week(5, weekly), after)
+
+        assertEquals(hours, usage.standing("work", after).refusedUntil)
+    }
+
     /** About somebody else's sign-in once it is forgotten - the refusal included. */
     @Test
     fun `a forgotten account is refused no longer`() {

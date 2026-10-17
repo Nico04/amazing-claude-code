@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Microphone } from '../../components/Microphone'
+import { FAST_MARK, type FastModeShown } from '../../feed/fastMode'
 import { asideQuestion } from '../../feed/side'
 import { Ring } from '../../components/StatusBar'
 import { effortShortLabel, modeShortLabel, modelLabel } from '../../catalog'
@@ -46,7 +47,8 @@ interface ComposerProps {
   /** This conversation's context fill and what it is made of - see contextOf in feed/build. */
   context: { percent: number; used: number; limit: number }
   /** How the turn runs, for the one chip that says so and opens the sheet behind it. */
-  run: { model: string; effort: string; mode: string }
+  /** `fast` puts the desk's mark beside the model while fast mode is asked for (see FastMark in StatusBar). */
+  run: { model: string; effort: string; mode: string; fast?: FastModeShown }
   running: boolean
   /** When the turn on screen began, by the IDE's clock - zero when none is running. */
   since: number
@@ -603,6 +605,13 @@ export const Composer = ({
             <Gear />
             <span className={m.runChipText}>
               {modelLabel(run.model)}
+              {run.fast && run.fast.kind !== 'off' ? (
+                <span
+                  className={`${m.runChipFast} ${run.fast.kind === 'on' ? m.runChipFastOn : run.fast.kind === 'unavailable' ? m.runChipFastWarn : ''}`}
+                >
+                  {` ${FAST_MARK}`}
+                </span>
+              ) : null}
               {run.effort ? ` · ${effortShortLabel(run.effort)}` : ''}
               {run.mode ? ' · ' : ''}
               {run.mode ? <span className={m.runChipMode}>{modeShortLabel(t, run.mode)}</span> : null}

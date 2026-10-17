@@ -1741,6 +1741,22 @@
   min-width: min-content;
 }
 
+/* Fast mode on MODEL (see FastMark in StatusBar.tsx): dim while it waits or is paused, lit while it serves, the
+   warning colour when it was asked for and the CLI says it cannot. */
+.selectorFast {
+  flex: none;
+  font: 600 11px/1 var(--acc-mono);
+  color: var(--acc-fg-faint);
+}
+
+.selectorFastOn {
+  color: var(--acc-accent);
+}
+
+.selectorFastWarn {
+  color: var(--acc-warn);
+}
+
 .selectorCaret {
   flex: none;
   width: 8px;
@@ -2029,6 +2045,11 @@
    chosen - it is GitHub's own star (see Thanks.tsx). */
 .menuIconWarn {
   color: var(--acc-warn);
+}
+
+/* A switch that is off - fast mode in the model menu: its mark stays, so the entry reads as a switch, but greyed. */
+.menuIconDim {
+  color: var(--acc-fg-faint);
 }
 
 .menuBody {

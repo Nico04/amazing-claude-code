@@ -427,6 +427,22 @@ internal class ProjectUsage(
             }.filter { it.isNotEmpty() }.toSet(),
         )
 
+        // Which of them have fast mode - for the switch a model picked without it turns off (see
+        // ClaudeSessions.setModel). Disabled rows too: they are still names a conversation may be running on.
+        val fast = models.mapNotNull { element ->
+            val model = element as? JsonObject ?: return@mapNotNull null
+            val value = model["value"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+            val marked = model["supportsFastMode"]?.jsonPrimitive?.booleanOrNull
+            Triple(value, model["resolvedModel"]?.jsonPrimitive?.contentOrNull.orEmpty(), marked)
+        }
+        ClaudeAccounts.getInstance().noteFastModels(
+            account,
+            // A catalogue that marks no row at all comes from a CLI older than the mark: that is silence, not "none".
+            fast.takeIf { rows -> rows.any { it.third != null } }?.map { (value, resolved, marked) ->
+                Triple(value, resolved, marked == true)
+            },
+        )
+
         hub.broadcastProject(
             buildJsonObject {
                 put("type", "models")
@@ -444,6 +460,8 @@ internal class ProjectUsage(
                             put("description", model["description"]?.jsonPrimitive?.contentOrNull.orEmpty())
                             put("resolved", model["resolvedModel"]?.jsonPrimitive?.contentOrNull.orEmpty())
                             model["disabled"]?.jsonPrimitive?.booleanOrNull?.let { put("disabled", it) }
+                            // Where the menu offers the fast mode switch at all - only on a model that has it.
+                            if (model["supportsFastMode"]?.jsonPrimitive?.booleanOrNull == true) put("fast", true)
                         }
                     }
                 }

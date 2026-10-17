@@ -364,6 +364,8 @@ export interface ModelInfo {
   resolved: string
   /** Visible in the list but not choosable - that is how the terminal shows them too. */
   disabled?: boolean
+  /** Has fast mode - the CLI's own `supportsFastMode` (see modelHasFastMode). */
+  fast?: boolean
 }
 
 /**
@@ -1647,6 +1649,14 @@ type ShellMessageBody =
    */
   | { type: 'effort'; sessionId: string; effort: string }
   /**
+   * Whether this conversation asks for fast mode: on a change, at its birth, to a client joining, after a reset -
+   * the effort's moments, and live like it (see ClaudeSessionHub.changeFastMode). The ask and nothing more:
+   * whether it is ON the CLI says itself in the stream (`fast_mode_state`, see feed/fastMode.ts).
+   */
+  | { type: 'fastMode'; sessionId: string; on: boolean }
+  /** The answer to `/status` (see the `sessionInfo` request): the tab's conversation id, absent until its first message. */
+  | { type: 'sessionInfo'; sessionId: string; conversationId?: string }
+  /**
    * Which Claude account a conversation runs on - said at its birth, like the effort and the model.
    *
    * The opaque id and nothing else. This message is per-conversation, so a subscribed phone receives it,
@@ -2541,6 +2551,8 @@ export type WebviewMessage =
   /** The model and the effort are held by the shell too: new conversations inherit them. */
   | { type: 'setModel'; sessionId: string; model: string }
   | { type: 'setEffort'; sessionId: string; effort: string }
+  /** Fast mode for this conversation alone - no setting is written, and no next tab starts with it. */
+  | { type: 'setFastMode'; sessionId: string; on: boolean }
   /** Where the input field sits - also a choice that outlives an IDE restart. */
   | { type: 'setComposerLayout'; layout: string }
   /** From how many lines a paste folds into a chip; '0' never folds, an empty string restores the default. */
@@ -2673,6 +2685,14 @@ export type WebviewMessage =
    * whole feed could fail to draw itself with nothing anywhere to say why.
    */
   | { type: 'channelLoss'; reason: 'order' | 'parse'; expected: number; got: number }
+  /**
+   * The conversation on screen, for the right-click menu the browser draws to offer its id - with the words for
+   * the entry, since the IDE has no dictionary of the panel's (see PanelContextMenu.kt). Null where the tab has
+   * no conversation yet, or is not a conversation's.
+   */
+  | { type: 'sessionMenu'; conversationId: string | null; label: string }
+  /** `/status` - what the IDE knows of this tab's conversation, answered by a `sessionInfo` of its own. */
+  | { type: 'sessionInfo'; sessionId: string }
   | { type: 'history' }
   /** A page further back than the journal's own catch-up reaches - see ShellMessageBody's historyPage. */
   | { type: 'historyPage'; sessionId: string; before?: string }
@@ -3286,6 +3306,10 @@ export type WorkflowProgress =
 export interface AgentSystemEvent {
   type: 'system'
   subtype: string
+  /** Whether fast mode serves this conversation, on `init` - see feed/fastMode.ts. */
+  fast_mode_state?: 'on' | 'off' | 'cooldown'
+  /** Why it cannot, when something blocks it - the CLI's own word (see fastReasonText). */
+  fast_mode_disabled_reason?: string
   /**
    * The mark Claude Code stamps every line of its stream with. Only the lines the transcript keeps can
    * be asked for a page older than themselves, and a system event is generally not one of them - which
@@ -3550,6 +3574,14 @@ export interface AgentResultEvent {
   total_cost_usd?: number
   session_id?: string
   usage?: AgentResultUsage
+  /**
+   * Every model the conversation has used so far, by the CLI's model id, with the window the CLI itself
+   * gives it - read for that window alone (see contextWindows in feed/build).
+   */
+  modelUsage?: Record<string, { contextWindow?: number }>
+  /** The same two as on `system/init`, at the turn's end - see feed/fastMode.ts. */
+  fast_mode_state?: 'on' | 'off' | 'cooldown'
+  fast_mode_disabled_reason?: string
 }
 
 /**

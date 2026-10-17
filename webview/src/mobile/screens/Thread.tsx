@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AgentStreamView } from '../../components/AgentStreamView'
+import { fastModeShown } from '../../feed/fastMode'
 import { Feed } from '../../components/Feed'
 import { WorkflowAgentView } from '../../components/items/WorkflowAgentView'
 import { StreamSwitcher } from '../../components/StreamSwitcher'
@@ -465,6 +466,7 @@ export const Thread = ({
             model: feed.model ?? '',
             effort: feed.effort ?? '',
             mode: feed.permissionMode ?? '',
+            fast: fastModeShown(feed.fastMode, feed.fastReport),
           }}
           running={feed.status === 'running'}
           since={feed.turnStartedAt ?? 0}

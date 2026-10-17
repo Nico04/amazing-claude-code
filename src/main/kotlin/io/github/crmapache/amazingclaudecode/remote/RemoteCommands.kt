@@ -151,6 +151,12 @@ internal object RemoteCommands {
         "setModel",
         "setEffort",
         /**
+         * Fast mode for the conversation on screen, on the same terms as the effort beside it: it is about what
+         * a turn costs and how soon it answers, it widens nothing the agent may touch, and it writes no setting
+         * at all - not even at the desk (see SessionLaunch.fast).
+         */
+        "setFastMode",
+        /**
          * The MCP servers of the conversation on screen: which are up, which want a sign-in, which
          * failed and why - and adding and removing one.
          *
@@ -550,6 +556,10 @@ internal object RemoteCommands {
         // between this IDE and its own panel, and a device across the network has no such road to speak
         // about - it is handled by the window itself in any case (see ClaudePanel).
         "channelLoss",
+        // The conversation on screen for the right-click menu, and `/status` asking about it: both answered by
+        // the window itself (see ClaudePanel) - a menu only an IDE window has, and a card for its own feed.
+        "sessionMenu",
+        "sessionInfo",
         // Writing a file onto the machine at the asking of whoever is on the line. The picture itself is
         // harmless; a message that makes the IDE write files is not, and the statistics tab it comes from
         // is the panel's alone anyway.

@@ -181,7 +181,7 @@ export const de: Dict = {
   shareEditor: {
     label: 'Den Editor mitschicken',
     hint: 'Jede Nachricht trägt die im Editor offene Datei und die darin markierten Zeilen - so wie Claude Code es im Terminal macht',
-    note: 'Nur aus diesem Panel: Eine Nachricht vom Handy trägt nichts vom Editor. Eine einzelne Nachricht kann ohne ihn gehen - drück auf den Datei-Chip im Eingabefeld.',
+    note: 'Nur aus diesem Panel: Eine Nachricht vom Handy trägt nichts vom Editor. Derselbe Schalter steckt im Datei-Chip im Eingabefeld, und dort kann eine einzelne Nachricht ohne ihn gehen oder umgekehrt mit ihm.',
     on: 'An',
     off: 'Aus',
   },
@@ -950,6 +950,31 @@ export const de: Dict = {
     addSub: 'Eines, das Claude Code nicht anbietet',
   },
 
+  fast: {
+    label: 'Schnellmodus',
+    offSub: 'Aus · Opus bis zu 2,5× schneller, abgerechnet über Usage Credits',
+    waitingSub: 'Ab der nächsten Nachricht an · abgerechnet über Usage Credits',
+    onSub: 'An · abgerechnet über Usage Credits',
+    cooldownSub: 'Nach einem Limit pausiert - schaltet sich selbst wieder ein',
+    unavailableSub: (reason) => `Nicht verfügbar. ${reason}`,
+    chipOn: 'Der Schnellmodus ist an',
+    chipWaiting: 'Der Schnellmodus schaltet sich mit der nächsten Nachricht ein',
+    chipCooldown: 'Der Schnellmodus ist nach einem Limit pausiert',
+    chipUnavailable: (reason) => `Der Schnellmodus ist nicht verfügbar. ${reason}`,
+    row: { label: 'SCHNELL', title: 'Der Schnellmodus hat sich nicht eingeschaltet', hint: 'Dieses Gespräch läuft mit normaler Geschwindigkeit weiter.' },
+    reasons: {
+      extraUsageDisabled: 'Er wird über Usage Credits abgerechnet, und die sind für dieses Konto aus.',
+      free: 'Er braucht einen bezahlten Tarif.',
+      preference: 'Deine Organisation hat ihn abgeschaltet.',
+      networkError: 'Claude Code konnte es nicht prüfen: ein Netzwerkproblem.',
+      notFirstParty: 'Er funktioniert nur direkt über die Anthropic API.',
+      disabledByEnv: 'Er ist auf diesem Rechner abgeschaltet.',
+      modelNotAllowed: 'Opus gehört nicht zu den Modellen, die deine Organisation erlaubt.',
+      unknown: 'Er ist gerade nicht verfügbar.',
+    },
+    phone: { on: 'An', off: 'Aus', note: 'Opus bis zu 2,5× schneller, abgerechnet über Usage Credits - nur für dieses Gespräch.' },
+  },
+
   composer: {
     placeholder: 'Frag etwas, oder beschreib eine Änderung…',
     placeholderPlan: 'Beschreib, was geplant werden soll…',
@@ -974,8 +999,19 @@ export const de: Dict = {
     voice: 'Diktieren',
     voiceStop: 'Diktat beenden',
     editor: {
-      on: (place) => `Claude sieht ${place} mit dieser Nachricht · klicken, um es wegzulassen`,
-      off: (place) => `${place} bleibt bei dieser Nachricht weg · klicken, um es mitzuschicken`,
+      on: (place) => `Claude sieht ${place} mit dieser Nachricht · klicken zum Auswählen`,
+      off: (place) => `${place} bleibt bei dieser Nachricht weg · klicken zum Auswählen`,
+      muted: (place) => `${place} wird nicht mitgeschickt - das Mitsenden des Editors ist aus · klicken zum Auswählen`,
+      menu: {
+        always: 'Mit jeder Nachricht senden',
+        alwaysSub: 'Die geöffnete Datei und die markierten Zeilen, in jedem Tab',
+        skip: 'Bei dieser Nachricht weglassen',
+        skipSub: 'Die nächste Nachricht nimmt ihn wieder mit',
+        only: 'Nur mit dieser Nachricht senden',
+        onlySub: 'Die nächste geht wieder ohne ihn',
+        never: 'Nie senden',
+        neverSub: 'In jedem Tab, bis du es wieder einschaltest - derselbe Schalter wie in den Einstellungen',
+      },
     },
   },
 
@@ -1254,6 +1290,14 @@ export const de: Dict = {
       textWithCode: (code) => `Claude Code hat sich unerwartet beendet (Exit-Code ${code}).`,
     },
 
+    session: {
+      label: 'SITZUNG',
+      id: 'Sitzungs-ID',
+      terminal: 'Im Terminal',
+      copyId: 'Sitzungs-ID kopieren',
+      terminalNote: 'Setzt dieses Gespräch in einem Terminal im Projektordner fort',
+      none: 'Noch keine ID - das Gespräch bekommt sie mit der ersten Nachricht',
+    },
     outranked: {
       label: 'EINSTELLUNGEN',
       text: 'Dieses Repository überschreibt den hier gewählten Account:',
@@ -1438,6 +1482,7 @@ export const de: Dict = {
     absent: 'Keine Zugangsdaten gespeichert. Melde dich neu an, um dieses Konto zu nutzen.',
     fiveHour: '5 Std',
     weekly: 'Woche',
+    usableAgainIn: (left) => `Limit erreicht · wieder nutzbar in ${left}`,
     row: {
       one: 'Ein Konto',
       adding: 'Anmeldung läuft…',
@@ -1998,6 +2043,8 @@ export const de: Dict = {
     config: 'Claude-Code-Einstellungen - öffnet sie im Menü',
     btw: 'eine kurze Nebenfrage - die Arbeit läuft weiter',
     btwArgument: '<Frage>',
+    fast: 'Schnellmodus umschalten - Opus bis zu 2,5× schneller, abgerechnet über Usage Credits',
+    status: 'die ID dieses Gesprächs und der Befehl, es im Terminal fortzusetzen',
     model: 'das Modell für diese Sitzung wechseln',
     effort: 'einstellen, wie lange Claude vor dem Handeln nachdenkt',
     context: 'was das Kontextfenster gerade füllt',

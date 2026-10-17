@@ -178,7 +178,7 @@ export const zh: Dict = {
   shareEditor: {
     label: '随消息附带编辑器',
     hint: '每条消息都会附上编辑器中打开的文件及其中选中的行，就像 Claude Code 在终端里那样',
-    note: '仅限此面板：在手机上写的消息不会附带编辑器的任何内容。单条消息可以不附带 - 点一下输入框里的文件标签即可。',
+    note: '仅限此面板：在手机上写的消息不会附带编辑器的任何内容。输入框里的文件标签也有这个开关，还可以让单条消息不附带，或反过来只让这一条附带。',
     on: '开',
     off: '关',
   },
@@ -941,6 +941,31 @@ export const zh: Dict = {
     addSub: 'Claude Code 没有的那种',
   },
 
+  fast: {
+    label: '快速模式',
+    offSub: '关 · Opus 最快提速 2.5 倍，从用量额度扣费',
+    waitingSub: '下一条消息起开启 · 从用量额度扣费',
+    onSub: '开 · 从用量额度扣费',
+    cooldownSub: '因速率限制暂停 - 会自动恢复',
+    unavailableSub: (reason) => `不可用。${reason}`,
+    chipOn: '快速模式已开启',
+    chipWaiting: '快速模式将在下一条消息开启',
+    chipCooldown: '快速模式因速率限制暂停',
+    chipUnavailable: (reason) => `快速模式不可用。${reason}`,
+    row: { label: '快速', title: '快速模式未能开启', hint: '本对话继续以标准速度进行。' },
+    reasons: {
+      extraUsageDisabled: '它从用量额度扣费，而此账户的用量额度已关闭。',
+      free: '需要付费套餐。',
+      preference: '你的组织已将其关闭。',
+      networkError: 'Claude Code 无法确认：网络问题。',
+      notFirstParty: '仅在直接使用 Anthropic API 时可用。',
+      disabledByEnv: '已在此机器上关闭。',
+      modelNotAllowed: 'Opus 不在你的组织允许的模型中。',
+      unknown: '暂时不可用。',
+    },
+    phone: { on: '开', off: '关', note: 'Opus 最快提速 2.5 倍，从用量额度扣费 - 仅限此对话。' },
+  },
+
   composer: {
     placeholder: '提问，或者描述要改什么…',
     placeholderPlan: '说说要规划什么…',
@@ -965,8 +990,19 @@ export const zh: Dict = {
     voice: '语音输入',
     voiceStop: '结束听写',
     editor: {
-      on: (place) => `Claude 会随这条消息看到 ${place} · 点击不附带`,
-      off: (place) => `${place} 不会随这条消息发出 · 点击附带`,
+      on: (place) => `Claude 会随这条消息看到 ${place} · 点击选择`,
+      off: (place) => `${place} 不会随这条消息发出 · 点击选择`,
+      muted: (place) => `${place} 不会发出：附带编辑器已关闭 · 点击选择`,
+      menu: {
+        always: '每条消息都附带',
+        alwaysSub: '打开的文件和选中的行，所有标签页',
+        skip: '这条消息不附带',
+        skipSub: '下一条消息会再次附带',
+        only: '仅这条消息附带',
+        onlySub: '下一条又会不附带',
+        never: '从不附带',
+        neverSub: '所有标签页，直到重新打开。与设置里的是同一个开关',
+      },
     },
   },
 
@@ -1244,6 +1280,14 @@ export const zh: Dict = {
       textWithCode: (code) => `Claude Code 意外退出了（退出码 ${code}）。`,
     },
 
+    session: {
+      label: '会话',
+      id: '会话 ID',
+      terminal: '在终端中',
+      copyId: '复制会话 ID',
+      terminalNote: '在项目文件夹中打开的终端里继续这个会话',
+      none: '还没有 ID，会话在第一条消息时获得',
+    },
     outranked: {
       label: '设置',
       text: '此仓库覆盖了这里选择的账号：',
@@ -1427,6 +1471,7 @@ export const zh: Dict = {
     absent: '没有存下来的登录凭据。要用这个账号，请重新登录一次。',
     fiveHour: '5 小时',
     weekly: '每周',
+    usableAgainIn: (left) => `已达上限 · ${left} 后可再次使用`,
     row: {
       one: '只有一个账号',
       adding: '登录中…',
@@ -1987,6 +2032,8 @@ export const zh: Dict = {
     config: 'Claude Code 设置 - 在菜单中打开',
     btw: '顺便问个问题 - 不打断当前工作',
     btwArgument: '<问题>',
+    fast: '切换快速模式 - Opus 最快提速 2.5 倍，从用量额度扣费',
+    status: '这个会话的 ID，以及在终端中继续它的命令',
     model: '切换本次会话使用的模型',
     effort: '设置 Claude 动手前思考多久',
     context: '当前上下文窗口里装了什么',

@@ -180,7 +180,7 @@ export const ja: Dict = {
   shareEditor: {
     label: 'エディターの内容を一緒に送る',
     hint: '各メッセージに、エディターで開いているファイルとその中で選択した行を添えます。ターミナルの Claude Code と同じです',
-    note: 'このパネルからのみ：スマホで書いたメッセージにはエディターの内容は付きません。1 通だけ外すこともできます - 入力欄のファイルのチップを押してください。',
+    note: 'このパネルからのみ：スマホで書いたメッセージにはエディターの内容は付きません。入力欄のファイルのチップにも同じスイッチがあり、1 通だけ外したり、逆に 1 通だけ付けたりもできます。',
     on: 'オン',
     off: 'オフ',
   },
@@ -943,6 +943,31 @@ export const ja: Dict = {
     addSub: 'Claude Code にないもの',
   },
 
+  fast: {
+    label: '高速モード',
+    offSub: 'オフ · Opus が最大 2.5 倍速く、利用クレジットで支払い',
+    waitingSub: '次のメッセージからオン · 利用クレジットで支払い',
+    onSub: 'オン · 利用クレジットで支払い',
+    cooldownSub: 'レート制限で一時停止中 - 自動で戻ります',
+    unavailableSub: (reason) => `使用できません。${reason}`,
+    chipOn: '高速モードはオンです',
+    chipWaiting: '高速モードは次のメッセージからオンになります',
+    chipCooldown: '高速モードはレート制限で一時停止中です',
+    chipUnavailable: (reason) => `高速モードは使用できません。${reason}`,
+    row: { label: '高速', title: '高速モードがオンになりませんでした', hint: 'この会話は通常の速度で続きます。' },
+    reasons: {
+      extraUsageDisabled: '利用クレジットで支払うモードですが、このアカウントでは利用クレジットがオフです。',
+      free: '有料プランが必要です。',
+      preference: '組織によってオフにされています。',
+      networkError: 'Claude Code が確認できませんでした (ネットワークの問題)。',
+      notFirstParty: 'Anthropic API を直接使う場合のみ使えます。',
+      disabledByEnv: 'このマシンではオフになっています。',
+      modelNotAllowed: 'Opus は組織が許可しているモデルに含まれていません。',
+      unknown: '現在は使用できません。',
+    },
+    phone: { on: 'オン', off: 'オフ', note: 'Opus が最大 2.5 倍速く、利用クレジットで支払い - この会話のみ。' },
+  },
+
   composer: {
     placeholder: '質問するか、変えたいことを書いてください…',
     placeholderPlan: '何を計画するか書いてください…',
@@ -967,8 +992,19 @@ export const ja: Dict = {
     voice: '音声入力',
     voiceStop: '音声入力を終える',
     editor: {
-      on: (place) => `このメッセージで Claude に ${place} を見せます · クリックで外す`,
-      off: (place) => `${place} はこのメッセージに付きません · クリックで付ける`,
+      on: (place) => `このメッセージで Claude に ${place} を見せます · クリックで選ぶ`,
+      off: (place) => `${place} はこのメッセージに付きません · クリックで選ぶ`,
+      muted: (place) => `${place} は送られません（エディターの送信はオフ） · クリックで選ぶ`,
+      menu: {
+        always: '毎回のメッセージに付ける',
+        alwaysSub: '開いているファイルと選択した行を、すべてのタブで',
+        skip: 'このメッセージには付けない',
+        skipSub: '次のメッセージからはまた付きます',
+        only: 'このメッセージだけに付ける',
+        onlySub: '次からはまた付けずに送ります',
+        never: '付けない',
+        neverSub: 'すべてのタブで、オンに戻すまで。設定と同じスイッチです',
+      },
     },
   },
 
@@ -1246,6 +1282,14 @@ export const ja: Dict = {
       textWithCode: (code) => `Claude Code が予期せず終了しました（終了コード ${code}）。`,
     },
 
+    session: {
+      label: 'セッション',
+      id: 'セッション ID',
+      terminal: 'ターミナルで',
+      copyId: 'セッション ID をコピー',
+      terminalNote: 'プロジェクトのフォルダーで開いたターミナルで、この会話を続けます',
+      none: 'まだ ID はありません。最初のメッセージで付きます',
+    },
     outranked: {
       label: '設定',
       text: 'このリポジトリがここで選んだアカウントを上書きしています:',
@@ -1435,6 +1479,7 @@ export const ja: Dict = {
     /** The figures beside a row - short, because they sit on one line under the name. */
     fiveHour: '5時間',
     weekly: '週',
+    usableAgainIn: (left) => `上限に達しました · あと ${left} で再び使えます`,
     row: {
       /** The value on the menu row when there is nothing to switch between. */
       one: 'アカウント 1 つ',
@@ -1997,6 +2042,8 @@ export const ja: Dict = {
     config: 'Claude Code の設定 - メニューで開く',
     btw: '作業を止めずにちょっと質問する',
     btwArgument: '<質問>',
+    fast: '高速モードの切り替え - Opus が最大 2.5 倍速く、利用クレジットで支払い',
+    status: 'この会話の ID と、ターミナルで続けるためのコマンド',
     model: 'このセッションのモデルを切り替える',
     effort: 'Claude が動く前にどれだけ考えるかを決める',
     context: 'いまコンテキストウィンドウに入っているもの',

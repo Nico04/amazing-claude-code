@@ -836,6 +836,33 @@ export interface ModelStuckItem {
 }
 
 /**
+ * Fast mode was asked for, and the CLI says it cannot serve - with its reason (see feed/fastMode.ts).
+ *
+ * A row because the ask is made in a menu that closes: without it the turns go on at standard speed, and
+ * the only place saying why is that menu, reopened. Once per reason since the ask (see noteFastReport), not
+ * once per turn - the CLI repeats it at the start and the end of every one.
+ *
+ * The CLI's word rather than the words: chosen at painting time, like a limit's window.
+ */
+export interface FastModeItem {
+  id: string
+  kind: 'fast'
+  reason: string
+}
+
+/**
+ * `/status`: the conversation's id, and the command that resumes it in a terminal (see SessionInfoRow).
+ *
+ * The id is the CLI's - the one its transcript is named by and `--resume` takes - and is absent until the
+ * first message gives the conversation one.
+ */
+export interface SessionInfoItem {
+  id: string
+  kind: 'session'
+  conversationId?: string
+}
+
+/**
  * The repository's settings overrule the account this conversation came up on.
  *
  * Claude Code applies a settings file's `env` over the environment it was handed, and the repository's
@@ -981,6 +1008,8 @@ export type FeedItem =
   | RetryItem
   | ModelSwitchItem
   | ModelStuckItem
+  | FastModeItem
+  | SessionInfoItem
   | CrashItem
   | ModLogItem
   | OutrankedItem

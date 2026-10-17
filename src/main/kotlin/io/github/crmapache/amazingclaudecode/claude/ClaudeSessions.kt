@@ -66,8 +66,8 @@ internal class ClaudeSessions(
      * otherwise be drawn by whatever the setting holds NOW - that is, by a choice made in a neighbouring
      * tab after this conversation had already started on something else.
      */
-    private val onBorn: (sessionId: String, effort: String, model: String, accountId: String) -> Unit =
-        { _, _, _, _ -> },
+    private val onBorn: (sessionId: String, effort: String, model: String, accountId: String, fast: Boolean) -> Unit =
+        { _, _, _, _, _ -> },
     /**
      * A conversation is being stopped so that it can move to another account.
      *
@@ -260,6 +260,9 @@ internal class ClaudeSessions(
             model = chosen.model.ifEmpty { parent?.model.orEmpty() },
             effort = chosen.effort.ifEmpty { parent?.effort.orEmpty() },
             mode = chosen.mode.ifEmpty { parent?.permissionMode.orEmpty() },
+            // The same conversation in another tab, and so at the same speed: fast mode was asked for this
+            // conversation, and a fork of it is no new one (see SessionLaunch.fast).
+            fast = chosen.fast ?: parent?.fastMode,
         )
         // The account does NOT travel with it, unlike the three above. A fork starts on the account
         // everything else on this machine is on: that is the whole of the rule now, and a fork of a tab
@@ -630,6 +633,9 @@ internal class ClaudeSessions(
             model = StartingChoice.clamp(accountId, session.model),
             effort = session.effort,
             mode = session.permissionMode.orEmpty(),
+            // Asked for this conversation, so it moves with it. Whether the new account can serve it is the
+            // CLI's to say - it needs that account's usage credits - and it says so on the next turn.
+            fast = session.fastMode,
         )
 
         moving.add(sessionId)
@@ -1136,6 +1142,15 @@ internal class ClaudeSessions(
                 // over its untouched tabs (see StartingChoice).
                 ClaudeSessionHub.announceNewTabDefaults()
             }
+            // A model without fast mode turns it off, as it does in a terminal - and stays off when the next
+            // model has it again: fast mode is billed, and coming back on by itself would be a charge nobody
+            // asked for. Only on the catalogue's word: a model it has not described keeps what was asked.
+            val session = sessions[sessionId]
+            if (change.applied && session?.fastMode == true &&
+                ClaudeAccounts.getInstance().hasFastMode(accountOf(sessionId), change.model) == false
+            ) {
+                session.setFastMode(false)
+            }
             onApplied(change)
         }
     }
@@ -1165,6 +1180,17 @@ internal class ClaudeSessions(
      * questions about it (see ClaudeSession.setEffort).
      */
     fun effort(sessionId: String): String? = sessions[sessionId]?.effort
+
+    /**
+     * Fast mode for this conversation - and for no other, nor for the tabs opened after it (see
+     * SessionLaunch.fast). Nothing is written to the settings, so there is no `remember` here, unlike [setEffort].
+     */
+    fun setFastMode(sessionId: String, on: Boolean) {
+        session(sessionId).setFastMode(on)
+    }
+
+    /** Whether this conversation asks for fast mode - null when there is no conversation yet, which means off. */
+    fun fastMode(sessionId: String): Boolean? = sessions[sessionId]?.fastMode
 
     /**
      * The model this conversation runs on, or null when there is no such conversation - then the saved
@@ -1207,6 +1233,7 @@ internal class ClaudeSessions(
             model = StartingChoice.model(account, requested = launch.model),
             effort = StartingChoice.effort(account, requested = launch.effort),
             mode = launch.mode,
+            fast = launch.fast,
         )
     }
 
@@ -1335,7 +1362,10 @@ internal class ClaudeSessions(
         val effort = StartingChoice.effort(account, requested = launch.effort)
         val model = StartingChoice.model(account, requested = launch.model)
 
-        onBorn(sessionId, effort, model, account)
+        // Off unless this conversation itself asked: no setting carries it into a new tab (see SessionLaunch.fast).
+        val fast = launch.fast == true
+
+        onBorn(sessionId, effort, model, account, fast)
 
         return ClaudeSession(
             workingDirectory = workingDirectory,
@@ -1344,6 +1374,7 @@ internal class ClaudeSessions(
             resumeFrom = resumeFrom,
             model = model,
             effort = effort,
+            fastMode = fast,
             accountId = account,
             // A tab is told where it is running; one continuing a finished run's main thread is told one
             // thing more - that the role the transcript keeps insisting on is over (see

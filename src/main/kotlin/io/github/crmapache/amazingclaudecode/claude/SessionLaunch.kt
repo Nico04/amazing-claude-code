@@ -20,6 +20,16 @@ internal data class SessionLaunch(
     val model: String = "",
     val effort: String = "",
     val mode: String = "",
+    /**
+     * Fast mode, when this conversation is to start with an answer of its own about it - null when nothing
+     * was said, and then it starts without (see ClaudeSession.fastMode).
+     *
+     * Unlike the three above it has no setting to fall back on, and that is deliberate: fast mode is paid for
+     * by usage credits, and a choice made for one conversation quietly carried into every tab opened after it
+     * would be a bill nobody asked for. So it travels only where the conversation itself travels - a fork, a
+     * move to another account, a restored or reopened tab.
+     */
+    val fast: Boolean? = null,
 ) {
 
     /**
@@ -32,5 +42,5 @@ internal data class SessionLaunch(
      * wrong subscription without a word.
      */
     val isEmpty: Boolean
-        get() = model.isEmpty() && effort.isEmpty() && mode.isEmpty()
+        get() = model.isEmpty() && effort.isEmpty() && mode.isEmpty() && fast == null
 }

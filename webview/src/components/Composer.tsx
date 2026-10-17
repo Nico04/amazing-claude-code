@@ -40,7 +40,7 @@ import {
 import { clipboardHtml, clipboardTextOf, clipboardTokens, tokensText } from '../feed/tokens'
 import type { Chip, DraftEdit, UserToken } from '../feed/types'
 import { isSideComposerLayout, type ComposerLayout } from '../composerLayout'
-import { droppableTools, firstLetter, type FitStep, type WritingTool } from '../composerFit'
+import { droppableTools, firstLetter, type EditorFit, type FitStep, type WritingTool } from '../composerFit'
 import { fitMark, useToolsFit } from '../hooks/useToolsFit'
 import { enterAction, sendKeyCap, type SendKey } from '../sendKey'
 import type { EditorRef, ModelInfo } from '../protocol'
@@ -49,6 +49,7 @@ import { editorLabel } from '../feed/editorContext'
 import { SlashSuggest } from './SlashSuggest'
 import { collapsesPaste } from '../feed/reference'
 import { contextColor } from '../feed/usage'
+import type { FastModeShown } from '../feed/fastMode'
 import {
   atQueryAt,
   caretRect,
@@ -455,12 +456,13 @@ interface ComposerProps {
   /** That key as a hint names it - "Option+Enter" - or empty while the IDE has not said (see keyText). */
   queueKey?: string
   /**
-   * What the editor beside the panel shows, and whether it goes with this message (see EditorChip). Null
-   * with nothing to show, or with the setting off - then there is no chip at all.
+   * What the editor beside the panel shows, whether it goes with this message, whether sending it is
+   * switched off with no exception for this message (`muted`), and whether the chip's menu is open - see
+   * EditorChip. Null with nothing to show.
    */
-  editor?: { ref: EditorRef; on: boolean } | null
-  /** The chip pressed: this message goes without it, or with it again. */
-  onToggleEditor?: () => void
+  editor?: { ref: EditorRef; on: boolean; muted: boolean; open: boolean } | null
+  /** The chip pressed: its menu opens over it (see editorMenu). */
+  onEditorMenu?: (anchor: Anchor) => void
   /** Whether there is anything to send - text, an attachment or a quote. */
   canSubmit: boolean
   onStop: () => void
@@ -485,6 +487,8 @@ interface ComposerProps {
   switchedFrom?: string
   /** The choice that never came into force, while that holds - see Selectors. */
   stuckPick?: string
+  /** Fast mode for this conversation - see Selectors. */
+  fast?: FastModeShown
   effort?: string
   mode?: string
   onOpenSelector?: (kind: SelectorKind, anchor: Anchor) => void
@@ -565,7 +569,7 @@ export const Composer = ({
   queueToken = 0,
   queueKey = '',
   editor = null,
-  onToggleEditor,
+  onEditorMenu,
   canSubmit,
   onStop,
   stopStalled,
@@ -574,6 +578,7 @@ export const Composer = ({
   model,
   switchedFrom,
   stuckPick,
+  fast,
   effort,
   mode,
   onOpenSelector,
@@ -2066,10 +2071,14 @@ export const Composer = ({
   }, [hasVoice, hasSearch, hasScenarios, forConversation])
 
   const dictating = listening || finishing
-  // The editor's chip has a name to give up only in the ordinary layout - beside a narrow field it is drawn
-  // without one from the start (see EditorChip's `bare`).
-  const named = editor !== null && !compact && !rail
-  const droppable = useMemo(() => droppableTools(presentTools, dictating, named), [presentTools, dictating, named])
+  // The editor's chip gives way only in the ordinary layout - beside a narrow field it is drawn without a
+  // name from the start (see EditorChip's `bare`), and there the column is sized by what stands in it. There
+  // it gives up its name, or itself when muted: the drawing alone of a switched-off setting.
+  const editorFit: EditorFit = editor === null || compact || rail ? null : editor.muted ? 'muted' : 'named'
+  const droppable = useMemo(
+    () => droppableTools(presentTools, dictating, editorFit),
+    [presentTools, dictating, editorFit],
+  )
 
   const tools = useRef<HTMLDivElement>(null)
   // Everything else that changes what the row holds: Stop for the length of a turn, Force stop, Queue
@@ -2087,7 +2096,7 @@ export const Composer = ({
     t.composer.forceStop,
     [...presentTools].join(),
     droppable.join(),
-    editor ? `${editorLabel(editor.ref)}:${editor.on}` : '',
+    editor ? `${editorLabel(editor.ref)}:${editor.on}:${editor.muted}` : '',
   ].join('|')
   const droppedCount = useToolsFit(tools, presentTools, droppable, !compact && !rail, rowContent)
   const droppedTools = new Set<FitStep>(droppable.slice(0, droppedCount))
@@ -2130,15 +2139,18 @@ export const Composer = ({
    * and Send keeps the edge it stands on. In the other layouts the usage stands beside the heart - under
    * the field in the ordinary layout (see StatusBar), in a row of its own in the side rail.
    */
-  const editorChip = editor ? (
-    <EditorChip
-      editor={editor.ref}
-      on={editor.on}
-      bare={compact || rail}
-      nameGone={droppedTools.has('editorName')}
-      onToggle={() => onToggleEditor?.()}
-    />
-  ) : null
+  const editorChip =
+    editor && !droppedTools.has('editorChip') ? (
+      <EditorChip
+        editor={editor.ref}
+        on={editor.on}
+        muted={editor.muted}
+        bare={compact || rail}
+        nameGone={droppedTools.has('editorName')}
+        open={editor.open}
+        onOpen={(anchor) => onEditorMenu?.(anchor)}
+      />
+    ) : null
 
   const toolsRow = compact ? (
     <>
@@ -2303,6 +2315,7 @@ export const Composer = ({
                 model={model}
                 switchedFrom={switchedFrom}
                 stuckPick={stuckPick}
+                fast={fast}
                 effort={effort ?? ''}
                 mode={mode ?? ''}
                 models={models}
@@ -2381,6 +2394,7 @@ export const Composer = ({
                     model={model}
                     switchedFrom={switchedFrom}
                     stuckPick={stuckPick}
+                    fast={fast}
                     effort={effort ?? ''}
                     mode={mode ?? ''}
                     models={models}

@@ -136,6 +136,34 @@ class ClaudeUsageTest {
         assertEquals(listOf("Fable 5"), snapshot.models?.map { it.label })
     }
 
+    // The server's own answer carries its `limits` list through the CLI; a seeded one - the last response's
+    // headers or the cache on disk, up to an hour old - comes without it (CLI 2.1.293). Only the first may
+    // take a share down within a window.
+    @Test
+    fun `an answer is the server's own only when it carries the server's limits list`() {
+        val server = parse(
+            """
+            {"rate_limits":{
+               "seven_day":{"utilization":23,"resets_at":"2026-10-18T23:59:59.982369+00:00"},
+               "limits":[{"kind":"weekly_all","group":"weekly","percent":23,"resets_at":"2026-10-18T23:59:59.982369+00:00"}],
+               "model_scoped":[{"display_name":"Fable","utilization":0,"resets_at":"2026-10-19T00:00:00+00:00"}]}}
+            """.trimIndent(),
+        )
+        // Seeded out of headers with the Fable window among them: model_scoped comes along, limits do not.
+        val seeded = parse(
+            """
+            {"rate_limits":{
+               "seven_day":{"utilization":99,"resets_at":"2026-10-19T00:00:00.000Z"},
+               "model_scoped":[{"display_name":"Fable","utilization":0,"resets_at":"2026-10-19T00:00:00.000Z"}]}}
+            """.trimIndent(),
+        )
+
+        assertTrue(server.fromServer)
+        assertFalse(seeded.fromServer)
+        assertFalse(parse("""{"rate_limits":{"seven_day":{"utilization":23},"limits":null}}""").fromServer)
+        assertFalse(parse("""{"rate_limits":null}""").fromServer)
+    }
+
     @Test
     fun `with no per-model breakdown we do not invent a window size`() {
         assertNull(parse("""{"session":{"model_usage":{}}}""").contextWindow)
@@ -153,6 +181,12 @@ class ClaudeUsageTrackerTest {
     private fun snapshot(session: ClaudeUsage.Window? = null, week: ClaudeUsage.Window? = null) =
         ClaudeUsage.Snapshot(session = session, week = week, contextWindow = null)
 
+    private fun fromServer(session: ClaudeUsage.Window? = null, week: ClaudeUsage.Window? = null) =
+        snapshot(session, week).copy(fromServer = true)
+
+    /** Past the CLI's one-minute snapshot: a server answer this much later is about a later moment. */
+    private val later: Instant = now.plusMillis(ClaudeUsage.SERVER_ANSWER_MAX_AGE_MS + 1)
+
     // The very bug this exists for: for months the panel showed the share of a window that was already
     // gone. A process that worked before the reset goes on answering with its frozen figure - 99% on an
     // almost empty new window.
@@ -166,17 +200,80 @@ class ClaudeUsageTrackerTest {
         assertEquals("", merged.session?.resets)
     }
 
-    // Within a window usage only grows: a disagreement between the routes is one of them lagging, not a
-    // roll-back. Otherwise the ring would flicker back and forth every half-minute.
+    // A seeded answer is of an age nobody states - the last response's headers, or the cache on disk up to
+    // an hour old. A smaller share from it is that age, not a roll-back, and the ring must not follow it.
     @Test
-    fun `within one window the share does not go down`() {
+    fun `a seeded answer does not take a share down within its window`() {
         val tracker = ClaudeUsage.Tracker()
         val future = "2026-08-20T14:00:00Z"
 
         tracker.merge(snapshot(session = window(20, future)), now)
-        val merged = tracker.merge(snapshot(session = window(12, future)), now)
+        val merged = tracker.merge(snapshot(session = window(12, future)), later)
 
         assertEquals(20, merged.session?.percent)
+    }
+
+    /**
+     * The bug of 16 October. A one-off reset of the limit (the gift reset on the account page) empties the
+     * week without moving its reset time, so every answer after it is "the same window, a smaller share" -
+     * and the ring held 99% for a day while the server said 23%.
+     */
+    @Test
+    fun `the server taking a share down within its window is believed`() {
+        val tracker = ClaudeUsage.Tracker()
+        val week = "2026-10-19T00:00:00.000Z"
+
+        tracker.merge(fromServer(week = window(99, week)), now)
+        val merged = tracker.merge(fromServer(week = window(23, "2026-10-18T23:59:59.982369+00:00")), later)
+
+        assertEquals(23, merged.week?.percent)
+    }
+
+    /**
+     * The CLI answers out of its snapshot of the server while that is under a minute old, so two server
+     * answers close together may come in the wrong order. Taken as it comes, the older one would drop the
+     * ring a percent at the end of a turn and put it back at the next round.
+     */
+    @Test
+    fun `a smaller server share inside the snapshot's minute waits`() {
+        val tracker = ClaudeUsage.Tracker()
+        val future = "2026-08-20T14:00:00Z"
+
+        tracker.merge(fromServer(session = window(25, future)), now)
+        val close = tracker.merge(fromServer(session = window(24, future)), now.plusSeconds(30))
+        assertEquals(25, close.session?.percent)
+
+        // Still smaller once the minute is behind it: that is the server's word about now.
+        val apart = tracker.merge(fromServer(session = window(24, future)), later)
+        assertEquals(24, apart.session?.percent)
+    }
+
+    /**
+     * A process that worked before the reset hands over the share from before it when the endpoint refuses -
+     * and it may lift the ring for a moment, as any larger share does. It must not hold it there: the
+     * server's next answer, once it is surely the newer, takes it down again.
+     */
+    @Test
+    fun `a stale seeded share does not stand in the way of the server`() {
+        val tracker = ClaudeUsage.Tracker()
+        val week = "2026-10-19T00:00:00Z"
+
+        tracker.merge(fromServer(week = window(23, week)), now)
+        assertEquals(99, tracker.merge(snapshot(week = window(99, week)), now.plusSeconds(20)).week?.percent)
+
+        assertEquals(23, tracker.merge(fromServer(week = window(23, week)), later).week?.percent)
+    }
+
+    // A share only seeded answers have told is vouched for by nobody, and the server's word replaces it at once.
+    @Test
+    fun `a share nothing but seeded answers told gives way to the server at once`() {
+        val tracker = ClaudeUsage.Tracker()
+        val week = "2026-10-19T00:00:00Z"
+
+        tracker.merge(snapshot(week = window(99, week)), now)
+        val merged = tracker.merge(fromServer(week = window(23, week)), now.plusSeconds(5))
+
+        assertEquals(23, merged.week?.percent)
     }
 
     // One and the same window arrives in different formats: a live conversation rounds to seconds, the
@@ -312,16 +409,19 @@ class ClaudeUsageTrackerTest {
 
     private fun fable(percent: Int, resets: String) = listOf(ClaudeUsage.ModelWindow("Fable", window(percent, resets)))
 
-    // The model's week is a week like any other: the routes disagree about it the same way.
+    // The model's week is a week like any other: the routes disagree about it the same way, and the server
+    // resets it the same way.
     @Test
-    fun `a model's window does not go down within itself`() {
+    fun `a model's window goes down within itself only on the server's word`() {
         val tracker = ClaudeUsage.Tracker()
         val future = "2026-08-24T00:00:00Z"
 
-        tracker.merge(snapshot().copy(models = fable(58, future)), now)
-        val merged = tracker.merge(snapshot().copy(models = fable(41, future)), now)
+        tracker.merge(snapshot().copy(models = fable(58, future), fromServer = true), now)
+        val seeded = tracker.merge(snapshot().copy(models = fable(41, future)), later)
+        assertEquals(58, seeded.models?.single()?.window?.percent)
 
-        assertEquals(58, merged.models?.single()?.window?.percent)
+        val server = tracker.merge(snapshot().copy(models = fable(3, future), fromServer = true), later)
+        assertEquals(3, server.models?.single()?.window?.percent)
     }
 
     // A live conversation hands over the last response's headers and says nothing about per-model

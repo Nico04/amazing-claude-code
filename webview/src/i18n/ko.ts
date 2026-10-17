@@ -178,7 +178,7 @@ export const ko: Dict = {
   shareEditor: {
     label: '편집기 내용을 함께 보내기',
     hint: '메시지마다 편집기에 열린 파일과 그 안에서 선택한 줄을 함께 보내요. 터미널의 Claude Code와 같은 방식이에요',
-    note: '이 패널에서만 적용돼요: 휴대폰에서 쓴 메시지에는 편집기 내용이 붙지 않아요. 메시지 하나만 빼고 보낼 수도 있어요 - 입력창의 파일 칩을 누르세요.',
+    note: '이 패널에서만 적용돼요: 휴대폰에서 쓴 메시지에는 편집기 내용이 붙지 않아요. 입력창의 파일 칩에도 같은 스위치가 있고, 메시지 하나만 빼거나 반대로 하나만 함께 보낼 수도 있어요.',
     on: '켜짐',
     off: '꺼짐',
   },
@@ -941,6 +941,31 @@ export const ko: Dict = {
     addSub: 'Claude Code에 없는 모델',
   },
 
+  fast: {
+    label: '빠른 모드',
+    offSub: '꺼짐 · Opus 최대 2.5배 빠름, 사용 크레딧으로 결제',
+    waitingSub: '다음 메시지부터 켜짐 · 사용 크레딧으로 결제',
+    onSub: '켜짐 · 사용 크레딧으로 결제',
+    cooldownSub: '사용 한도로 일시 중지됨 - 자동으로 다시 켜짐',
+    unavailableSub: (reason) => `사용할 수 없음. ${reason}`,
+    chipOn: '빠른 모드가 켜져 있습니다',
+    chipWaiting: '빠른 모드는 다음 메시지부터 켜집니다',
+    chipCooldown: '빠른 모드가 사용 한도로 일시 중지되었습니다',
+    chipUnavailable: (reason) => `빠른 모드를 사용할 수 없습니다. ${reason}`,
+    row: { label: '고속', title: '빠른 모드가 켜지지 않았습니다', hint: '이 대화는 일반 속도로 계속됩니다.' },
+    reasons: {
+      extraUsageDisabled: '사용 크레딧으로 결제되는데, 이 계정은 사용 크레딧이 꺼져 있습니다.',
+      free: '유료 요금제가 필요합니다.',
+      preference: '조직에서 꺼 두었습니다.',
+      networkError: 'Claude Code가 확인하지 못했습니다: 네트워크 문제입니다.',
+      notFirstParty: 'Anthropic API를 직접 사용할 때만 작동합니다.',
+      disabledByEnv: '이 컴퓨터에서 꺼져 있습니다.',
+      modelNotAllowed: 'Opus가 조직에서 허용한 모델에 없습니다.',
+      unknown: '지금은 사용할 수 없습니다.',
+    },
+    phone: { on: '켜짐', off: '꺼짐', note: 'Opus 최대 2.5배 빠름, 사용 크레딧으로 결제 - 이 대화에만 적용됩니다.' },
+  },
+
   composer: {
     placeholder: '물어보거나, 바꾸고 싶은 걸 적어 주세요…',
     placeholderPlan: '무엇을 계획할지 적어 주세요…',
@@ -965,8 +990,19 @@ export const ko: Dict = {
     voice: '음성 입력',
     voiceStop: '받아쓰기 끝내기',
     editor: {
-      on: (place) => `Claude가 이 메시지와 함께 ${place}을(를) 봐요 · 클릭하면 빼요`,
-      off: (place) => `${place}은(는) 이 메시지에서 빠져요 · 클릭하면 함께 보내요`,
+      on: (place) => `Claude가 이 메시지와 함께 ${place}을(를) 봐요 · 클릭해서 선택`,
+      off: (place) => `${place}은(는) 이 메시지에서 빠져요 · 클릭해서 선택`,
+      muted: (place) => `${place}은(는) 보내지 않아요 - 편집기 보내기가 꺼져 있어요 · 클릭해서 선택`,
+      menu: {
+        always: '모든 메시지와 함께 보내기',
+        alwaysSub: '열린 파일과 선택한 줄을, 모든 탭에서',
+        skip: '이 메시지에서는 빼기',
+        skipSub: '다음 메시지부터 다시 함께 가요',
+        only: '이 메시지에만 보내기',
+        onlySub: '다음 메시지는 다시 빼고 가요',
+        never: '보내지 않기',
+        neverSub: '모든 탭에서, 다시 켤 때까지. 설정과 같은 스위치예요',
+      },
     },
   },
 
@@ -1244,6 +1280,14 @@ export const ko: Dict = {
       textWithCode: (code) => `Claude Code가 예기치 않게 종료됐어요 (종료 코드 ${code}).`,
     },
 
+    session: {
+      label: '세션',
+      id: '세션 ID',
+      terminal: '터미널에서',
+      copyId: '세션 ID 복사',
+      terminalNote: '프로젝트 폴더에서 연 터미널에서 이 대화를 이어가요',
+      none: '아직 ID가 없어요. 첫 메시지와 함께 생겨요',
+    },
     outranked: {
       label: '설정',
       text: '이 저장소가 여기서 고른 계정을 덮어씁니다:',
@@ -1425,6 +1469,7 @@ export const ko: Dict = {
     absent: '저장된 로그인 정보가 없어요. 이 계정을 쓰려면 다시 로그인하세요.',
     fiveHour: '5시간',
     weekly: '주간',
+    usableAgainIn: (left) => `한도 도달 · ${left} 후 다시 사용 가능`,
     row: {
       one: '계정 하나',
       adding: '로그인하는 중…',
@@ -1980,6 +2025,8 @@ export const ko: Dict = {
     config: 'Claude Code 설정 - 메뉴에서 열기',
     btw: '작업을 멈추지 않고 잠깐 묻기',
     btwArgument: '<질문>',
+    fast: '빠른 모드 전환 - Opus 최대 2.5배 빠름, 사용 크레딧으로 결제',
+    status: '이 대화의 ID와 터미널에서 이어가는 명령',
     model: '이 세션의 모델 바꾸기',
     effort: 'Claude가 움직이기 전에 얼마나 생각할지 정하기',
     context: '지금 컨텍스트 창에 무엇이 들어 있는지',

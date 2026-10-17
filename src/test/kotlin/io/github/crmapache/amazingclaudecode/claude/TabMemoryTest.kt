@@ -43,6 +43,8 @@ class TabMemoryTest {
             tabs = listOf(
                 tab("main", conversation = "c-1"),
                 tab("b", conversation = "c-2", parent = "main", draft = """{"tokens":[{"kind":"text","value":"half a"}],"quotes":[]}"""),
+                // Fast mode was asked for this conversation, and it comes back asking (see SessionLaunch.fast).
+                tab("c", conversation = "c-3").copy(fast = true),
             ),
         )
 

@@ -315,6 +315,47 @@ internal class ClaudeAccounts {
         return catalogues[accountId]?.let { ModelNames.holds(it, model) }
     }
 
+    /**
+     * Which models of an account's catalogue have fast mode, as the CLI marks them (`supportsFastMode`) - see
+     * [hasFastMode].
+     *
+     * [byValue] answers for exactly what a menu offers (`default`, `opus`, `claude-opus-4-8`), [resolved] holds
+     * the full names of those that have it, for a name the menu does not offer - a transcript's signature, a
+     * window mark. Kept apart because a short name is a family, and the family would vouch for every
+     * generation in it: `opus` has fast mode, Opus 4.7 does not.
+     */
+    private data class FastCatalogue(val byValue: Map<String, Boolean>, val resolved: Set<String>)
+
+    private val fastModels = ConcurrentHashMap<String, FastCatalogue>()
+
+    /**
+     * What this account's catalogue says about fast mode - value, full name, and whether it has it. Null from a
+     * catalogue that marks no model either way: a CLI older than the mark says nothing, rather than "none".
+     */
+    fun noteFastModels(accountId: String, models: List<Triple<String, String, Boolean>>?) {
+        if (models == null) {
+            fastModels.remove(accountId)
+            return
+        }
+
+        fastModels[accountId] = FastCatalogue(
+            byValue = models.associate { (value, _, fast) -> value to fast },
+            resolved = models.filter { it.third }.map { it.second }.filter { it.isNotEmpty() }.toSet(),
+        )
+    }
+
+    /**
+     * Whether [model] has fast mode on this account - null when the catalogue has not said. Asked when a model
+     * is picked: one without it turns fast mode off (see ClaudeSessions.setModel), and "do not know" must leave
+     * it alone rather than switch off what was asked for.
+     */
+    fun hasFastMode(accountId: String, model: String): Boolean? {
+        val known = fastModels[accountId] ?: return null
+
+        // Without the window mark: `claude-opus-5[1m]` has fast mode exactly when `claude-opus-5` does.
+        return known.byValue[model] ?: ModelNames.holds(known.resolved, ModelNames.unmarked(model))
+    }
+
     /** What this account was last left on, so a new tab on it does not launch with another plan's model. */
     fun rememberChoice(id: String, model: String? = null, effort: String? = null) {
         state.rememberChoice(id, model, effort)

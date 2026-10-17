@@ -97,6 +97,7 @@ const SHARED_WITH_ENGLISH: Record<string, Locale[]> = {
   'menu.titles.plugins.title': ['es', 'pt-BR', 'de', 'fr'],
   'menu.titles.feedback.title': ['pt-BR', 'de'],
   'menu.rows.plugins.label': ['es', 'pt-BR', 'de', 'fr'],
+  'feed.session.label': ['fr'],
   // A duration on a gauge, not a word: "5h" is how Portuguese writes it too.
   'accounts.fiveHour': ['pt-BR'],
   'improvePrompt.label': ['fr'],

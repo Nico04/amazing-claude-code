@@ -146,8 +146,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             },
             onReplacedQuietly = { sessionId -> afterQuietSwap(sessionId) },
             onCarryOnChanged = { sessionId -> carryOnChanged(sessionId) },
-            onBorn = { sessionId, effort, model, accountId ->
+            onBorn = { sessionId, effort, model, accountId, fast ->
                 sendEffort(sessionId, effort)
+                sendFastMode(sessionId, fast)
                 sendModel(sessionId, model)
                 sendAccount(sessionId, accountId)
                 // And the models that account may run. Once per account rather than per tab (see
@@ -555,6 +556,13 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             val tail = journal.tail(seen, catchUp.budget())
 
             batch += restoreStarted(sessionId, from = seen, truncated = tail.truncated)
+
+            // A feed built from nothing gets the window's last exact figure first (see lastContextMessage).
+            if (seen == 0L || tail.truncated) lastContextMessage(sessionId)?.let { batch += it }
+            // And whether fast mode is asked for, ahead of the tail too: the feed notes "it did not turn on" by
+            // what the CLI said at each turn of the tail and by the ask (see noteFastReport in feed/build.ts),
+            // and told after the tail, a client would rebuild the feed without the notes the others saw.
+            conversations.fastMode(sessionId)?.let { batch += fastModeMessage(sessionId, it) }
 
             tail.entries.forEach { entry -> batch += SessionMessages.stamp(entry.json, entry.seq, entry.at) }
 
@@ -1341,7 +1349,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             // Written down before the conversation is made, which is when it is read (see
             // ClaudeSessions.newSession) - and read again by the first message of a tab that holds only a
             // draft, which has no conversation to make yet.
-            val launch = SessionLaunch(model = tab.model, effort = tab.effort, mode = tab.mode)
+            val launch = SessionLaunch(model = tab.model, effort = tab.effort, mode = tab.mode, fast = tab.fast.takeIf { it })
             if (!launch.isEmpty) conversations.rememberLaunch(tab.id, launch)
 
             val conversation = tab.conversationId
@@ -1411,7 +1419,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
 
             remembered[sessionId] = tab.copy(conversationId = null)
             conversations.close(sessionId)
-            val launch = SessionLaunch(model = tab.model, effort = tab.effort, mode = tab.mode)
+            val launch = SessionLaunch(model = tab.model, effort = tab.effort, mode = tab.mode, fast = tab.fast.takeIf { it })
             if (!launch.isEmpty) conversations.rememberLaunch(sessionId, launch)
             if (!drafts.containsKey(sessionId) && !named) tabs.resetTitle(sessionId)
             resetJournal(sessionId)
@@ -1464,6 +1472,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             model = conversations.model(tab.id) ?: before?.model.orEmpty(),
             effort = conversations.effort(tab.id) ?: before?.effort.orEmpty(),
             mode = conversations.permissionMode(tab.id) ?: before?.mode.orEmpty(),
+            fast = conversations.fastMode(tab.id) ?: conversations.planned(tab.id)?.fast ?: before?.fast ?: false,
             draft = drafts[tab.id],
         )
     }
@@ -1642,7 +1651,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         )
         record.draft?.let { drafts[id] = it }
 
-        val launch = SessionLaunch(model = record.model, effort = record.effort, mode = record.mode)
+        val launch = SessionLaunch(model = record.model, effort = record.effort, mode = record.mode, fast = record.fast.takeIf { it })
         if (!launch.isEmpty) conversations.rememberLaunch(id, launch)
         when {
             onDisk -> conversations.resume(id, conversation!!)
@@ -2653,6 +2662,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             )
 
             if (change.applied) usage.refreshContext(sessionId)
+            // A model without fast mode has just turned it off (see ClaudeSessions.setModel) - said either way,
+            // since the clients keep the switch by this message alone.
+            conversations.fastMode(sessionId)?.let { sendFastMode(sessionId, it) }
             rememberTabs()
         }
     }
@@ -2695,6 +2707,32 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         }.toString()
 
     /**
+     * Fast mode for one conversation - asked for or not (see ClaudeSession.fastMode). Whether the CLI could
+     * honour it, the clients read off its own words in the stream (`fast_mode_state` on `system/init` and
+     * `result`); this says what was asked, which nothing in the stream does.
+     *
+     * From a phone as from the desk: it writes no setting, so there is no `remember` to withhold.
+     */
+    fun changeFastMode(sessionId: String, on: Boolean) {
+        DiagnosticsLog.note(DiagnosticsLog.AGENT, "fast mode asked for: $on")
+        conversations.setFastMode(sessionId, on)
+        sendFastMode(sessionId, on)
+        rememberTabs()
+    }
+
+    /** Live, like the effort and for the same reason (see [sendEffort]): it is what the conversation IS. */
+    private fun sendFastMode(sessionId: String, on: Boolean) {
+        emitLive(fastModeMessage(sessionId, on))
+    }
+
+    private fun fastModeMessage(sessionId: String, on: Boolean): String =
+        buildJsonObject {
+            put("type", "fastMode")
+            put("sessionId", sessionId)
+            put("on", on)
+        }.toString()
+
+    /**
      * The model a conversation came up on - said at its birth, the way the effort is, and for the same
      * reason: a tab whose model nobody has touched would otherwise be drawn by whatever the setting
      * holds now. `born` tells the panel this is a fact about the tab, not a choice to write into the
@@ -2728,6 +2766,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         return buildList {
             add(modelMessage(sessionId, planned.model))
             add(effortMessage(sessionId, planned.effort))
+            planned.fast?.let { add(fastModeMessage(sessionId, it)) }
             if (planned.mode.isNotEmpty()) {
                 add(
                     buildJsonObject {
@@ -3038,6 +3077,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         // different conversation would be drawn by the setting, which by then may be somebody else's
         // choice made in another tab.
         conversations.effort(sessionId)?.let { sendEffort(sessionId, it) }
+        conversations.fastMode(sessionId)?.let { sendFastMode(sessionId, it) }
         conversations.model(sessionId)?.let { sendModel(sessionId, it) }
         // A tab put back to sleep with a choice of its own (a restored one, a draft and nothing more) is
         // drawn by that choice rather than by the setting - see [plannedMessages].
@@ -3283,6 +3323,34 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             // Showing a stump in silence is not an option: the client draws an explicit mark instead.
             if (truncated) put("truncated", true)
         }.toString()
+
+    /**
+     * The exact figure of the window last said in this conversation, for a client building its feed from
+     * nothing - or null when none has been said since the conversation began.
+     *
+     * The CLI is asked for it at the end of a turn (see [ProjectUsage.refreshContext]), and a phone is handed
+     * the end of the journal rather than the whole of it (see [CatchUp]). Opened in the middle of a long turn -
+     * the one that follows a compaction is the usual case - that end held the agent's answers and not one
+     * figure, so the meter fell back to its estimate against a window guessed from the model's name: 287
+     * thousand tokens of a million-token window read as a full one.
+     *
+     * Ahead of the tail rather than after it: what the tail says is newer, so a figure in it replaces this
+     * one, and an answer in it sets the estimate over it, as they would have live. Only to a feed being built
+     * from nothing - one that holds the conversation already holds this, and a figure arriving after its
+     * estimate would take the estimate back to the turn's start. Kept in the snapshot, which starts over
+     * with the conversation (`/clear`, another conversation opened in the tab).
+     */
+    private fun lastContextMessage(sessionId: String): String? {
+        val known = snapshot(sessionId).get()
+        if (known.contextMax <= 0) return null
+
+        return buildJsonObject {
+            put("type", "context")
+            put("sessionId", sessionId)
+            put("used", known.contextUsed)
+            put("max", known.contextMax)
+        }.toString()
+    }
 
     private fun restoreFinished(sessionId: String, upTo: Long): String =
         buildJsonObject {

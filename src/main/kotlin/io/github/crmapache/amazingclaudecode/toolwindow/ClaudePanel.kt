@@ -45,6 +45,7 @@ import io.github.crmapache.amazingclaudecode.webview.IdeTypography
 import io.github.crmapache.amazingclaudecode.webview.ImageDownloads
 import io.github.crmapache.amazingclaudecode.webview.PanelTheme
 import io.github.crmapache.amazingclaudecode.webview.PastedFiles
+import io.github.crmapache.amazingclaudecode.webview.SessionMenu
 import io.github.crmapache.amazingclaudecode.webview.WebviewClipboard
 import io.github.crmapache.amazingclaudecode.webview.WebviewFileDrop
 import io.github.crmapache.amazingclaudecode.webview.WebviewHost
@@ -301,7 +302,11 @@ internal class ClaudePanel(
     private var frame: JBPanel<JBPanel<*>>? = null
 
     private fun buildWebview(parentDisposable: Disposable): JComponent {
-        val host = WebviewHost(parentDisposable, PanelTheme.current()) { message -> handleWebviewMessage(message) }
+        val host = WebviewHost(
+            parentDisposable,
+            PanelTheme.current(),
+            onSessionIdCopied = { hub.stats.noteFeature("session_info") },
+        ) { message -> handleWebviewMessage(message) }
         webview = host
 
         // Dragging files into the panel: inside the IDE that goes past the embedded browser, so we take
@@ -821,6 +826,14 @@ internal class ClaudePanel(
              * exactly how "opening a chat from the history shows an empty feed" arrived as a bug report
              * with nothing to go on.
              */
+            // The conversation on screen, for the right-click menu to offer its id (see PanelContextMenu). The
+            // words come along: the menu is drawn by the browser, and the IDE has no dictionary of the panel's.
+            "sessionMenu" -> webview?.sessionMenu = field("conversationId").takeIf { it.isNotEmpty() }?.let {
+                SessionMenu(field("label").ifEmpty { "Copy Session ID" }, it)
+            }
+
+            "sessionInfo" -> sendSessionInfo(field("sessionId"))
+
             "channelLoss" -> {
                 val reason = field("reason")
                 val expected = payload["expected"]?.jsonPrimitive?.intOrNull ?: -1
@@ -979,6 +992,23 @@ internal class ClaudePanel(
      * and notifies those subscribed to content changes - and such notifications expect exactly this
      * thread.
      */
+    /**
+     * The tab's conversation id, for `/status` (see SessionInfoRow) - the IDE's own note of it, which a reset of
+     * the panel's state does not take away.
+     */
+    private fun sendSessionInfo(sessionId: String) {
+        if (sessionId.isEmpty()) return
+
+        val conversationId = hub.conversations.conversationIdOf(sessionId)
+        webview?.send(
+            buildJsonObject {
+                put("type", "sessionInfo")
+                put("sessionId", sessionId)
+                if (conversationId != null) put("conversationId", conversationId)
+            }.toString(),
+        )
+    }
+
     private fun writeClipboard(text: String, html: String) {
         if (text.isEmpty() && html.isEmpty()) return
 

@@ -1,3 +1,4 @@
+import type { FastModeReport } from './fastMode'
 import type { AgentEvent, AgentStatus, AgentUsage, EditorRef, QueuedMessage, RevertOutcome } from '../protocol'
 import type {
   BackgroundTask,
@@ -117,6 +118,19 @@ export interface PanelState {
   pendingEffort?: string
 
   /**
+   * Whether this conversation asks for fast mode - the IDE's word (the `fastMode` message), drawn at once on a
+   * pick of one's own. Whether it is ON is [fastReport]'s: see feed/fastMode.ts for why it takes both.
+   */
+  fastMode?: boolean
+  /** What the CLI last said about fast mode, at a turn's start or end - live turns only. */
+  fastReport?: FastModeReport
+  /**
+   * The reason the feed has already been told fast mode is unavailable for, since it was last asked for - so
+   * that every turn after it does not say the same thing again (see noteFastReport).
+   */
+  fastNoted?: string
+
+  /**
    * The model the agent moved this conversation OFF by itself, when it did - and nothing while nobody
    * has moved it.
    *
@@ -202,6 +216,16 @@ export interface PanelState {
    * descriptions, which a turn's usage does not show.
    */
   liveContextUsed?: number
+  /**
+   * The window each model of this conversation has, by the CLI's model id, as the CLI says it at the end of
+   * every turn (`modelUsage` of the result).
+   *
+   * The size the meter divides by when no exact figure is at hand (see contextOf): the estimate during a
+   * turn, and the phone handed a journal's end with no figure in it. A size guessed from the model's name
+   * was wrong there in the worst direction - Opus 5.5 has a million where the name read two hundred
+   * thousand, so a conversation at 29% stood at a red 100%.
+   */
+  contextWindows?: Record<string, number>
   cost: number
   /** The slash command list arrives from the agent itself when a session starts. */
   slashCommands: string[]
@@ -549,6 +573,10 @@ export type PanelAction =
    * shell sends is simply what is (see ClaudeSessionHub.changeEffort).
    */
   | { kind: 'effortApplied'; effort: string }
+  /** Whether this conversation asks for fast mode - the shell's word, or a pick of one's own drawn at once. */
+  | { kind: 'fastModeApplied'; on: boolean }
+  /** `/status` answered: a row with the conversation's id. */
+  | { kind: 'sessionInfo'; conversationId?: string }
   /** The queue as the IDE now holds it - the whole list, from whichever window last changed it. */
   | { kind: 'queue'; items: QueuedMessage[]; held?: boolean }
   /** A mark from the panel in the feed: that this conversation was branched off another, for instance. */

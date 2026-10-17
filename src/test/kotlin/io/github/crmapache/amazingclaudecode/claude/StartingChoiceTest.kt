@@ -40,7 +40,7 @@ class StartingChoiceTest : BasePlatformTestCase() {
             onEvent = { _, _ -> },
             onError = { _, _ -> },
             onFinished = {},
-            onBorn = { _, bornEffort, bornModel, _ ->
+            onBorn = { _, bornEffort, bornModel, _, _ ->
                 effort = bornEffort
                 model = bornModel
             },
@@ -177,7 +177,7 @@ class StartingChoiceTest : BasePlatformTestCase() {
             onEvent = { _, _ -> },
             onError = { _, _ -> },
             onFinished = {},
-            onBorn = { _, bornEffort, bornModel, _ ->
+            onBorn = { _, bornEffort, bornModel, _, _ ->
                 effort = bornEffort
                 model = bornModel
             },
@@ -206,7 +206,7 @@ class StartingChoiceTest : BasePlatformTestCase() {
             onEvent = { _, _ -> },
             onError = { _, _ -> },
             onFinished = {},
-            onBorn = { _, _, _, _ -> },
+            onBorn = { _, _, _, _, _ -> },
         )
 
         assertNull(sessions.planned("plain"))

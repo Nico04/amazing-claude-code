@@ -25,6 +25,7 @@ import { useSelectorsFit } from '../hooks/useSelectorsFit'
 import type { ShownIndicators } from '../indicators'
 import type { ExtraUsage, ModelInfo, ModelUsageWindow, UsageWindow } from '../protocol'
 import { Chevron } from './Chevron'
+import { FAST_MARK, fastReasonText, type FastModeShown } from '../feed/fastMode'
 import { FeedbackButton } from './Feedback'
 import s from './shell.module.css'
 import { ThanksButton } from './Thanks'
@@ -363,6 +364,8 @@ interface StatusBarProps {
   switchedFrom?: string
   /** The model picked here that never came into force, while that holds - see Selectors. */
   stuckPick?: string
+  /** Fast mode for this conversation - see Selectors. */
+  fast?: FastModeShown
   effort: string
   mode: string
   /** The CLI's own list of models - the MODEL button measures its width by it, see modelSample. */
@@ -400,6 +403,7 @@ export const StatusBar = ({
   model,
   switchedFrom,
   stuckPick,
+  fast,
   effort,
   mode,
   models,
@@ -412,7 +416,7 @@ export const StatusBar = ({
   const room = useRef<HTMLDivElement>(null)
   const ruler = useRef<HTMLDivElement>(null)
   const fit = useSelectorsFit(room, ruler)
-  const selectors = { model, switchedFrom, stuckPick, effort, mode, models, onOpen }
+  const selectors = { model, switchedFrom, stuckPick, fast, effort, mode, models, onOpen }
 
   const status = useRef<HTMLDivElement>(null)
   const end = useRef<HTMLDivElement>(null)
@@ -569,6 +573,8 @@ interface SelectorProps {
    * in the button for a screen reader: "Opus 5" on its own does not say what it is the value of.
    */
   terse?: boolean
+  /** A mark after the value - fast mode on MODEL (see FastMark). */
+  mark?: ReactNode
   onOpen: (anchor: Anchor) => void
 }
 
@@ -580,7 +586,7 @@ interface SelectorProps {
  * whose form is eight of these. A native `select` is not an option there and not merely for the look: in
  * the IDE's offscreen browser its list does not open at all.
  */
-export const Selector = ({ label, value, sample, hint, className = '', terse = false, onOpen }: SelectorProps) => (
+export const Selector = ({ label, value, sample, hint, className = '', terse = false, mark, onOpen }: SelectorProps) => (
   <button
     type="button"
     className={`${s.selector} ${terse ? s.selectorTerse : ''} ${className}`}
@@ -604,9 +610,42 @@ export const Selector = ({ label, value, sample, hint, className = '', terse = f
       </span>
       <span className={s.selectorText}>{value}</span>
     </span>
+    {mark}
     <Chevron className={s.selectorCaret} />
   </button>
 )
+
+/**
+ * Fast mode on the MODEL button, while it is asked for: lit when it serves, dim while it waits for the next turn
+ * or is paused after a rate limit, the warning colour when the CLI says it cannot. Off draws nothing - the
+ * button then looks exactly as it did before fast mode existed.
+ */
+const FastMark = ({ fast }: { fast: FastModeShown }) => {
+  if (fast.kind === 'off') return null
+  const tone = fast.kind === 'on' ? s.selectorFastOn : fast.kind === 'unavailable' ? s.selectorFastWarn : ''
+
+  return (
+    <span className={`${s.selectorFast} ${tone}`} aria-hidden="true">
+      {FAST_MARK}
+    </span>
+  )
+}
+
+/** The line fast mode adds to the MODEL button's tooltip - nothing while it is off. */
+const fastHint = (t: Dict, fast: FastModeShown | undefined): string => {
+  switch (fast?.kind) {
+    case 'on':
+      return `\n${t.fast.chipOn}`
+    case 'waiting':
+      return `\n${t.fast.chipWaiting}`
+    case 'cooldown':
+      return `\n${t.fast.chipCooldown}`
+    case 'unavailable':
+      return `\n${t.fast.chipUnavailable(fastReasonText(t, fast.reason))}`
+    default:
+      return ''
+  }
+}
 
 interface SelectorsProps {
   model?: string
@@ -624,6 +663,8 @@ interface SelectorsProps {
    * not go - and a chip that stayed silent about either would be a chip nobody can trust.
    */
   stuckPick?: string
+  /** Fast mode for this conversation - the mark on MODEL and a line in its tooltip (see FastMark). */
+  fast?: FastModeShown
   effort: string
   mode: string
   /** The CLI's own list of models: the MODEL button measures its width by it - see modelSample. */
@@ -644,6 +685,7 @@ export const Selectors = ({
   model,
   switchedFrom,
   stuckPick,
+  fast,
   effort,
   mode,
   models = null,
@@ -662,12 +704,13 @@ export const Selectors = ({
         value={modelLabel(model)}
         sample={modelSample(models)}
         hint={
-          stuckPick
+          (stuckPick
             ? t.status.modelHintStuck(modelLabel(model), modelLabel(stuckPick))
             : switchedFrom
               ? t.status.modelHintSwitched(modelLabel(model), modelLabel(switchedFrom))
-              : t.status.modelHint(modelLabel(model))
+              : t.status.modelHint(modelLabel(model))) + fastHint(t, fast)
         }
+        mark={fast ? <FastMark fast={fast} /> : undefined}
         className={`${grow} ${switchedFrom || stuckPick ? s.selectorSwitched ?? '' : ''}`}
         onOpen={(anchor) => onOpen('model', anchor)}
       />

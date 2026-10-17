@@ -182,7 +182,7 @@ export const fr: Dict = {
   shareEditor: {
     label: 'Joindre l’éditeur',
     hint: 'Chaque message emporte le fichier ouvert dans l’éditeur et les lignes qui y sont sélectionnées - comme le fait Claude Code dans un terminal',
-    note: 'Depuis ce panneau seulement : un message écrit sur un téléphone n’emporte rien de l’éditeur. Un message peut partir sans - cliquez sur la puce du fichier dans le champ de saisie.',
+    note: 'Depuis ce panneau seulement : un message écrit sur un téléphone n’emporte rien de l’éditeur. La puce du fichier dans le champ de saisie porte le même interrupteur, et un seul message peut y partir sans lui ou, à l’inverse, avec lui.',
     on: 'Activé',
     off: 'Désactivé',
   },
@@ -951,6 +951,31 @@ export const fr: Dict = {
     addSub: 'Un que Claude Code ne propose pas',
   },
 
+  fast: {
+    label: 'Mode rapide',
+    offSub: "Désactivé · Opus jusqu'à 2,5× plus rapide, payé en crédits d'utilisation",
+    waitingSub: "Activé dès le prochain message · payé en crédits d'utilisation",
+    onSub: "Activé · payé en crédits d'utilisation",
+    cooldownSub: 'En pause après une limite - se réactive tout seul',
+    unavailableSub: (reason) => `Indisponible. ${reason}`,
+    chipOn: 'Le mode rapide est activé',
+    chipWaiting: "Le mode rapide s'active au prochain message",
+    chipCooldown: 'Le mode rapide est en pause après une limite',
+    chipUnavailable: (reason) => `Le mode rapide est indisponible. ${reason}`,
+    row: { label: 'RAPIDE', title: "Le mode rapide ne s'est pas activé", hint: 'Cette conversation continue à la vitesse normale.' },
+    reasons: {
+      extraUsageDisabled: "Il est payé en crédits d'utilisation, désactivés pour ce compte.",
+      free: 'Il demande un forfait payant.',
+      preference: "Votre organisation l'a désactivé.",
+      networkError: "Claude Code n'a pas pu le vérifier : un problème réseau.",
+      notFirstParty: "Il ne fonctionne qu'avec l'API Anthropic en direct.",
+      disabledByEnv: 'Il est désactivé sur cette machine.',
+      modelNotAllowed: 'Opus ne fait pas partie des modèles autorisés par votre organisation.',
+      unknown: 'Il est indisponible pour le moment.',
+    },
+    phone: { on: 'Activé', off: 'Désactivé', note: "Opus jusqu'à 2,5× plus rapide, payé en crédits d'utilisation - pour cette conversation seulement." },
+  },
+
   composer: {
     placeholder: 'Pose une question, ou décris un changement…',
     placeholderPlan: 'Décris ce qu’il faut planifier…',
@@ -975,8 +1000,19 @@ export const fr: Dict = {
     voice: 'Dicter',
     voiceStop: 'Arrêter la dictée',
     editor: {
-      on: (place) => `Claude voit ${place} avec ce message · cliquez pour le retirer`,
-      off: (place) => `${place} ne part pas avec ce message · cliquez pour le joindre`,
+      on: (place) => `Claude voit ${place} avec ce message · cliquez pour choisir`,
+      off: (place) => `${place} ne part pas avec ce message · cliquez pour choisir`,
+      muted: (place) => `${place} n’est pas envoyé : l’envoi de l’éditeur est désactivé · cliquez pour choisir`,
+      menu: {
+        always: 'Joindre à chaque message',
+        alwaysSub: 'Le fichier ouvert et les lignes sélectionnées, dans tous les onglets',
+        skip: 'Ne pas joindre à ce message',
+        skipSub: 'Le message suivant le reprend',
+        only: 'Joindre à ce message seulement',
+        onlySub: 'Le suivant repart sans',
+        never: 'Ne jamais joindre',
+        neverSub: 'Dans tous les onglets, jusqu’à le réactiver : le même interrupteur que dans les réglages',
+      },
     },
   },
 
@@ -1255,6 +1291,14 @@ export const fr: Dict = {
       textWithCode: (code) => `Claude Code s’est arrêté de façon inattendue (code ${code}).`,
     },
 
+    session: {
+      label: 'SESSION',
+      id: 'ID de session',
+      terminal: 'Dans un terminal',
+      copyId: 'Copier l’ID de session',
+      terminalNote: 'Reprend cette conversation dans un terminal ouvert dans le dossier du projet',
+      none: 'Pas encore d’ID : la conversation en reçoit un avec son premier message',
+    },
     outranked: {
       label: 'RÉGLAGES',
       text: 'Ce dépôt remplace le compte choisi ici :',
@@ -1450,6 +1494,7 @@ export const fr: Dict = {
     /** The figures beside a row - short, because they sit on one line under the name. */
     fiveHour: '5 h',
     weekly: 'sem.',
+    usableAgainIn: (left) => `Limite atteinte · de nouveau utilisable dans ${left}`,
     row: {
       /** The value on the menu row when there is nothing to switch between. */
       one: 'Un seul compte',
@@ -2016,6 +2061,8 @@ export const fr: Dict = {
     config: 'réglages de Claude Code - les ouvre dans le menu',
     btw: 'une petite question à part - le travail continue',
     btwArgument: '<ta question>',
+    fast: "activer ou couper le mode rapide - Opus jusqu'à 2,5× plus rapide, payé en crédits d'utilisation",
+    status: 'l’ID de cette conversation et la commande pour la reprendre dans un terminal',
     model: 'changer le modèle de cette session',
     effort: 'régler combien de temps Claude réfléchit avant d’agir',
     context: 'ce qui remplit la fenêtre de contexte en ce moment',

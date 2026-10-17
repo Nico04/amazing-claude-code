@@ -178,7 +178,7 @@ export const pt: Dict = {
   shareEditor: {
     label: 'Enviar o editor junto',
     hint: 'Cada mensagem leva o arquivo aberto no editor e as linhas selecionadas nele, como o Claude Code faz no terminal',
-    note: 'Só a partir deste painel: uma mensagem escrita no celular não leva nada do editor. Uma mensagem pode ir sem ele: clique no chip do arquivo no campo de entrada.',
+    note: 'Só a partir deste painel: uma mensagem escrita no celular não leva nada do editor. O chip do arquivo no campo de entrada tem o mesmo interruptor, e ali uma única mensagem pode ir sem ele ou, ao contrário, com ele.',
     on: 'Ligado',
     off: 'Desligado',
   },
@@ -947,6 +947,31 @@ export const pt: Dict = {
     addSub: 'Um que o Claude Code não oferece',
   },
 
+  fast: {
+    label: 'Modo veloz',
+    offSub: 'Desligado · Opus até 2,5× mais rápido, pago com créditos de uso',
+    waitingSub: 'Ligado a partir da próxima mensagem · pago com créditos de uso',
+    onSub: 'Ligado · pago com créditos de uso',
+    cooldownSub: 'Em pausa após um limite - volta sozinho',
+    unavailableSub: (reason) => `Indisponível. ${reason}`,
+    chipOn: 'O modo veloz está ligado',
+    chipWaiting: 'O modo veloz liga com a próxima mensagem',
+    chipCooldown: 'O modo veloz está em pausa após um limite',
+    chipUnavailable: (reason) => `O modo veloz está indisponível. ${reason}`,
+    row: { label: 'VELOZ', title: 'O modo veloz não ligou', hint: 'Esta conversa segue na velocidade normal.' },
+    reasons: {
+      extraUsageDisabled: 'Ele é pago com créditos de uso, que estão desligados nesta conta.',
+      free: 'Ele exige um plano pago.',
+      preference: 'Sua organização o desligou.',
+      networkError: 'O Claude Code não conseguiu verificar: um problema de rede.',
+      notFirstParty: 'Ele só funciona com a API da Anthropic diretamente.',
+      disabledByEnv: 'Ele está desligado nesta máquina.',
+      modelNotAllowed: 'O Opus não está entre os modelos que sua organização permite.',
+      unknown: 'Ele está indisponível agora.',
+    },
+    phone: { on: 'Ligado', off: 'Desligado', note: 'Opus até 2,5× mais rápido, pago com créditos de uso - só nesta conversa.' },
+  },
+
   composer: {
     placeholder: 'Pergunte, ou descreva uma mudança…',
     placeholderPlan: 'Descreva o que planejar…',
@@ -971,8 +996,19 @@ export const pt: Dict = {
     voice: 'Ditar',
     voiceStop: 'Terminar o ditado',
     editor: {
-      on: (place) => `O Claude vê ${place} com esta mensagem · clique para deixar de fora`,
-      off: (place) => `${place} fica de fora desta mensagem · clique para enviar junto`,
+      on: (place) => `O Claude vê ${place} com esta mensagem · clique para escolher`,
+      off: (place) => `${place} fica de fora desta mensagem · clique para escolher`,
+      muted: (place) => `${place} não é enviado: o envio do editor está desligado · clique para escolher`,
+      menu: {
+        always: 'Enviar com cada mensagem',
+        alwaysSub: 'O arquivo aberto e as linhas selecionadas, em todas as abas',
+        skip: 'Não enviar com esta mensagem',
+        skipSub: 'A próxima mensagem volta a levá-lo',
+        only: 'Enviar só com esta mensagem',
+        onlySub: 'A próxima volta a ir sem ele',
+        never: 'Nunca enviar',
+        neverSub: 'Em todas as abas, até ligar de novo: o mesmo interruptor das configurações',
+      },
     },
   },
 
@@ -1251,6 +1287,14 @@ export const pt: Dict = {
       textWithCode: (code) => `O Claude Code encerrou de forma inesperada (código ${code}).`,
     },
 
+    session: {
+      label: 'SESSÃO',
+      id: 'ID da sessão',
+      terminal: 'No terminal',
+      copyId: 'Copiar ID da sessão',
+      terminalNote: 'Continua esta conversa em um terminal aberto na pasta do projeto',
+      none: 'Ainda sem ID: a conversa recebe um com a primeira mensagem',
+    },
     outranked: {
       label: 'CONFIGURAÇÕES',
       text: 'Este repositório substitui a conta escolhida aqui:',
@@ -1434,6 +1478,7 @@ export const pt: Dict = {
     absent: 'Nenhuma credencial guardada. Entre de novo para usar esta conta.',
     fiveHour: '5h',
     weekly: 'semana',
+    usableAgainIn: (left) => `Limite atingido · disponível de novo em ${left}`,
     row: {
       one: 'Uma conta',
       adding: 'Fazendo login…',
@@ -1992,6 +2037,8 @@ export const pt: Dict = {
     config: 'configurações do Claude Code - abre no menu',
     btw: 'uma pergunta rápida à parte - o trabalho continua',
     btwArgument: '<pergunta>',
+    fast: 'ligar ou desligar o modo veloz - Opus até 2,5× mais rápido, pago com créditos de uso',
+    status: 'o ID desta conversa e o comando para continuá-la no terminal',
     model: 'trocar o modelo desta sessão',
     effort: 'definir quanto o Claude pensa antes de agir',
     context: 'o que ocupa a janela de contexto agora',

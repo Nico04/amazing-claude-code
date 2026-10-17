@@ -92,7 +92,7 @@ import { ClaudeConfig, EMPTY_CLAUDE_CONFIG, type ClaudeConfigState } from './com
 import { PermissionPanel } from './components/PermissionPanel'
 import { Plugins } from './components/Plugins'
 import { Queue } from './components/Queue'
-import { editorKey } from './feed/editorContext'
+import { editorChoice, editorGoes, editorKey, type EditorOnce } from './feed/editorContext'
 import { Quotes, type Quote } from './components/Quotes'
 import { SelectionMenu } from './components/SelectionMenu'
 import { Tooltips } from './components/Tooltips'
@@ -101,6 +101,7 @@ import { Accounts, accountState, currentAccountName, type AccountsState } from '
 import { Sounds } from './components/Sounds'
 import { metersShown, StatusBar, UsageMeters, type Anchor, type SelectorKind } from './components/StatusBar'
 import { countsAsThanks, SHARE, shareText, thanksMenu, thanksUrl } from './components/Thanks'
+import { EDITOR_ALWAYS, EDITOR_ONCE, editorMenu } from './components/EditorChip'
 import { SideQuestionCard } from './components/SideQuestion'
 import { ASIDE_COMMAND, NO_THREAD, sideHistory, sideThread, type SideAction, type SideThread } from './feed/side'
 import { markPanelReady } from './components/Splash'
@@ -119,6 +120,7 @@ import { bashCommand, shellText, type ShellRun } from './feed/bash'
 import { withBranch, type BranchFacts } from './feed/branch'
 import { contextOf, initialPanelState, reducePanel, type PanelState } from './feed/build'
 import { deferFollowUpForCompact } from './feed/compact'
+import { FAST_MARK, FAST_MODE, fastAsked, fastModeShown, fastModeSub, modelHasFastMode, type FastModeShown } from './feed/fastMode'
 import { waitsForTheTurn } from './feed/delivery'
 import { PASTE_COLLAPSE_DEFAULT, PASTE_COLLAPSE_NEVER, pasteCollapseLines, referenceChip } from './feed/reference'
 import { normalizeSendKey, sendKeyOptions, sendKeySummary, type SendKey } from './sendKey'
@@ -610,7 +612,7 @@ export const App = () => {
   const [panelNode, setPanelNode] = useState<HTMLElement | null>(null)
   useHoverTarget(panelNode)
 
-  const [menu, setMenu] = useState<{ kind: SelectorKind | 'thanks'; anchor: Anchor } | null>(null)
+  const [menu, setMenu] = useState<{ kind: SelectorKind | 'thanks' | 'editor'; anchor: Anchor } | null>(null)
   /** Whether the line about the plugin is in the clipboard - the thanks menu's only way of saying so. */
   const [shared, setShared] = useState(false)
   /**
@@ -766,11 +768,11 @@ export const App = () => {
    */
   const [editorContext, setEditorContext] = useState<EditorRef | null>(null)
   /**
-   * What each tab's next message goes without: the file and lines on screen when its chip was pressed off
-   * (see editorKey). Keyed by what was on screen rather than a plain flag, so selecting other lines - a new
-   * thing to show - puts the chip back on by itself; and forgotten when the message goes.
+   * Each tab's next message going the other way from the setting, chosen in the chip's menu (see
+   * EditorOnce). Keyed by what was on screen rather than a plain flag, so selecting other lines - a new
+   * thing to show - puts the chip back to the setting by itself; and forgotten when the message goes.
    */
-  const [editorSkips, setEditorSkips] = useState<Record<string, string>>({})
+  const [editorOnce, setEditorOnce] = useState<Record<string, EditorOnce>>({})
   /**
    * The indicators around the input field switched off by hand - see indicators.ts. None until the IDE
    * says otherwise, for the same reason as the settings above: the harness has no IDE behind it, and
@@ -1557,6 +1559,14 @@ export const App = () => {
    * conversation and a model of its own.
    */
   const tickedModel = modelInForce(models, panel.ownModel ?? startingModel, panel.model)
+
+  /**
+   * Fast mode for this tab: what is asked and what the CLI said of it, read together (see feed/fastMode.ts).
+   * Offered in the model menu on a model that has it - and wherever it is asked for, so that it can always be
+   * turned off again.
+   */
+  const fastShown = fastModeShown(panel.fastMode, panel.fastReport)
+  const fastOffered = panel.fastMode === true || modelHasFastMode(models, panel.ownModel ?? startingModel)
 
   /**
    * The drafts as they stand right now, for the shell's messages: that subscription is set up once for the
@@ -2624,6 +2634,14 @@ export const App = () => {
             dispatchPanel({ session: message.sessionId, action: { kind: 'resumed', conversationId: message.conversationId } })
             break
 
+          // The answer to `/status` - a row in the feed of the tab it was asked in.
+          case 'sessionInfo':
+            dispatchPanel({
+              session: message.sessionId,
+              action: { kind: 'sessionInfo', conversationId: message.conversationId },
+            })
+            break
+
           /**
            * The card has been answered - possibly on another device, possibly on this one a moment ago.
            * Applying it twice changes nothing (the decision is already there), and that is what makes the
@@ -3497,6 +3515,10 @@ export const App = () => {
             })
             break
 
+          case 'fastMode':
+            feed({ session: message.sessionId, action: { kind: 'fastModeApplied', on: message.on } })
+            break
+
           case 'mode': {
             // auto is unavailable through nobody's fault and not just this once - it is a property of the
             // model, and there is nowhere to learn it in advance (see ModeAvailability): the only way is to
@@ -3847,6 +3869,24 @@ export const App = () => {
     send({ type: 'setShareEditor', on })
     setShareEditorState(on)
   }, [])
+
+  // Every tab's one-message exception was to the setting as it stood (see EditorOnce). Changed - from the
+  // chip's menu, the settings, another window - it leaves them meaning the opposite of what was asked: "not
+  // with this one" under a setting that now sends nothing would be the one message that goes with it.
+  useEffect(() => {
+    setEditorOnce({})
+  }, [shareEditor])
+
+  /**
+   * The conversation on screen, told to the IDE for the right-click menu to offer its id (see
+   * PanelContextMenu.kt) - on every change of tab or of its conversation, since the menu is built by the
+   * browser on a thread of its own and cannot wait to ask. With the words for the entry: the browser draws it.
+   */
+  const menuConversation = isPanelTab(active) ? undefined : panel.sessionId
+  const copySessionWords = t.feed.session.copyId
+  useEffect(() => {
+    send({ type: 'sessionMenu', conversationId: menuConversation ?? null, label: copySessionWords })
+  }, [menuConversation, copySessionWords])
 
   /** Whether the text fields check spelling - applied here at once, and every window is told. */
   const setSpellcheck = useCallback((on: boolean) => {
@@ -4805,6 +4845,18 @@ export const App = () => {
   )
 
   /**
+   * Fast mode for THIS conversation - and, unlike the effort, for no tab after it: it is paid from usage credits
+   * (see SessionLaunch.fast in the IDE). Drawn at once: the IDE answers with the same word.
+   */
+  const pickFastMode = useCallback(
+    (on: boolean) => {
+      send({ type: 'setFastMode', sessionId: active, on })
+      dispatchPanel({ session: active, action: { kind: 'fastModeApplied', on } })
+    },
+    [active],
+  )
+
+  /**
    * A side question - `/btw` (see feed/side). It stands in the tab's thread at once as "thinking" and goes
    * to the IDE with the thread's earlier answers, so a follow-up has them; [replaces] asks one that ended
    * without an answer again, in its own place.
@@ -4838,6 +4890,12 @@ export const App = () => {
 
       if (name === 'effort') {
         pickEffort(argument)
+        return
+      }
+
+      // The same switch as the model menu's: the CLI's own `/fast` refuses under a stream (see panelCommands).
+      if (name === 'fast') {
+        pickFastMode(fastAsked(argument, panelsRef.current[active]?.fastMode))
         return
       }
 
@@ -4882,9 +4940,16 @@ export const App = () => {
         return
       }
 
+      // The panel's own: the CLI refuses its `/status` under a stream, and what is asked for here is the
+      // conversation's id and the name other sessions reach it by (see SessionInfoRow).
+      if (name === 'status') {
+        send({ type: 'sessionInfo', sessionId: active })
+        return
+      }
+
       if (name === 'fork') fork()
     },
-    [fork, pickModel, pickEffort, nameSession, active, openClaudeConfig, askAside, sideStep],
+    [fork, pickModel, pickEffort, pickFastMode, nameSession, active, openClaudeConfig, askAside, sideStep],
   )
 
   /** The Alt+B from the selection menu. The key is drawn in the menu, so it has to work. */
@@ -5284,21 +5349,20 @@ export const App = () => {
     const images = isOverride ? [] : imageAttachments(draft.tokens)
     const attachCount = isOverride ? 0 : draft.tokens.filter((token) => token.kind === 'chip').length
 
-    // What the editor shows goes along - unless it is switched off, for good or for this one message (see
-    // editorSkips). The IDE reads it itself the moment the message arrives; the flag only asks for it. A
-    // text the panel puts in on the person's behalf (isOverride) is not something they wrote while looking
-    // at the editor, and a slash command is an order to the conversation rather than a question about code
-    // - the IDE leaves it out of one anyway (see ClaudeSessionHub.editorSeen), and the card must not claim
-    // otherwise.
+    // What the editor shows goes along - as the setting says, unless the chip's menu said otherwise for this
+    // one message (see editorOnce). The IDE reads it itself the moment the message arrives; the flag only
+    // asks for it. A text the panel puts in on the person's behalf (isOverride) is not something they wrote
+    // while looking at the editor, and a slash command is an order to the conversation rather than a
+    // question about code - the IDE leaves it out of one anyway (see ClaudeSessionHub.editorSeen), and the
+    // card must not claim otherwise.
     const withEditor =
       !isOverride &&
       !written.trimStart().startsWith('/') &&
-      shareEditor &&
       editorContext !== null &&
-      editorSkips[active] !== editorKey(editorContext)
-    // The chip's "not this one" was about this message, and this message is on its way.
-    if (editorSkips[active] !== undefined) {
-      setEditorSkips((current) => {
+      editorGoes(shareEditor, editorOnce[active], editorContext)
+    // The menu's "this one" was about this message, and this message is on its way.
+    if (editorOnce[active] !== undefined) {
+      setEditorOnce((current) => {
         const { [active]: _gone, ...rest } = current
         return rest
       })
@@ -5460,7 +5524,7 @@ export const App = () => {
     queueEdits,
     shareEditor,
     editorContext,
-    editorSkips,
+    editorOnce,
   ])
 
   /**
@@ -6016,6 +6080,72 @@ export const App = () => {
     setSideMenu((current) => ({ ...current, open: false }))
     setMenu({ kind, anchor })
   }
+
+  /**
+   * What the editor's chip in the field shows (see EditorChip): there whenever the editor has something to
+   * show, the setting off included - then muted, unless this tab's next message goes with it all the same.
+   */
+  const editorShown = editorContext
+    ? (() => {
+        const on = editorGoes(shareEditor, editorOnce[active], editorContext)
+        return { ref: editorContext, on, muted: !shareEditor && !on, open: menu?.kind === 'editor' }
+      })()
+    : null
+
+  /** The same toggle for the editor's chip in the field, and for the same reason (see [openSelector]). */
+  const openEditorMenu = (anchor: Anchor) => {
+    if (menu?.kind === 'editor') {
+      setMenu(null)
+      return
+    }
+    setSideMenu((current) => ({ ...current, open: false }))
+    setMenu({ kind: 'editor', anchor })
+  }
+
+  /**
+   * An entry of the chip's menu (see editorMenu). The setting either way is the setting itself, the same
+   * switch as in the settings, and it takes this tab's exception away with it; the middle entry is this one
+   * message the other way, for the file and lines on screen now.
+   */
+  const pickEditor = (id: string) => {
+    if (!editorContext) return
+    if (id === EDITOR_ONCE) {
+      const once = { key: editorKey(editorContext), on: !shareEditor }
+      setEditorOnce((current) => ({ ...current, [active]: once }))
+      return
+    }
+    setEditorOnce((current) => {
+      const { [active]: _gone, ...rest } = current
+      return rest
+    })
+    const on = id === EDITOR_ALWAYS
+    if (on !== shareEditor) setShareEditor(on)
+  }
+
+  /**
+   * What the open menu holds. The editor's has nothing to say once the editor has nothing to show - the
+   * file closed while it was open - and then it is not drawn at all.
+   */
+  const menuWords = !menu
+    ? null
+    : menu.kind === 'thanks'
+      ? thanksMenu(t, shared)
+      : menu.kind === 'editor'
+        ? editorContext
+          ? editorMenu(t, shareEditor, editorChoice(shareEditor, editorOnce[active], editorContext), editorContext)
+          : null
+        : menuProps(
+            t,
+            menu.kind,
+            models,
+            customModels,
+            panel.ownModel ?? startingModel,
+            tickedModel,
+            effort,
+            mode,
+            availableModes,
+            fastOffered ? fastShown : null,
+          )
 
   /** The same toggle for the heart at the row's far end, and for the same reason (see [openSelector]). */
   const openThanks = (anchor: Anchor) => {
@@ -6902,6 +7032,7 @@ export const App = () => {
             model={model}
             switchedFrom={panel.switchedFrom}
             stuckPick={panel.stuckPick}
+            fast={fastShown}
             effort={effort}
             mode={mode}
             onOpenSelector={openSelector}
@@ -6940,20 +7071,8 @@ export const App = () => {
             onSubmit={sendNow}
             onQueue={queueNext}
             keyQueues={queueEdits[active] !== undefined}
-            editor={
-              shareEditor && editorContext
-                ? { ref: editorContext, on: editorSkips[active] !== editorKey(editorContext) }
-                : null
-            }
-            onToggleEditor={() => {
-              if (!editorContext) return
-              const key = editorKey(editorContext)
-              setEditorSkips((current) => {
-                if (current[active] !== key) return { ...current, [active]: key }
-                const { [active]: _back, ...rest } = current
-                return rest
-              })
-            }}
+            editor={editorShown}
+            onEditorMenu={openEditorMenu}
             canSubmit={draftReady}
             stopStalled={stopStalled}
             onStop={() => {
@@ -6978,6 +7097,7 @@ export const App = () => {
               model={model}
               switchedFrom={panel.switchedFrom}
               stuckPick={panel.stuckPick}
+              fast={fastShown}
               effort={effort}
               mode={mode}
               models={models}
@@ -7398,21 +7518,9 @@ export const App = () => {
         ) : null}
       </SideMenu>
 
-      {menu ? (
+      {menu && menuWords ? (
         <Menu
-          {...(menu.kind === 'thanks'
-            ? thanksMenu(t, shared)
-            : menuProps(
-                t,
-                menu.kind,
-                models,
-                customModels,
-                panel.ownModel ?? startingModel,
-                tickedModel,
-                effort,
-                mode,
-                availableModes,
-              ))}
+          {...menuWords}
           anchor={menu.anchor}
           onClose={() => setMenu(null)}
           onPick={(id) => {
@@ -7425,9 +7533,11 @@ export const App = () => {
             // where one is added (see ADD_MODEL), and choosing it as a model would launch the CLI with
             // the sentinel's own name.
             if (kind === 'model' && id === ADD_MODEL) setSideMenu({ open: true, screen: 'customModels' })
+            else if (kind === 'model' && id === FAST_MODE) pickFastMode(fastShown.kind === 'off')
             else if (kind === 'model') pickModel(id)
             if (kind === 'effort') pickEffort(id)
             if (kind === 'mode') setMode(id)
+            if (kind === 'editor') pickEditor(id)
             // The page has no browser of its own to open anything with: the address goes out to the shell,
             // and the IDE opens it in the system browser - the same route the PR link takes.
             if (kind === 'thanks') {
@@ -7603,13 +7713,25 @@ const menuProps = (
   effort: string,
   mode: string,
   availableModes: ModeAvailability,
+  /** Fast mode, when the menu offers its switch at all - see fastOffered. */
+  fast: FastModeShown | null,
 ): { title: string; hint?: string; width: number; options: MenuOption[]; selected: string; tick?: boolean } => {
   if (kind === 'model') {
-    return {
-      title: t.selectors.model,
-      width: 344,
-      ...modelMenu(t, models, customModels, selectedModel, switched),
+    const menu = modelMenu(t, models, customModels, selectedModel, switched)
+    if (!fast) return { title: t.selectors.model, width: 344, ...menu }
+
+    // A switch rather than a model, so it wears its own mark where the tick would stand: lit while it serves,
+    // the warning colour when it was asked for and cannot, dim while off. Before the last entry, which is the
+    // way out of the menu to adding a model.
+    const entry: MenuOption = {
+      id: FAST_MODE,
+      label: t.fast.label,
+      icon: FAST_MARK,
+      iconTone: fast.kind === 'unavailable' ? 'warn' : fast.kind === 'off' ? 'dim' : 'accent',
+      sub: fastModeSub(t, fast),
     }
+    const options = [...menu.options.slice(0, -1), entry, ...menu.options.slice(-1)]
+    return { title: t.selectors.model, width: 344, options, selected: menu.selected }
   }
 
   if (kind === 'effort') {

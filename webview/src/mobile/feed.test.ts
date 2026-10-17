@@ -1,6 +1,7 @@
 import { en } from '../i18n/en'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ShellMessage } from '../protocol'
+import { contextOf } from '../feed/build'
 import { streamStatus } from '../feed/streamStatus'
 import type { CardState } from '../hooks/useCardState'
 import { RemoteClock } from './clock'
@@ -148,6 +149,42 @@ describe('the phone building a conversation', () => {
     ])
 
     expect(feed.state.items[0]?.kind).toEqual('checkpoint')
+  })
+
+  // Fast mode asked for is the IDE's word and nobody else's: the phone draws its chip and sheet by it.
+  it('takes the fast mode ask the IDE says', () => {
+    const on = apply([message({ type: 'fastMode', sessionId: 'main', on: true })])
+    expect(on.state.fastMode).toBe(true)
+
+    const off = applyMessage(on, message({ type: 'fastMode', sessionId: 'main', on: false }))
+    expect(off.state.fastMode).toBe(false)
+  })
+
+  /**
+   * The end of a long turn holds the agent's answers and not one exact figure of the window - those come at
+   * a turn's end. The IDE puts the last one in front of the tail (see lastContextMessage in the hub), and the
+   * answers after it set the estimate against that window rather than against one guessed from the model's
+   * name: 287 thousand of a million read as a red 100% when the guess was two hundred thousand.
+   */
+  it('measures the tail of a turn by the window the IDE hands in front of it', () => {
+    const answer = message({
+      type: 'agent',
+      sessionId: 'main',
+      event: {
+        type: 'assistant',
+        message: { model: 'claude-opus-5-5', content: [{ type: 'text', text: 'still at it' }], usage: { input_tokens: 287_000 } },
+      },
+      seq: 6900,
+    })
+    const feed = apply([
+      message({ type: 'restoreStarted', sessionId: 'main', from: 0, truncated: true }),
+      message({ type: 'context', sessionId: 'main', used: 21_000, max: 1_000_000 }),
+      answer,
+      message({ type: 'restoreFinished', sessionId: 'main', upTo: 6900 }),
+    ])
+
+    expect(contextOf(feed.state, 200_000)).toEqual({ used: 287_000, limit: 1_000_000, percent: 29 })
+    expect(feed.seq).toBe(6900)
   })
 
   /*

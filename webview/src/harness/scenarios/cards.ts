@@ -425,6 +425,10 @@ export const scenariosCards: Scenario[] = [
         turnResult(3000),
       ]),
     ]),
+    checkpoint('Sending the editor switched off: the chip stays, struck, and its menu turns it back on', [
+      shell({ type: 'shareEditor', on: false }),
+      wait(300),
+    ]),
   ]),
 
   scenario('todo-list', 'The task list', 'cards', [

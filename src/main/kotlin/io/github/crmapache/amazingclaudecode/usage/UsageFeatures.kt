@@ -40,7 +40,11 @@ internal object UsageFeatures {
         "improve_prompt",
         "model_switch",
         "effort_switch",
+        "fast_mode",
         "mode_switch",
+        // `/status`, or the id copied from the right-click menu - that one is counted by the window that
+        // builds the menu rather than arriving as a message: see PanelContextMenu.
+        "session_info",
         "plan_decision",
         "ask_answer",
         "subagent_window",
@@ -172,6 +176,7 @@ internal object UsageFeatures {
         "voiceToken",
         "setModel",
         "setEffort",
+        "setFastMode",
         "mcpReconnect",
         "mcpAuthenticate",
         "mcpAdd",
@@ -265,7 +270,10 @@ internal object UsageFeatures {
         "improvePrompt" -> "improve_prompt"
         "setModel" -> "model_switch"
         "setEffort" -> "effort_switch"
+        // Turning it on is the use; turning it off again is the same person leaving it.
+        "setFastMode" -> if ((payload["on"] as? JsonPrimitive)?.booleanOrNull == true) "fast_mode" else null
         "setMode" -> "mode_switch"
+        "sessionInfo" -> "session_info"
         "planDecision" -> "plan_decision"
         "askAnswer" -> "ask_answer"
         "agentTranscript" -> "subagent_window"

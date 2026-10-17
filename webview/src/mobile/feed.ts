@@ -363,6 +363,10 @@ export const applyMessage = (
     case 'effort':
       return collect({ kind: 'effortApplied', effort: message.effort })
 
+    // Fast mode asked for or not - live like the effort, and told ahead of a restore's tail (see attach in the hub).
+    case 'fastMode':
+      return collect({ kind: 'fastModeApplied', on: message.on })
+
     /*
      * The permission mode, applied at the desk (the MODE selector, Shift+Tab, an approved plan) or chosen
      * for a conversation of one's own started from here and said before its first message (see

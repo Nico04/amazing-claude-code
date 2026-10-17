@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { effortOptions, modelOptions, modeLabel, sameModel } from '../../catalog'
 import type { ModelInfo } from '../../protocol'
+import { fastModeSub, modelHasFastMode, type FastModeShown } from '../../feed/fastMode'
 import { Sheet } from './Sheet'
 import m from '../mobile.module.css'
 import { useT } from '../../i18n'
@@ -14,7 +15,9 @@ interface RunSheetProps {
   model: string
   effort: string
   mode: string
-  onApply: (change: { model?: string; effort?: string }) => void
+  /** Fast mode for this conversation - asked for, and what the CLI said of it (see feed/fastMode.ts). */
+  fast: FastModeShown
+  onApply: (change: { model?: string; effort?: string; fast?: boolean }) => void
   onClose: () => void
 }
 
@@ -35,13 +38,19 @@ interface RunSheetProps {
  * Nothing here writes the machine's settings, unlike the same choice made at the desk: what the next tab
  * opened at that keyboard starts on is not a decision to take from a sofa (see SessionCommands, which
  * passes `remember = local`).
+ *
+ * Fast mode sits with them for the same reason - it is about what a turn costs and how soon it answers -
+ * and only on a model that has it, or while it is asked for, so that it can be turned off again.
  */
-export const RunSheet = ({ models, customModels, model, effort, mode, onApply, onClose }: RunSheetProps) => {
+export const RunSheet = ({ models, customModels, model, effort, mode, fast, onApply, onClose }: RunSheetProps) => {
   const t = useT()
   const [pickedModel, setPickedModel] = useState(model)
   const [pickedEffort, setPickedEffort] = useState(effort)
+  const asked = fast.kind !== 'off'
+  const [pickedFast, setPickedFast] = useState(asked)
+  const fastOffered = asked || modelHasFastMode(models, pickedModel)
 
-  const changed = !sameModel(pickedModel, model) || pickedEffort !== effort
+  const changed = !sameModel(pickedModel, model) || pickedEffort !== effort || pickedFast !== asked
 
   return (
     <Sheet
@@ -62,6 +71,7 @@ export const RunSheet = ({ models, customModels, model, effort, mode, onApply, o
               onApply({
                 model: sameModel(pickedModel, model) ? undefined : pickedModel,
                 effort: pickedEffort === effort ? undefined : pickedEffort,
+                fast: pickedFast === asked ? undefined : pickedFast,
               })
             }
           >
@@ -98,6 +108,28 @@ export const RunSheet = ({ models, customModels, model, effort, mode, onApply, o
           </button>
         ))}
       </div>
+
+      {fastOffered ? (
+        <>
+          <p className={m.sheetLabel}>{t.fast.label}</p>
+          <div className={m.chipWrap}>
+            {[false, true].map((on) => (
+              <button
+                key={String(on)}
+                type="button"
+                className={`${m.pickChip} ${on === pickedFast ? m.pickChipOn : ''}`}
+                onClick={() => setPickedFast(on)}
+              >
+                {on ? t.fast.phone.on : t.fast.phone.off}
+              </button>
+            ))}
+          </div>
+          {/* What the CLI said of it, while it is asked for and not simply on; otherwise what it is and costs. */}
+          <p className={m.sheetNote}>
+            {asked && pickedFast && fast.kind !== 'on' ? fastModeSub(t, fast) : t.fast.phone.note}
+          </p>
+        </>
+      ) : null}
 
       <div className={m.sheetLabelRow}>
         <span className={m.sheetLabelInline}>{t.selectors.mode}</span>

@@ -18,7 +18,7 @@ import io.github.crmapache.amazingclaudecode.claude.accounts.ClaudeAccounts
  */
 class ClaudeSessionsTest : BasePlatformTestCase() {
 
-    private fun sessions(onBorn: (String, String, String, String) -> Unit = { _, _, _, _ -> }) = ClaudeSessions(
+    private fun sessions(onBorn: (String, String, String, String, Boolean) -> Unit = { _, _, _, _, _ -> }) = ClaudeSessions(
         workingDirectory = null,
         parentDisposable = testRootDisposable,
         onEvent = { _, _ -> },
@@ -96,7 +96,7 @@ class ClaudeSessionsTest : BasePlatformTestCase() {
     fun testAResumedConversationAdoptsItsOwnModelBeforeItWakes() {
         ClaudePreferences.model = "haiku"
         val born = mutableMapOf<String, String>()
-        val sessions = sessions { sessionId, _, model, _ -> born[sessionId] = model }
+        val sessions = sessions { sessionId, _, model, _, _ -> born[sessionId] = model }
 
         sessions.resume("old", "conversation-1")
         assertEquals("haiku", born["old"])
@@ -113,7 +113,7 @@ class ClaudeSessionsTest : BasePlatformTestCase() {
 
     fun testEachConversationIsBornAtWhatWasChosenByThen() {
         val born = mutableMapOf<String, String>()
-        val sessions = sessions { sessionId, effort, _, _ -> born[sessionId] = effort }
+        val sessions = sessions { sessionId, effort, _, _, _ -> born[sessionId] = effort }
 
         ClaudePreferences.effort = "high"
         sessions.setPermissionMode("first", PermissionModes.PLAN) {}
@@ -218,6 +218,75 @@ class ClaudeSessionsTest : BasePlatformTestCase() {
         assertEquals("sonnet", sessions.model("main"))
         assertEquals("low", sessions.effort("main"))
         assertEquals(PermissionModes.PLAN, sessions.permissionMode("main"))
+    }
+
+    /**
+     * Fast mode is billed to usage credits, so it is the conversation's alone: it writes no setting, and a tab
+     * opened after it starts without it - unlike the effort, whose last choice is what the next tab starts on.
+     */
+    fun testFastModeBelongsToItsConversationAndNoNewTabStartsWithIt() {
+        val sessions = sessions()
+        sessions.setFastMode("main", true)
+        sessions.setEffort("other", "low")
+
+        assertEquals(true, sessions.fastMode("main"))
+        assertEquals(false, sessions.fastMode("other"))
+        assertNull(sessions.fastMode("never-opened"))
+    }
+
+    /** A fork is the same conversation, and a move to another account is the same conversation too. */
+    fun testFastModeTravelsWithTheConversationIntoAForkAndOntoAnotherAccount() {
+        val sessions = sessions()
+        sessions.setFastMode("parent", true)
+        sessions.setFastMode("plain", false)
+
+        sessions.branchFrom("parent", "branch-1")
+        sessions.branchFrom("plain", "branch-2")
+        assertEquals(true, sessions.fastMode("branch-1"))
+        assertEquals(false, sessions.fastMode("branch-2"))
+
+        register("work")
+        sessions.switchAllTo()
+        assertEquals(true, sessions.fastMode("parent"))
+        assertEquals(true, sessions.fastMode("branch-1"))
+    }
+
+    /**
+     * A model without fast mode turns it off, as a terminal does, and it stays off when the next model has it
+     * again - coming back on by itself would be a charge nobody asked for. Only on the catalogue's word: a model
+     * the catalogue has not described keeps what was asked.
+     */
+    fun testAModelWithoutFastModeTurnsItOffOnlyOnTheCataloguesWord() {
+        val sessions = sessions()
+        val account = sessions.accountOf("main")
+        val accounts = ClaudeAccounts.getInstance()
+        try {
+            sessions.setFastMode("main", true)
+            sessions.setModel("main", "sonnet") {}
+            assertEquals(true, sessions.fastMode("main"))
+
+            accounts.noteFastModels(
+                account,
+                listOf(
+                    Triple("opus", "claude-opus-5-5", true),
+                    Triple("claude-opus-4-7", "claude-opus-4-7", false),
+                    Triple("sonnet", "claude-sonnet-5", false),
+                ),
+            )
+            sessions.setModel("main", "opus") {}
+            assertEquals(true, sessions.fastMode("main"))
+            // A name the menu does not offer is judged by the full names, the window mark aside.
+            assertEquals(true, accounts.hasFastMode(account, "claude-opus-5-5[1m]"))
+            assertEquals(false, accounts.hasFastMode(account, "claude-opus-4-7[1m]"))
+
+            sessions.setModel("main", "claude-opus-4-7") {}
+            assertEquals(false, sessions.fastMode("main"))
+
+            sessions.setModel("main", "opus") {}
+            assertEquals(false, sessions.fastMode("main"))
+        } finally {
+            accounts.noteFastModels(account, null)
+        }
     }
 
     /**

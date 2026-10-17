@@ -221,11 +221,13 @@ let harnessDesignLogins = 0
 
 /**
  * Invented shares, so the rows carry real-looking figures rather than a bare tick. The third account's
- * plan keeps no model week of its own, so the "no ring" case is on the screen too.
+ * plan keeps no model week of its own, so the "no ring" case is on the screen too. The second one has run
+ * through its five hours, so the row that says when it takes work again is on the screen as well (see
+ * usableAgainIn).
  */
 const ACCOUNT_USAGE: Record<string, { session: number; week: number; fable?: number }> = {
   '': { session: 34, week: 61, fable: 47 },
-  a2: { session: 88, week: 12, fable: 9 },
+  a2: { session: 100, week: 12, fable: 9 },
   a3: { session: 5, week: 5 },
 }
 
@@ -244,7 +246,7 @@ const sendAccounts = (): void => {
     window.__accReceive?.({
       type: 'usage',
       account: account.id,
-      session: { percent: share.session, resets: new Date(Date.now() + 2 * 3600_000).toISOString() },
+      session: { percent: share.session, resets: new Date(Date.now() + (2 * 60 + 14) * 60_000).toISOString() },
       week: { percent: share.week, resets: new Date(Date.now() + 4 * 86_400_000).toISOString() },
       // Always the whole list, as the plugin sends it: an empty one is "this plan keeps none".
       models:
@@ -1744,6 +1746,22 @@ const listenToPanel = () => {
       window.__accReceive?.({ type: 'effort', sessionId: message.sessionId, effort: message.effort })
       newTab.lastEffort = message.effort
       announceNewTabDefaults()
+    }
+
+    // Fast mode, answered as the IDE answers it: the ask comes back as said, and nothing about the next tab -
+    // it writes no setting. Whether it serves the CLI says at the next turn (see the fast-mode scenario).
+    if (message?.type === 'setFastMode') {
+      window.__accReceive?.({ type: 'fastMode', sessionId: message.sessionId, on: message.on })
+    }
+
+    // `/status`, answered as the IDE answers it: the conversation's id - made up here, as there is no CLI
+    // behind the harness to have given one.
+    if (message?.type === 'sessionInfo') {
+      window.__accReceive?.({
+        type: 'sessionInfo',
+        sessionId: message.sessionId,
+        conversationId: 'b6f4c0de-71a2-4c3e-9d1f-5a7e2c8b9f10',
+      })
     }
 
     // The three halves of the "New chats" screen, answered as the IDE answers them.

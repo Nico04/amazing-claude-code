@@ -16,6 +16,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonUnquotedLiteral
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
@@ -76,6 +77,8 @@ internal class TabMemory(
         val model: String,
         val effort: String,
         val mode: String,
+        /** Whether it asked for fast mode - it comes back asking (see SessionLaunch.fast). */
+        val fast: Boolean = false,
         /** What was being written in its input field, as the panel sent it (see draftMemory.ts). */
         val draft: JsonObject?,
     )
@@ -251,6 +254,7 @@ internal class TabMemory(
             if (tab.model.isNotEmpty()) put("model", tab.model)
             if (tab.effort.isNotEmpty()) put("effort", tab.effort)
             if (tab.mode.isNotEmpty()) put("mode", tab.mode)
+            if (tab.fast) put("fast", true)
             tab.draft?.takeIf { it.toString().length <= MAX_DRAFT_CHARS }?.let { put("draft", it) }
         }
 
@@ -294,6 +298,7 @@ internal class TabMemory(
                 model = tab.string("model"),
                 effort = tab.string("effort"),
                 mode = tab.string("mode"),
+                fast = (tab["fast"] as? JsonPrimitive)?.booleanOrNull == true,
                 draft = tab["draft"] as? JsonObject,
             )
         }

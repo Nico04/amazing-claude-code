@@ -42,7 +42,8 @@ paths:
 - `queueEdits`, `takeBackQueued`, `case 'queuedTaken'`, `before` в `intoTheQueue` - queue-edit
 - `pickTab`, `focusToken` (фокус в `startSession`, `resume`, `closeSession`) - composer-field
 - `spellcheck`, `setSpellcheck`, `case 'spellcheck'`, атрибут на корне документа - composer-field
-- `shareEditor`, `editorContext`, `editorSkips`, `withEditor` в `submit`, `case 'editorContext'` - editor-context
+- `shareEditor`, `editorContext`, `editorOnce`, `editorShown`, `openEditorMenu`, `pickEditor`, `withEditor` в `submit`, `case 'editorContext'` - editor-context
+- `menuConversation` (сообщение `sessionMenu` для меню правой кнопки), `status` в `runLocal`, `case 'sessionInfo'` - session-info
 - `improveSources`, `restoreDraft`, `registerApply` - prompt-improver
 - `feedPlaces`, `key={active}`, `forgetFeedFocus` - reading-place
 - `hiddenTaskIds` - subagents
@@ -52,7 +53,7 @@ paths:
 - `branchFrom` / форк и шкала контекста форка - fork-tabs
 - `fork(quote, point)`, `forkWhole`, `forkable`, разрез из выделения (`forkPointAfter`), `openOriginal` - fork-tabs
 - `openRewind`, `confirmRewind`, `rewindOutcome`, `rewindInFork`, `rewinding`, `case 'rewindPreview'`/`'rewound'`, `uuid` в `submit` - rewind
-- `startingModel`, `setCustomModels`, `stuckPick`, `onBorn` - models
+- `startingModel`, `setCustomModels`, `stuckPick`, `onBorn` - models; `pickFastMode`, `fastShown`/`fastOffered`, `FAST_MODE` в меню - models (быстрый режим)
 - `jumping`, `resetSearch`, эффект над `sessions` - search
 - `watchedRuns`, `scenariosView`, `scenariosShown`, `runRecords`, `case 'scenarioLog'` - scenarios
 - `runLocal`, `designAsked` - accounts
@@ -84,9 +85,10 @@ paths:
 - любое новое сообщение - remote-access: реши про него в `RemoteCommands`, иначе красный `RemoteCommandsTest`
 - `rejected` - prompt-improver; `'withdrawn'` - permissions; `PaintedTerm`, `matchCase`, `wholeWords` - search
 - `mcpList` с `ifRunning` - idle-sleep; `cursor` в `replayFinished`, `historyPage` - history
-- `effort`, `setCustomModels`, `customModels` - models; `setSendKey`, `spellcheck`, `setSpellcheck` - composer-field;
+- `effort`, `fastMode`, `setFastMode`, `fast_mode_state`, `fast` у `ModelInfo`, `setCustomModels`, `customModels` - models; `setSendKey`, `spellcheck`, `setSpellcheck` - composer-field;
   `queue` - remote-access
 - `models` у `usage`, `ModelUsageWindow`, `hiddenIndicators`, `setHiddenIndicators`, факт `indicators` - indicators
+- `sessionMenu`, `sessionInfo` (запрос и ответ) - session-info
 - `toolUseResult` у `AgentUserEvent`, `text` у `askAnswer` - permissions; `origin` у `AgentUserEvent` - history
 - `settingSources` в `init`, `setSettingSources`, `askSettingSources`, `accountOutranked`, `api_error_status` - setting-sources
 - `sideQuestion`, `sideQuestionCancel`, `sideAnswer`, `sideProgress` - btw
@@ -106,13 +108,14 @@ paths:
   `carryOnWait`, `cancelCarryOn` - accounts
 
 **`webview/src/feed/build.ts`** (редьюсер ленты):
+- `case 'sessionInfo'` (строка `/status`) - session-info
 - `TodoWrite`/`TaskCreate`/`TaskUpdate`, `tasksCarried`, `pendingTasks` - task-list
 - `stintElapsed`, `stintOver`, `workGoesOn`, `pendingAgents`, подпись под ответом в `case 'result'` - turn-lifecycle
 - контекст из реплея в `case 'result'`, `historyPage`, `windowModel`, `resumed`, `SERVICE_BLOCK`,
   `addReplayedPrompt` - history
 - `taskPrompt`, ветка `Workflow`, `applyTaskProgress`, `ASYNC_AGENT_LAUNCHED` - subagents
-- `modelContextWindow`, `case 'context'` - fork-tabs
-- `noteStreamModel`, `ownSwap`/`ownSwapDue`, `stuckPick` - models
+- `modelContextWindow`, `case 'context'`, `learnWindows`/`learnedWindow` (окно из `modelUsage` результата) - fork-tabs
+- `noteStreamModel`, `ownSwap`/`ownSwapDue`, `stuckPick`, `noteFastReport`, `case 'fastModeApplied'` - models
 - `revivedAsk`, `addReplayedAnswers`, отметка `answered` у вопроса в `applyToolResults` - permissions
 - `isEditTool` - tool-cards; `realModel` - stats; `uuid` у `UserItem`/`TextItem` - search
 - `case 'outranked'` и `OutrankedItem`, `overSampling` и метки `addError` - setting-sources
@@ -129,7 +132,7 @@ paths:
 
 **`webview/src/feed/types.ts`** и **`webview/src/feed/panelState.ts`**:
 - `DraftEdit` - prompt-improver; `ErrorItem.signIn` - expired-sign-in; `ErrorItem.sampling` - setting-sources;
-  `ModelStuckItem` - models; `UserItem.auto` (подпись PANEL), `PanelState.carryOn` - accounts
+  `ModelStuckItem` - models; `UserItem.auto` (подпись PANEL), `PanelState.carryOn` - accounts; `SessionInfoItem` - session-info
 - `ClosedReason`, `ToolMeta`, `CompactOutcome`, `DetailNote`, `PermItem.mode`, `LimitItem.window`,
   `MetaItem.stats` («Stopped by you» не переводится) - i18n; `movedAccount` - accounts
 - `CompactItem.startedAt`, `stintStartedAt`, `pausedMs` - turn-lifecycle; `TodoItem.replayed` - history
@@ -160,13 +163,13 @@ paths:
 шрифтовой стек CJK - i18n; ступени `--acc-gauge-*` - calm-colors; светлая тема, `--acc-scrim`/`--acc-drop`,
 `color-scheme` - appearance; `--acc-group-deep`/`--acc-group-depth` - active-tab.
 
-**`webview/src/catalog.ts`**: `panelCommands` (`/design-login`) - accounts.
+**`webview/src/catalog.ts`**: `panelCommands` (`/design-login`) - accounts; `/status` - session-info.
 
 **`webview/src/harness/events.ts`**: `toolResult` со структурной половиной - changed-files.
 
 **`webview/src/harness/player.ts`** (плеер играет роль IDE): `answerResume` и страницы истории - history;
 `answerModel` (ответ обязан быть отложенным) и `setEffort` - models; переписывание - prompt-improver;
-диктовка - voice; `savePastedFile`, `clipboardWrite`/`clipboardRead` - clipboard; `saveImage` - stats;
+диктовка - voice; `savePastedFile`, `clipboardWrite`/`clipboardRead` - clipboard; `saveImage` - stats; `sessionInfo` - session-info;
 фидбэк - feedback; поиск - search; вход в аккаунт - expired-sign-in и accounts; транскрипт агента - subagents;
 `answerFork` (история и шов нового форка) - fork-tabs; `answerPanelKeys` (раскладка и перехват клавиш панели) -
 panel-keys; `answerClosedTabs` (зеркало полосы и закрытые вкладки), `drafts` на `ready` - reopen-tabs.
@@ -175,8 +178,8 @@ panel-keys; `answerClosedTabs` (зеркало полосы и закрытые 
 - `prompt`: сохранение буферов - editor-sync; `sendStatus`, очередь, команда в идущий ход - turn-lifecycle
 - `takeQueued`, `before` у `queuePrompt`, `enqueue` - queue-edit; `editorSeen`, `echoWith`, `context` в
   `deliverPrompt` - editor-context
-- `changeModel`, `emitLive` для усилия - models
-- `refreshInit` (свежий `init` подключившемуся) - remote-access
+- `changeModel`, `emitLive` для усилия, `changeFastMode` - models
+- `refreshInit` (свежий `init` подключившемуся) - remote-access; `lastContextMessage` в `attach` - fork-tabs
 - `INIT_MARKER` - fork-tabs и history; `RESULT_MARKER`, `everyHub`, `accounts`, `accountsChangedElsewhere` - accounts
 - `carryOn`, `sayNext` и `PassGate` за `runQueued` (один проход на вкладку), `auto` у `deliverPrompt`, `noteLimitRefusal`, `afterQuietSwap`,
   `carryOnChanged`, `carryOnWhatIsDue`, `cancelCarryOn`, `RESTART` в `onProcessDropping` - accounts (работа, остановленная не человеком)
@@ -216,7 +219,7 @@ remote-access; остальное - по заметке фичи, которой
 models; `openFile` - open-in-editor; фидбэк и лог незнакомого сообщения (только тип и длина) - feedback;
 `setHiddenIndicators` - indicators; `setTheme`, `setTextSize`, `sendTheme`, `appearanceChanged` - appearance;
 `saveDraft`, `tabShown`, `setRestoreTabs`, `sendDrafts` - restore-tabs; `reopenTab`, `panelTabClosed` - reopen-tabs; `watchEditor`, `sendEditorContext`,
-`setShareEditor` - editor-context; `setSpellcheck`, `spellcheckChanged` - composer-field; счёт фич `UsageFeatures.ofMessage` у двери окна, `setUsageStats`,
+`setShareEditor` - editor-context; `sessionMenu`, `sendSessionInfo`, `onSessionIdCopied` - session-info; `setSpellcheck`, `spellcheckChanged` - composer-field; счёт фич `UsageFeatures.ofMessage` у двери окна, `setUsageStats`,
 `usageStatsPreview`, `usageChanged` - usage-stats; `PanelKeys.install`, `pressPanelKey`, `sendPanelKeys`,
 `watchKeymap`, `openKeymap` - panel-keys.
 

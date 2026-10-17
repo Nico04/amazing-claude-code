@@ -28,6 +28,7 @@ import { replayedMessage } from './replayed'
 import { applyChangesReverted, closeChanges, noteChanges, settleChanges } from './changes'
 import { editorOfBlocks } from './editorContext'
 import { applyModEvent } from './mods'
+import { fastModeShown, type FastModeReport } from './fastMode'
 import { readPlan, readQuestions, readTodos } from './toolInput'
 import { readReview } from './findings'
 import {
@@ -555,6 +556,19 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
     // ClaudeSession.setEffort), so the shell's word is the last one.
     case 'effortApplied':
       return { ...state, pendingEffort: undefined, effort: action.effort }
+
+    // Asked for anew: whatever the feed was told about why it could not serve is about the last ask.
+    case 'fastModeApplied':
+      return action.on === state.fastMode
+        ? state
+        : { ...state, fastMode: action.on, ...(action.on ? { fastNoted: undefined } : {}) }
+
+    // The answer to `/status`, standing where it was asked rather than above the field: a terminal prints it
+    // into the conversation too, and the id is copied from it while the talk goes on below.
+    case 'sessionInfo': {
+      const conversationId = action.conversationId ?? state.sessionId
+      return push(state, (id) => ({ id, kind: 'session' as const, ...(conversationId ? { conversationId } : {}) }))
+    }
 
     // The whole list rather than a change to it: the IDE holds the queue, either window may have been
     // the one that changed it, and what arrives is how it stands now (see SessionQueue.kt).
@@ -1380,7 +1394,7 @@ const applyAgentEvent = (
 ): PanelState => {
   // The first event after a chain of retries is the whole account of how it ended: its end has no event
   // of its own (see closeRetryFor).
-  const state = closeRetryFor(incoming, event, now)
+  const state = noteFastReport(learnWindows(closeRetryFor(incoming, event, now), event), event, replay)
 
   switch (event.type) {
     case 'system':
@@ -2854,14 +2868,78 @@ const formatClock = (ms: number): string => {
  * day on the large one.
  *
  * Only what the name genuinely says. A "[1m]" mark is the CLI's own way of naming the large window, and
- * the three families named here have the ordinary one; a model this cannot place keeps the fallback
+ * the three families named here had the ordinary one; a model this cannot place keeps the fallback
  * rather than a guess, and the CLI corrects all of it with the first turn.
+ *
+ * The name no longer says it for every generation: Opus 5.5 and Haiku 5.5 come with a million and no mark
+ * (CLI 2.1.293). So this is the last resort before anything the CLI has said - the window a turn's result
+ * names comes first (see learnedWindow), and a feed built from a journal's end is handed the last exact
+ * figure (see lastContextMessage in ClaudeSessionHub).
  */
 export const modelContextWindow = (model: string | undefined): number | undefined => {
   if (!model) return undefined
   if (/\[1m\]/i.test(model)) return 1_000_000
   if (/opus|sonnet|haiku/i.test(model)) return 200_000
   return undefined
+}
+
+/**
+ * What the CLI says about fast mode at a turn's start (`system/init` of the main stream) and end (`result`) - see
+ * feed/fastMode.ts - and a row in the feed the first time since the ask that it says it cannot serve.
+ *
+ * Live turns only: a replay's lines are no news about now, and a transcript does not keep these events anyway.
+ */
+const noteFastReport = (state: PanelState, event: AgentEvent, replay: boolean): PanelState => {
+  if (replay) return state
+  const about = event.type === 'result' || (event.type === 'system' && event.subtype === 'init' && event.task_id === undefined)
+  if (!about) return state
+
+  const fast = event.fast_mode_state
+  if (!fast) return state
+
+  const reason = event.fast_mode_disabled_reason
+  const report: FastModeReport = reason ? { state: fast, reason } : { state: fast }
+  const shown = fastModeShown(state.fastMode, report)
+  // Serving again: should it stop once more for the same reason, that is news again.
+  const reported: PanelState = { ...state, fastReport: report, ...(shown.kind === 'on' ? { fastNoted: undefined } : {}) }
+  if (shown.kind !== 'unavailable' || shown.reason === state.fastNoted) return reported
+
+  return push({ ...reported, fastNoted: shown.reason }, (id) => ({ id, kind: 'fast' as const, reason: shown.reason }))
+}
+
+/**
+ * The windows the CLI gives this conversation's models, taken off a turn's result (see
+ * PanelState.contextWindows).
+ *
+ * From a replay as well, unlike the usage beside it: a window is a fact about the model rather than about the
+ * moment, and an old result says it as truly as a new one.
+ */
+const learnWindows = (state: PanelState, event: AgentEvent): PanelState => {
+  if (event.type !== 'result' || !event.modelUsage) return state
+
+  const known = state.contextWindows ?? {}
+  const said = Object.entries(event.modelUsage).flatMap(([model, use]) => {
+    const window = use?.contextWindow
+    return typeof window === 'number' && window > 0 && known[model] !== window ? [[model, window] as const] : []
+  })
+  if (said.length === 0) return state
+
+  return { ...state, contextWindows: { ...known, ...Object.fromEntries(said) } }
+}
+
+/**
+ * The window the CLI gives the model this tab's stream runs on, if a turn has said it.
+ *
+ * Not while a pick of another model is on its way: the window known is the old model's. By the stream's own
+ * id, with the window mark the CLI may keep on its key ("claude-opus-5[1m]") left aside: the answers are
+ * signed without it.
+ */
+const learnedWindow = (state: PanelState): number | undefined => {
+  const model = state.model
+  const windows = state.contextWindows
+  if (!model || !windows || state.pendingModel !== undefined) return undefined
+
+  return windows[model] ?? Object.entries(windows).find(([key]) => key.replace(/\[[^\]]*\]$/, '') === model)?.[1]
 }
 
 /**
@@ -2895,9 +2973,10 @@ const windowModel = (state: PanelState): string | undefined => {
  * What the context meter shows: taken, total and the share.
  *
  * The window's size comes from the CLI itself (see PanelState.context): it depends on the model, with
- * "1M" models it is five times the usual, and arithmetic of ours cannot guess it. Until it has said, the
- * tab's own model is the next best answer (see modelContextWindow), and only then the fallback the
- * caller brings - which is the account's last known window, and may be about another model entirely.
+ * "1M" models it is five times the usual, and arithmetic of ours cannot guess it. Without that figure the
+ * next is the window the CLI gave this model at the end of a turn (see PanelState.contextWindows), then the
+ * tab's own model's name (see modelContextWindow), and only then the fallback the caller brings - which is
+ * the account's last known window, and may be about another model entirely.
  *
  * What is taken, though, is chosen by freshness. The exact figure from the CLI arrives only at a turn's
  * end, so while a turn runs we show the estimate from the agent's latest answer (liveContextUsed):
@@ -2912,7 +2991,8 @@ export const contextOf = (
   const context = state.context
   const known = context && context.max > 0 ? context : undefined
   const live = state.liveContextUsed
-  const guessed = modelContextWindow(windowModel(state)) ?? (fallbackLimit > 0 ? fallbackLimit : 200_000)
+  const guessed =
+    learnedWindow(state) ?? modelContextWindow(windowModel(state)) ?? (fallbackLimit > 0 ? fallbackLimit : 200_000)
 
   if (known || live !== undefined) {
     const limit = known?.max ?? guessed

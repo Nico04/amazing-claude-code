@@ -231,7 +231,7 @@ export const en = {
   shareEditor: {
     label: 'Send the editor along',
     hint: 'Each message carries the file open in the editor, and the lines selected in it - the way Claude Code does it in a terminal',
-    note: 'Only from this panel: a message written on a phone carries nothing of the editor. One message can go without it - press the file’s chip in the input field.',
+    note: 'Only from this panel: a message written on a phone carries nothing of the editor. The file’s chip in the input field has this same switch, and there a single message can go without it, or with it.',
     on: 'On',
     off: 'Off',
   },
@@ -1223,6 +1223,35 @@ export const en = {
     addSub: 'One Claude Code does not offer',
   },
 
+  /**
+   * Fast mode - Opus at up to two and a half times the speed, paid from usage credits (see feed/fastMode.ts).
+   * The switch in the model menu, the mark on MODEL, the row when it does not turn on, and the phone's sheet.
+   */
+  fast: {
+    label: 'Fast mode',
+    offSub: 'Off · Opus up to 2.5× faster, paid from usage credits',
+    waitingSub: 'On from the next message · paid from usage credits',
+    onSub: 'On · paid from usage credits',
+    cooldownSub: 'Paused after a rate limit - comes back on by itself',
+    unavailableSub: (reason: string): string => `Unavailable. ${reason}`,
+    chipOn: 'Fast mode is on',
+    chipWaiting: 'Fast mode turns on with the next message',
+    chipCooldown: 'Fast mode is paused after a rate limit',
+    chipUnavailable: (reason: string): string => `Fast mode is unavailable. ${reason}`,
+    row: { label: 'FAST', title: 'Fast mode did not turn on', hint: 'This conversation goes on at standard speed.' },
+    reasons: {
+      extraUsageDisabled: 'It is paid from usage credits, which are off for this account.',
+      free: 'It needs a paid plan.',
+      preference: 'Your organization has turned it off.',
+      networkError: 'Claude Code could not check it: a network problem.',
+      notFirstParty: 'It works only with the Anthropic API directly.',
+      disabledByEnv: 'It is switched off on this machine.',
+      modelNotAllowed: 'Opus is not among the models your organization allows.',
+      unknown: 'It is unavailable right now.',
+    },
+    phone: { on: 'On', off: 'Off', note: 'Opus up to 2.5× faster, paid from usage credits - for this conversation only.' },
+  },
+
   composer: {
     placeholder: 'Ask, or describe a change…',
     placeholderPlan: 'Describe what to plan…',
@@ -1250,9 +1279,21 @@ export const en = {
     voice: 'Dictate',
     voiceStop: 'Stop dictating',
     editor: {
-      /** Hover over the file's chip in the field: it goes along with this message, or it has been left out. */
-      on: (place: string): string => `Claude sees ${place} with this message · click to leave it out`,
-      off: (place: string): string => `${place} is left out of this message · click to send it along`,
+      /** Hover over the file's chip in the field: it goes with this message, it is left out of it, or sending the editor is off. */
+      on: (place: string): string => `Claude sees ${place} with this message · click to choose`,
+      off: (place: string): string => `${place} is left out of this message · click to choose`,
+      muted: (place: string): string => `${place} is not sent - sending the editor is off · click to choose`,
+      /** The chip's menu (see editorMenu): the setting either way, and this one message the other way. */
+      menu: {
+        always: 'Send with every message',
+        alwaysSub: 'The open file and the selected lines, in every tab',
+        skip: 'Leave out of this message',
+        skipSub: 'The next message takes it again',
+        only: 'Send with this message only',
+        onlySub: 'The next message goes without it again',
+        never: 'Never send',
+        neverSub: 'In every tab, until turned back on - the same switch as in Settings',
+      },
     },
   },
 
@@ -1647,6 +1688,15 @@ export const en = {
       textWithCode: (code: number): string => `Claude Code stopped unexpectedly (exit code ${code}).`,
     },
 
+    /** `/status` (see SessionInfoRow) and the right-click menu's entry, which the browser draws with these words. */
+    session: {
+      label: 'SESSION',
+      id: 'Session ID',
+      terminal: 'In a terminal',
+      copyId: 'Copy Session ID',
+      terminalNote: 'Continues this conversation in a terminal opened in the project folder',
+      none: 'No ID yet - the conversation gets one with its first message',
+    },
     outranked: {
       label: 'SETTINGS',
       text: 'This repository overrides the account chosen here:',
@@ -1897,6 +1947,8 @@ export const en = {
     /** The figures beside a row - short, because they sit on one line under the name. */
     fiveHour: '5h',
     weekly: 'week',
+    /** Under the figures of an account at its limit: when it can be used again (see usableAgainIn). */
+    usableAgainIn: (left: string): string => `At the limit · usable again in ${left}`,
     row: {
       /** The value on the menu row when there is nothing to switch between. */
       one: 'One account',
@@ -2559,6 +2611,8 @@ export const en = {
     btw: 'ask a quick side question - the work goes on',
     /** Grey after `/btw ` until the question is typed. */
     btwArgument: '<question>',
+    fast: 'toggle fast mode - Opus up to 2.5× faster, paid from usage credits',
+    status: "this conversation's ID and the command to resume it in a terminal",
     model: 'switch the model for this session',
     effort: 'set how long Claude thinks before acting',
     context: 'what fills the context window right now',

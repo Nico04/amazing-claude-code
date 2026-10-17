@@ -77,6 +77,8 @@ internal class ClaudeSession(
     model: String = "",
     effort: String = "",
     permissionMode: String = "",
+    /** Whether this conversation asks for fast mode - see [fastMode]. */
+    fastMode: Boolean = false,
     /**
      * Which Claude account this conversation runs on. Empty is the CLI's ordinary sign-in.
      *
@@ -259,6 +261,19 @@ internal class ClaudeSession(
      * it there is, and a client joining is answered from here (see ClaudeSessionHub.attach).
      */
     var effort: String = effort
+        private set
+
+    /**
+     * Whether this conversation asks for fast mode - Opus at up to two and a half times the speed, billed to
+     * usage credits.
+     *
+     * The ask, not the answer. Whether it is ON the CLI decides and says itself, at the start and the end of
+     * every turn (`fast_mode_state` and `fast_mode_disabled_reason` on `system/init` and `result`): it needs
+     * usage credits switched on, an organization that allows it and a model that has it, and none of that is
+     * ours to know. What only we know is the ask - a process is told it once it is up, and a client joining is
+     * answered from here (see ClaudeSessionHub.attach), as with the effort.
+     */
+    var fastMode: Boolean = fastMode
         private set
 
     /**
@@ -696,6 +711,33 @@ internal class ClaudeSession(
             thisLogger().warn("Effort $effort was not applied: $message")
         }) {
             putJsonObject("settings") { effortSettings(effort) }
+        }
+    }
+
+    /**
+     * Fast mode for THIS conversation, on or off - by the same control request as the effort.
+     *
+     * The flag settings are the only door: under the stream the CLI refuses fast mode altogether until its
+     * host has opted in, and `fastMode: true` in that layer is both the opt-in and the ask (measured on CLI
+     * 2.1.293 - `/fast on` typed into such a conversation answers "Fast mode is not available in the Agent
+     * SDK", and the same `/fast on` after this request answers with the real reason, or turns it on). False
+     * turns it off again. The answer arrives with the next turn's `system/init`, not here: the request itself
+     * says "yes" whatever happens, like the effort's.
+     *
+     * A sleeping conversation is told when its process comes up (see [start]).
+     */
+    fun setFastMode(on: Boolean) {
+        fastMode = on
+        if (handler == null) return
+
+        sendFastMode(on)
+    }
+
+    private fun sendFastMode(on: Boolean) {
+        control("apply_flag_settings", onFailure = { message ->
+            thisLogger().warn("Fast mode $on was not applied: $message")
+        }) {
+            putJsonObject("settings") { put("fastMode", on) }
         }
     }
 
@@ -1929,6 +1971,10 @@ internal class ClaudeSession(
         namedAs = null
         renamedByCommand = false
         handler = process
+        // Not a launch argument: the setting is JSON, and a quotation mark in an argument is cut off by
+        // `cmd.exe` on Windows along with everything after it (see ClaudeLaunch). Written as the process's
+        // first line instead, which the CLI takes before the first message (measured on 2.1.293).
+        if (fastMode) sendFastMode(true)
         return process
     }
 

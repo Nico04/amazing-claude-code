@@ -13,6 +13,7 @@ import {
   RING_LENGTH,
   ringDash,
   timeLeft,
+  usableAgainIn,
   usageOf,
   type UsageFacts,
 } from './usage'
@@ -197,3 +198,45 @@ describe('the limit windows', () => {
     expect(limitWindowRing('brand_new_bucket')).toBe('session')
   })
 })
+
+/**
+ * The accounts screen answering "when can I use account A again" without switching to it - asked for in a
+ * report from 0.13.36 (account A at 100%, the work moved to B).
+ */
+describe('usableAgainIn', () => {
+  const now = Date.parse('2026-10-17T12:00:00Z')
+  const inHours = (hours: number) => new Date(now + hours * 3_600_000).toISOString()
+
+  it('says nothing about an account with room', () => {
+    expect(usableAgainIn({ session: { percent: 40, resets: inHours(2) }, week: { percent: 99, resets: inHours(48) } }, now)).toBeNull()
+    expect(usableAgainIn({}, now)).toBeNull()
+  })
+
+  it('counts to the reset of the window that is full', () => {
+    expect(usableAgainIn({ session: { percent: 100, resets: inHours(2.25) }, week: { percent: 30, resets: inHours(48) } }, now)).toBe('2h 15m')
+  })
+
+  // The earlier reset opens nothing while the other window still refuses.
+  it('counts to the later reset when both windows are full', () => {
+    expect(usableAgainIn({ session: { percent: 100, resets: inHours(2) }, week: { percent: 100, resets: inHours(50) } }, now)).toBe('2d 2h')
+  })
+
+  // Extra usage carries the work on, billed on top: nothing is waited for.
+  it('says nothing while extra usage carries the account past its limit', () => {
+    expect(usableAgainIn({ session: { percent: 100, resets: inHours(2) }, extra: { active: true } }, now)).toBeNull()
+  })
+
+  // A model's own week (Fable) refuses that model alone, and a full window without a named reset has no answer.
+  it('counts only the windows the whole plan is measured by, and only to a reset it was told', () => {
+    expect(
+      usableAgainIn({ session: { percent: 10, resets: inHours(1) }, models: [{ label: 'Fable', percent: 100, resets: inHours(30) }] }, now),
+    ).toBeNull()
+    expect(usableAgainIn({ session: { percent: 100, resets: '' } }, now)).toBeNull()
+  })
+
+  it('measures against the clock it is given', () => {
+    expect(timeLeft(inHours(1), now)).toBe('1h 0m')
+    expect(timeLeft(inHours(-1), now)).toBeNull()
+  })
+})
+
