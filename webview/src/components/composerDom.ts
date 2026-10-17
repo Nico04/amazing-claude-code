@@ -1,4 +1,5 @@
 import { chipLabel, chipTitle } from '../feed/reference'
+import { chipPreview, markPreview } from '../imagePreview'
 import type { Chip, ChipKind, UserToken } from '../feed/types'
 import s from './composer.module.css'
 
@@ -924,7 +925,6 @@ export const relabelImages = (root: HTMLElement, base: number): boolean => {
 
     const next: Chip = { ...chip, value }
     chipByNode.set(node, next)
-    node.title = value
 
     const label = Array.from(node.childNodes).find((child) => child.nodeType === Node.TEXT_NODE)
     if (label) label.textContent = chipLabel(next)
@@ -943,9 +943,14 @@ const renderChipNode = (chip: Chip, onRemove: () => void, onExpand?: () => void)
   const node = document.createElement('span')
   node.className = s.token ?? ''
   node.contentEditable = 'false'
+  // A picture's chip shows the picture itself under the pointer (see imagePreview.ts) - its bytes when it
+  // was pasted, its file when it was picked. A native hint on top of that would come up a second later
+  // over the picture, so such a chip has none.
+  const preview = chipPreview(chip)
+  markPreview(node, preview)
   // Empty means "nothing a hover would add" (see chipTitle) - and an empty title attribute is not a
   // hover at all, which is exactly what is wanted.
-  node.title = chipTitle(chip)
+  if (!preview) node.title = chipTitle(chip)
   Object.assign(node.style, CHIP_STYLE[chip.kind])
 
   // There is deliberately no attachment type icon here: it added nothing to the caption while taking up

@@ -277,7 +277,8 @@ internal object UsageFeatures {
         "planDecision" -> "plan_decision"
         "askAnswer" -> "ask_answer"
         "agentTranscript" -> "subagent_window"
-        "openFile" -> "open_in_editor"
+        // A picture's chip opens by a message of its own (see ClaudeSessionHub.openPicture) - the same use.
+        "openFile", "openPicture" -> "open_in_editor"
         "revertChanges" -> "revert_changes"
         "clipboardWrite" -> "copy"
         "pick", "dropped" -> "attach_file"

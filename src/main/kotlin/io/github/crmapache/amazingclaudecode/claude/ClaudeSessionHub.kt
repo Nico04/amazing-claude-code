@@ -8,6 +8,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountDesk
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountsWatch
@@ -16,6 +17,7 @@ import io.github.crmapache.amazingclaudecode.editor.ChangeRevert
 import io.github.crmapache.amazingclaudecode.editor.DiskRefresh
 import io.github.crmapache.amazingclaudecode.editor.EditorContext
 import io.github.crmapache.amazingclaudecode.editor.FileReverts
+import io.github.crmapache.amazingclaudecode.editor.OpenInEditor
 import io.github.crmapache.amazingclaudecode.editor.UndiffedEdits
 import io.github.crmapache.amazingclaudecode.editor.UnsavedEdits
 import io.github.crmapache.amazingclaudecode.feedback.DiagnosticsLog
@@ -29,6 +31,9 @@ import io.github.crmapache.amazingclaudecode.remote.RemoteKeys
 import io.github.crmapache.amazingclaudecode.remote.RemoteState
 import io.github.crmapache.amazingclaudecode.stats.StatsCollector
 import io.github.crmapache.amazingclaudecode.usage.UsageReporter
+import io.github.crmapache.amazingclaudecode.webview.ImagePreviews
+import io.github.crmapache.amazingclaudecode.webview.PastedFiles
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
@@ -41,6 +46,8 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
@@ -1853,15 +1860,12 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         val running = snapshot(sessionId).get().status == SessionSnapshot.STATUS_RUNNING
         if (PromptDelivery.waitsForTheTurn(text, running)) {
             // An identifier of our own: the message came as a send rather than as a queued one, so
-            // nobody has named it. What it does not get is the "3 refs" beside the row - that is worked
-            // out of the chips in the field, and a second answer to what counts as an attachment would
-            // drift from the first (see SessionQueue.Entry).
+            // nobody has named it.
             enqueue(
                 sessionId,
                 SessionQueue.Entry(
                     id = UUID.randomUUID().toString(),
                     text = text,
-                    attach = "",
                     images = images,
                     echo = echoWith(echo, seen),
                     remote = remote,
@@ -2010,7 +2014,6 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         sessionId: String,
         id: String,
         text: String,
-        attach: String = "",
         images: List<ImageAttachment> = emptyList(),
         echo: JsonObject? = null,
         remote: Boolean = false,
@@ -2027,7 +2030,6 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             SessionQueue.Entry(
                 id = id,
                 text = text,
-                attach = attach,
                 images = images,
                 echo = echoWith(echo, seen),
                 remote = remote,
@@ -2088,6 +2090,111 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             }.toString(),
             asker,
         )
+    }
+
+    /**
+     * The picture behind a chip, for the preview under the pointer (see ImagePreviews) - to the asker alone.
+     *
+     * [place] says where it is (PreviewPlace in the webview's protocol): a file on disk, a queued message's
+     * pasted picture out of the bytes the queue keeps for sending it, or a sent message's picture out of
+     * its line in the tab's transcript. Off the interface thread: a file read, a picture shrunk, a pass
+     * over a transcript of tens of megabytes. Nothing to show is answered with an empty picture rather than
+     * with silence - the preview says so in words instead of waiting out its timeout.
+     */
+    fun previewImage(clientId: String, id: String, place: JsonObject?, asker: String = clientId) {
+        if (id.isEmpty()) return
+
+        ApplicationManager.getApplication().executeOnPooledThread {
+            val fitted = place?.let { runCatching { pictureAt(it)?.let(ImagePreviews::fitted) }.getOrNull() }
+            emitTo(
+                clientId,
+                buildJsonObject {
+                    put("type", "imagePreview")
+                    put("id", id)
+                    put("data", fitted?.url.orEmpty())
+                    // The picture's own size when what travels is a smaller copy - the caption says how large it is.
+                    if (fitted != null && fitted.width > 0 && fitted.height > 0) {
+                        put("width", fitted.width)
+                        put("height", fitted.height)
+                    }
+                }.toString(),
+                asker,
+            )
+        }
+    }
+
+    /**
+     * The picture behind a chip, opened in the editor - a click on the chip (see chipOpening in the webview).
+     *
+     * A file opens as itself, found the way any path in the feed is found (see OpenInEditor). A picture with no
+     * file of its own - read back off the transcript, waiting in the queue, the bytes of a paste the page holds -
+     * is kept as a file first (see PastedFiles.keep), whole rather than shrunk: this is the picture itself, not
+     * a glance at it, and named by its content, so a second click opens the same file rather than a copy.
+     *
+     * Opening nothing is answered, to the asker alone: the message has left the queue, the line is not in the
+     * transcript, the file is gone or could not be written. The preview over the chip says so - a click that
+     * does nothing is the one thing a click may not do.
+     */
+    fun openPicture(clientId: String, id: String, place: JsonObject?, asker: String = clientId) {
+        val unopened = {
+            if (id.isNotEmpty()) {
+                emitTo(
+                    clientId,
+                    buildJsonObject {
+                        put("type", "pictureUnopened")
+                        put("id", id)
+                    }.toString(),
+                    asker,
+                )
+            }
+        }
+        if (place == null) {
+            unopened()
+            return
+        }
+
+        ApplicationManager.getApplication().executeOnPooledThread {
+            if ((place["kind"] as? JsonPrimitive)?.contentOrNull == "file") {
+                val path = (place["path"] as? JsonPrimitive)?.contentOrNull.orEmpty()
+                if (path.isBlank()) unopened() else OpenInEditor.open(project, path, OpenInEditor.Place(), missing = unopened)
+                return@executeOnPooledThread
+            }
+
+            val file = runCatching { pictureAt(place) }.getOrNull()?.let { PastedFiles.keep(it.bytes, it.mediaType) }
+            if (file == null) unopened() else OpenInEditor.open(project, file.path, OpenInEditor.Place(), missing = unopened)
+        }
+    }
+
+    private fun pictureAt(place: JsonObject): ImagePreviews.Picture? {
+        val text = { name: String -> place[name]?.jsonPrimitive?.contentOrNull.orEmpty() }
+        val image = place["image"]?.jsonPrimitive?.intOrNull ?: -1
+
+        return when (text("kind")) {
+            // The file a click on the chip opens - the first of several, as the chooser lists them.
+            "file" -> OpenInEditor.resolve(project, text("path")).firstOrNull { !it.isDirectory }
+                ?.let { ImagePreviews.ofFile(VfsUtilCore.virtualToIoFile(it)) }
+            "queued" -> queued.of(text("sessionId")).firstOrNull { it.id == text("id") }
+                ?.images?.getOrNull(image)
+                ?.let { ImagePreviews.ofBase64(it.mediaType, it.data) }
+            "said" -> ImagePreviews.ofTranscript(transcriptsOf(text("sessionId")), text("uuid"), image)
+            // Only a click sends these: the page holds them, and needs no preview of its own bytes.
+            "bytes" -> ImagePreviews.ofDataUrl(text("data"))
+            else -> null
+        }
+    }
+
+    /**
+     * The transcripts a tab's messages stand in, the tab's own first: a fork's file holds what it inherited
+     * only from its source's last compaction on, and the lines above live in the source's (see ForkLineage) -
+     * a fork not born yet has no file of its own at all. Only the files, none of them read: the line is found
+     * by its uuid, and working out where each source's share ends is a pass over every source on every hover.
+     */
+    private fun transcriptsOf(sessionId: String): List<File> {
+        val transcript = { id: String -> ClaudeHistory.transcriptFile(project.basePath, id) }
+        val forks = ForkBook(project.basePath)
+        val start = conversations.conversationIdOf(sessionId) ?: conversations.forkOrigin(sessionId)?.source ?: return emptyList()
+
+        return ForkLineage.files(start, transcript, forks::origin)
     }
 
     /** The queue dragged into another order - see [SessionQueue.reorder]. */
@@ -2383,11 +2490,14 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
                     addJsonObject {
                         put("id", entry.id)
                         put("text", entry.text)
-                        put("attach", entry.attach)
                         // The count rather than the bytes: a photo from a phone is measured in hundreds
                         // of kilobytes, the frame that would carry it back to every client has a limit of
-                        // 256, and all a queued row needs of it is that there is one.
+                        // 256, and all a queued row needs of it is that there is one. A picture is shown
+                        // only under the pointer, and asked for then (see [previewImage]).
                         put("images", entry.images.size)
+                        // The pieces the row draws its chips from, cut down for a row (see QueueRows).
+                        QueueRows.tokens(entry.echo)?.let { put("tokens", it) }
+                        QueueRows.quotes(entry.echo)?.let { put("quotes", it) }
                     }
                 }
             }

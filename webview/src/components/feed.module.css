@@ -847,6 +847,24 @@
   margin-top: 14px;
 }
 
+/* A quote in a queued message's row (see QueueLine): the stripe and tint of .userQuote, cut to one line of its
+   own - in a row of two lines a quote drawn whole would be all there is to see, and the words the message
+   says about it are the other half of what tells two queued messages apart. */
+.rowQuote {
+  display: inline-block;
+  max-width: 60%;
+  margin-right: 6px;
+  padding: 0 6px 0 7px;
+  border-left: 2px solid var(--acc-accent);
+  background: var(--acc-accent-08);
+  border-radius: 0 var(--acc-r-sm) var(--acc-r-sm) 0;
+  color: var(--acc-fg-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: bottom;
+}
+
 /* A markdown quote (a line with a ">") - the same trick as .userQuote and the same colour as .chipQuote: a
    stripe on the left and dimmed text so that it is not mistaken for the agent's own words. */
 .paraQuote {

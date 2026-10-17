@@ -1504,6 +1504,15 @@ export const en = {
     /** Said only when a paste is too long to be drawn whole - the copy button still copies all of it. */
     pasteShown: (shown: number, total: number): string => `First ${shown} lines of ${total} · copying takes all of it`,
     fromOutput: 'from output',
+    /**
+     * The picture under the pointer on an image chip (see ImagePreview). `missing` stands in its place when
+     * there is nothing to show; `opens` follows its size on a chip a click opens in the editor.
+     */
+    imagePreview: {
+      missing: 'The picture could not be read - the file is gone, or the message no longer holds it',
+      opens: 'click to open',
+      unopened: 'could not be opened - click to try again',
+    },
 
     think: { chip: 'THINK', thoughts: (n: number): string => `${n} ${n === 1 ? 'thought' : 'thoughts'}` },
 

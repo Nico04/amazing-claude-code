@@ -392,11 +392,40 @@ export interface EditorRef {
 export interface QueuedMessage {
   id: string
   text: string
-  /** What the row shows beside the text - "3 refs". Empty when the message carried no attachments. */
-  attach: string
   /** How many images travel with it - the numbering of the next one carries on past them. */
   images: number
+  /**
+   * The pieces it was typed in (UserToken[]), for the row to draw chips rather than `@/long/path` and
+   * `[Image #3]` in the middle of the words. Cut down by the IDE for a row (see QueueRows.kt): no image
+   * bytes - the preview asks for them by the message's id - and long texts shortened. Absent for a message
+   * that came without pieces, and from an older IDE: the row falls back to the text.
+   */
+  tokens?: unknown
+  /** The quotes it was written under, each cut to what a row shows - drawn first, as the text began with them. */
+  quotes?: string[]
 }
+
+/**
+ * Where the bytes of a picture behind a chip are, when the page does not hold them (see previewImage).
+ *
+ * - `file` - a picture on disk: one picked in the IDE's dialog, or a pasted one the IDE wrote out (see
+ *   PastedFiles.kt). A relative path is the project's.
+ * - `queued` - the `image`-th pasted picture of a message waiting in the queue, out of the bytes the queue
+ *   keeps for sending it.
+ * - `said` - the `image`-th picture of a message already in the conversation, out of its line in the
+ *   transcript (named by `uuid`) - a conversation opened from the history or restored after a restart
+ *   carries `[Image #2]` and no bytes.
+ */
+export type PreviewPlace =
+  | { kind: 'file'; path: string }
+  | { kind: 'queued'; sessionId: string; id: string; image: number }
+  | { kind: 'said'; sessionId: string; uuid: string; image: number }
+
+/**
+ * Where the picture a click opens is (see openPicture): any of the places a preview is read from, or the
+ * bytes the page holds itself - a pasted picture the IDE has not written out (an old IDE, a failed write).
+ */
+export type PicturePlace = PreviewPlace | { kind: 'bytes'; data: string }
 
 /**
  * A scenario: the round of work somebody repeats, written down once so the panel can walk it.
@@ -1779,6 +1808,20 @@ type ShellMessageBody =
   | { type: 'panelKeys'; keys: Partial<Record<PanelKeyName, PanelKeyStroke[]>> }
   /** Where a pasted file was written - the answer to `savePastedFile`. */
   | { type: 'pastedFile'; id: string; path: string }
+  /**
+   * The answer to `previewImage`: the picture as a data URL, shrunk when it is large (a preview is a few
+   * hundred pixels across), or empty when there is nothing to read - a file swept or deleted, a message
+   * gone from the queue, a transcript without that line. `width` and `height` are the picture's own when what
+   * came is a smaller copy - the caption under the preview says how large the picture is, not its copy.
+   */
+  | { type: 'imagePreview'; id: string; data: string; width?: number; height?: number }
+  /**
+   * The answer to an `openPicture` that opened nothing - the picture is not where the chip said (a message gone
+   * from the queue, a file deleted, a transcript without that line) or could not be written out. Only the
+   * clicking panel hears it, and the preview over the chip says so (see imagePreviewLoad.ts): a click that does
+   * nothing is the one thing it may not do. A click that opened something is not answered.
+   */
+  | { type: 'pictureUnopened'; id: string }
   /** The answer to mcpList - and to mcpAdd/mcpRemove, so that the list refreshes at once. */
   /**
    * Both shelves and the runs that came of them (see ScenarioDesk).
@@ -2308,8 +2351,6 @@ export type WebviewMessage =
       /** Made up by the sender, and the name it takes the message back out of the queue by. */
       id: string
       text: string
-      /** What the row shows beside the text - "3 refs". Worked out here; the IDE only carries it. */
-      attach?: string
       tokens?: unknown
       quotes?: string[]
       images?: { mediaType: string; data: string }[]
@@ -2683,6 +2724,22 @@ export type WebviewMessage =
    * name at all.
    */
   | { type: 'savePastedFile'; id: string; name: string; mediaType: string; data: string }
+  /**
+   * The bytes of a picture an attachment chip stands for, to show it under the pointer (see
+   * imagePreview.ts). Asked only where the page does not hold them itself: a file picked in the IDE's
+   * dialog, a queued message (the queue reaches the panel without bytes), a message read back off the
+   * transcript. The answer is `imagePreview` with the same id. Machine-only: it reads this machine's disk,
+   * and a phone has no hover to show it on.
+   */
+  | { type: 'previewImage'; id: string; place: PreviewPlace }
+  /**
+   * A click on a picture's chip, wherever the picture is (see chipOpening): a file opens as itself, the way
+   * `openFile` would open it; a picture with no file of its own - read back off the transcript, waiting in the
+   * queue, bytes the page holds - is kept as a file named by its content first (see PastedFiles.keep), so a
+   * second click opens the same one. Opening nothing is answered with `pictureUnopened` and the same id.
+   * Machine-only, as `openFile` is.
+   */
+  | { type: 'openPicture'; id: string; place: PicturePlace }
   /**
    * The clipboard through the shell: the embedded browser's own does not meet the IDE's (see
    * clipboard.ts). Reading comes with an answer, hence its `id`; writing needs none.

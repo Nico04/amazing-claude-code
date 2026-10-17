@@ -1175,17 +1175,110 @@ const answerSearch = (message: WebviewMessage): void => {
  * The queue of each conversation, held here as the IDE holds it (see SessionQueue.kt) - with the pieces a
  * message was typed in, because the pencil hands them back to the field whole.
  */
-type HeldQueued = QueuedMessage & { tokens: unknown; quotes: string[] }
+type HeldQueued = QueuedMessage & { tokens: unknown; quotes: string[]; bytes: { mediaType: string; data: string }[] }
 
 const queues = new Map<string, HeldQueued[]>()
 
 /** Queues waiting for the person's next message - the ones that came back with a reopened tab (see answerClosedTabs). */
 const heldQueues = new Set<string>()
 
+/**
+ * A queued message's pieces as the IDE hands them to a row (see QueueRows.kt): without the bytes - the row
+ * asks for a picture by the message when the pointer is on it (see answerPreview).
+ */
+const rowTokens = (tokens: unknown): unknown =>
+  Array.isArray(tokens)
+    ? tokens.map((token) => {
+        if (typeof token !== 'object' || token === null || !('chip' in token)) return token
+        const { data: _bytes, ...chip } = (token as { chip: Record<string, unknown> }).chip
+        return { ...token, chip }
+      })
+    : undefined
+
 const sayQueue = (sessionId: string): void => {
-  const items = (queues.get(sessionId) ?? []).map(({ id, text, attach, images }) => ({ id, text, attach, images }))
+  const items = (queues.get(sessionId) ?? []).map(({ id, text, images, tokens, quotes }) => ({
+    id,
+    text,
+    images,
+    ...(Array.isArray(tokens) ? { tokens: rowTokens(tokens) } : {}),
+    ...(quotes.length > 0 ? { quotes: quotes.map((quote) => quote.slice(0, 200)) } : {}),
+  }))
   const held = heldQueues.has(sessionId) && items.length > 0
   window.__accReceive?.({ type: 'queue', sessionId, items, ...(held ? { held } : {}) })
+}
+
+/**
+ * A picture behind a chip, answered the way the IDE answers it (see ImagePreviews.kt). There is no disk
+ * here, and no transcript: a file and a message's line are drawn up on the spot - a card with the name on
+ * it, enough to see the preview stand, place itself and wait. A queued picture the harness holds the bytes
+ * of comes back as itself. A path with "missing" in it is a file swept off the disk: nothing comes back.
+ *
+ * A line out of the transcript answers slower than the rest, as a pass over a working day's file does in
+ * the IDE - which is what puts the waiting frame on screen.
+ */
+const answerPreview = (message: WebviewMessage): void => {
+  if (message.type !== 'previewImage') return
+
+  const { place } = message
+  const held =
+    place.kind === 'queued'
+      ? queues.get(place.sessionId)?.find((item) => item.id === place.id)?.bytes[place.image]
+      : undefined
+  const label = place.kind === 'file' ? place.path : place.kind === 'queued' ? `queued · picture ${place.image + 1}` : `said · picture ${place.image + 1}`
+  const data = held
+    ? `data:${held.mediaType};base64,${held.data}`
+    : place.kind === 'file' && place.path.includes('missing')
+      ? ''
+      : mockPicture(label)
+
+  // A line of the transcript stands for a screenshot of a large display: what comes is its smaller copy, with the
+  // picture's own size beside it, as the IDE sends one past a megabyte and a half (see ImagePreviews.fitted).
+  const size = place.kind === 'said' ? { width: 3840, height: 2400 } : {}
+  setTimeout(
+    () => window.__accReceive?.({ type: 'imagePreview', id: message.id, data, ...size }),
+    place.kind === 'said' ? 700 : 60,
+  )
+}
+
+/**
+ * A click on a picture, answered the way ClaudeSessionHub.openPicture answers it: there is no editor here, so
+ * an opened picture is said out loud, as openFile is. One that would not open - a file with "missing" or
+ * "unopened" in its path (the second still previews, to see the caption change under a picture), a queued
+ * message no longer in the queue - is answered `pictureUnopened`.
+ */
+const answerPicture = (message: WebviewMessage): void => {
+  if (message.type !== 'openPicture') return
+
+  const { place } = message
+  const gone =
+    place.kind === 'file'
+      ? place.path.includes('missing') || place.path.includes('unopened')
+      : place.kind === 'queued' && !queues.get(place.sessionId)?.some((item) => item.id === place.id)
+
+  if (!gone) {
+    console.info('openPicture', place.kind === 'file' ? place.path : place.kind)
+    return
+  }
+  setTimeout(() => window.__accReceive?.({ type: 'pictureUnopened', id: message.id }), 60)
+}
+
+/** A made-up screenshot: a window with a sheet in it, and the name of what it stands for. */
+const mockPicture = (label: string): string => {
+  const name = label.replace(/[<>&"]/g, '')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="600" viewBox="0 0 960 600">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2b3a55"/><stop offset="1" stop-color="#5b3f6e"/></linearGradient></defs>
+<rect width="960" height="600" fill="url(#g)"/>
+<rect x="60" y="50" width="840" height="500" rx="18" fill="#f4f1ea"/>
+<rect x="60" y="50" width="840" height="56" rx="18" fill="#e3ddd1"/>
+<circle cx="96" cy="78" r="9" fill="#e06c5f"/><circle cx="124" cy="78" r="9" fill="#e0b15f"/><circle cx="152" cy="78" r="9" fill="#78b36a"/>
+<rect x="110" y="150" width="380" height="26" rx="6" fill="#c9c1b2"/>
+<rect x="110" y="196" width="520" height="18" rx="5" fill="#ddd6c8"/>
+<rect x="110" y="228" width="460" height="18" rx="5" fill="#ddd6c8"/>
+<rect x="110" y="300" width="740" height="150" rx="14" fill="#1f1f24"/>
+<rect x="140" y="340" width="220" height="70" rx="12" fill="#fff"/>
+<text x="480" y="520" text-anchor="middle" font-family="Menlo, monospace" font-size="24" fill="#6d6455">${name}</text>
+</svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
 /**
@@ -1505,10 +1598,10 @@ const answerQueue = (message: WebviewMessage): void => {
     const entry: HeldQueued = {
       id: message.id,
       text: message.text,
-      attach: message.attach ?? '',
       images: message.images?.length ?? 0,
       tokens: message.tokens,
       quotes: message.quotes ?? [],
+      bytes: message.images ?? [],
     }
     const at = message.before ? list.findIndex((item) => item.id === message.before) : -1
     queues.set(message.sessionId, at >= 0 ? [...list.slice(0, at), entry, ...list.slice(at)] : [...list, entry])
@@ -1854,6 +1947,8 @@ const listenToPanel = () => {
     if (message) answerLogin(message)
     if (message) answerScenarios(message)
     if (message) answerQueue(message)
+    if (message) answerPreview(message)
+    if (message) answerPicture(message)
     if (message) answerSound(message)
     if (message) answerRewind(message)
     if (message) answerRevert(message)
@@ -2123,7 +2218,12 @@ export class ScenarioPlayer {
     if (message.type === 'queue') {
       queues.set(
         message.sessionId,
-        message.items.map((item) => ({ ...item, tokens: [{ kind: 'text', value: item.text }], quotes: [] })),
+        message.items.map((item) => ({
+          ...item,
+          tokens: item.tokens ?? [{ kind: 'text', value: item.text }],
+          quotes: item.quotes ?? [],
+          bytes: [],
+        })),
       )
     }
 

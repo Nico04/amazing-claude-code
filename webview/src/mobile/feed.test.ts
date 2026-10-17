@@ -477,11 +477,11 @@ describe('the phone building a conversation', () => {
       message({
         type: 'queue',
         sessionId: 'main',
-        items: [{ id: 'q1', text: 'and then deploy', attach: '2 refs', images: 1 }],
+        items: [{ id: 'q1', text: 'and then deploy', images: 1 }],
       }),
     ])
 
-    expect(feed.state.queue).toEqual([{ id: 'q1', text: 'and then deploy', attach: '2 refs', images: 1 }])
+    expect(feed.state.queue).toEqual([{ id: 'q1', text: 'and then deploy', images: 1 }])
 
     feed = applyMessage(feed, message({ type: 'queue', sessionId: 'main', items: [] }))
 

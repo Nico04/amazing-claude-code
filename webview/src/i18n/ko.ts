@@ -1157,6 +1157,11 @@ export const ko: Dict = {
     copyPaste: '붙여넣은 텍스트 복사',
     pasteShown: (shown, total) => `전체 ${total}줄 중 처음 ${shown}줄 · 복사는 전체`,
     fromOutput: '출력에서',
+    imagePreview: {
+      missing: '이미지를 읽을 수 없습니다. 파일이 없어졌거나 메시지에 더 이상 저장되어 있지 않습니다',
+      opens: '클릭하면 열림',
+      unopened: '열 수 없습니다. 클릭하면 다시 시도',
+    },
 
     think: { chip: '생각', thoughts: (n) => `생각 ${n}개` },
 

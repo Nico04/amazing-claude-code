@@ -13,7 +13,6 @@ class SessionQueueTest {
     private fun entry(id: String, text: String = id, images: Int = 0) = SessionQueue.Entry(
         id = id,
         text = text,
-        attach = "",
         images = List(images) { ImageAttachment("image/png", "bytes") },
         echo = null,
         remote = false,

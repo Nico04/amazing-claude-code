@@ -1164,6 +1164,11 @@ export const pt: Dict = {
     copyPaste: 'Copiar o texto colado',
     pasteShown: (shown, total) => `Primeiras ${shown} linhas de ${total} · copiar leva tudo`,
     fromOutput: 'da saída',
+    imagePreview: {
+      missing: 'Não foi possível ler a imagem: o arquivo não existe mais ou a mensagem não a guarda mais',
+      opens: 'clique para abrir',
+      unopened: 'não foi possível abrir: clique para tentar de novo',
+    },
 
     think: { chip: 'PENSA', thoughts: (n) => `${n} ${n === 1 ? 'ideia' : 'ideias'}` },
 

@@ -3,6 +3,7 @@ import { Microphone } from '../../components/Microphone'
 import { FAST_MARK, type FastModeShown } from '../../feed/fastMode'
 import { asideQuestion } from '../../feed/side'
 import { Ring } from '../../components/StatusBar'
+import { QueueLine } from '../../components/QueueLine'
 import { effortShortLabel, modeShortLabel, modelLabel } from '../../catalog'
 import { atQueryInText, matchFiles } from '../../feed/files'
 import { appendChip, matchCommands, slashQuery, type CommandEntry } from '../../feed/slash'
@@ -689,7 +690,9 @@ export const Composer = ({
           {queue.map((item, index) => (
             <div key={item.id} className={m.queueRow}>
               <span className={m.queueBadge}>{index + 1}</span>
-              <span className={m.queueText}>{item.text}</span>
+              {/* The chips the message was typed in rather than the text the agent reads - a file by its name,
+                  not a path that took the whole row (see QueueLine). */}
+              <QueueLine item={item} className={m.queueText} />
               <button
                 type="button"
                 className={m.queueRemove}

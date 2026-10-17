@@ -51,6 +51,23 @@ internal object ForkLineage {
     fun inherits(id: String, transcript: (String) -> File?, origins: (String) -> ForkOrigin?): Boolean =
         origins(id)?.let { transcript(it.source) } != null
 
+    /**
+     * The transcripts [id]'s lines may stand in - its own first, then its source's and on up - with not one of
+     * them read: for finding a single line by its uuid (a picture under the pointer, see ImagePreviews), where
+     * the boundaries [of] works out by reading every source are not needed, only where to look. A conversation
+     * with no file of its own yet (a fork not born) is looked for in its sources.
+     */
+    fun files(id: String, transcript: (String) -> File?, origins: (String) -> ForkOrigin?): List<File> {
+        val files = ArrayList<File>()
+        val seen = HashSet<String>()
+        var next: String? = id
+        while (next != null && seen.add(next) && seen.size <= MAX_DEPTH) {
+            transcript(next)?.let(files::add)
+            next = origins(next)?.source
+        }
+        return files
+    }
+
     /** A fork not born yet: its source up to the line it ends on, and the seam after it. */
     fun unborn(origin: ForkOrigin, transcript: (String) -> File?, origins: (String) -> ForkOrigin?): Lineage =
         Lineage(

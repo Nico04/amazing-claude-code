@@ -47,7 +47,7 @@ import type { EditorRef, ModelInfo } from '../protocol'
 import { EditorChip } from './EditorChip'
 import { editorLabel } from '../feed/editorContext'
 import { SlashSuggest } from './SlashSuggest'
-import { collapsesPaste } from '../feed/reference'
+import { collapsesPaste, kindOfPath } from '../feed/reference'
 import { contextColor } from '../feed/usage'
 import type { FastModeShown } from '../feed/fastMode'
 import {
@@ -88,15 +88,6 @@ import s from './composer.module.css'
 /* The pair of the bubble and the heart is drawn the same everywhere and lives with the status row it
    belongs to (see .endPair there) - the same borrowing Feedback.tsx already makes of this file. */
 import shell from './shell.module.css'
-
-/**
- * What a pasted file's chip is called - the same split the IDE makes for a chosen file (see
- * FilePicker.kindOf). Only the icon and the colour hang on it: the path travels to the agent either way.
- */
-const kindOfPath = (path: string): 'img' | 'file' =>
-  IMAGE_EXTENSIONS.has(path.substring(path.lastIndexOf('.') + 1).toLowerCase()) ? 'img' : 'file'
-
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'])
 
 /** Ticks at every fifth - unrelated to the colour thresholds, purely the scale's ruler. */
 const CONTEXT_METER_TICKS = [20, 40, 60, 80]

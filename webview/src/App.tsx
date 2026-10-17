@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { send, subscribe } from './bridge'
 import { copyToClipboard, installClipboardBridge, pasteFromKeys, resolveClipboard } from './clipboard'
 import { resolvePastedFile } from './pasted'
+import { openPicture, resolveImagePreview, resolvePictureUnopened } from './imagePreviewLoad'
 import {
   ADD_MODEL,
   LAST_USED,
@@ -96,6 +97,7 @@ import { editorChoice, editorGoes, editorKey, type EditorOnce } from './feed/edi
 import { Quotes, type Quote } from './components/Quotes'
 import { SelectionMenu } from './components/SelectionMenu'
 import { Tooltips } from './components/Tooltips'
+import { ImagePreview } from './components/ImagePreview'
 import { Remote, RemoteAbout, remoteState, type RemoteStatus } from './components/Remote'
 import { Accounts, accountState, currentAccountName, type AccountsState } from './components/Accounts'
 import { Sounds } from './components/Sounds'
@@ -231,7 +233,14 @@ import { planDecisionOf, useCardState, type CardState } from './hooks/useCardSta
 import { useEarlierPages } from './hooks/useEarlierPages'
 import { Search, type SearchTab } from './components/Search'
 import { SearchCapsule, type CapsuleNote } from './components/SearchCapsule'
-import { KnownFilesContext, MissingFilesContext, OpenFileContext, type OpenFileRequest } from './hooks/useOpenFile'
+import {
+  KnownFilesContext,
+  MissingFilesContext,
+  OpenFileContext,
+  OpenPictureContext,
+  type OpenFileRequest,
+} from './hooks/useOpenFile'
+import { SaidImagesContext } from './hooks/useSaidImages'
 import { knownFiles } from './feed/paths'
 import {
   groupOrder,
@@ -389,14 +398,16 @@ const achievementsCount = (data: StatisticsData): string => {
  * travels with the message as bytes, so the IDE sees it and counts it there. Counted here as well, one
  * screenshot went into the book as two - the achievement for attachments came at half its price and the
  * figure on the tab was simply wrong. A file or a folder reaches the agent as text in the message and
- * the IDE cannot tell it from any other word, which is why those two stay here.
+ * the IDE cannot tell it from any other word, which is why those two stay here - and so does a picture with
+ * no bytes (picked in the dialog, or come back from the history as `@design/sheet.png`): it travels as its
+ * path, the way a file does.
  */
 const reportChips = (tokens: UserToken[], quotesBeside: number): void => {
   let attachments = 0
   let quotes = quotesBeside
   for (const token of tokens) {
     if (token.kind !== 'chip') continue
-    if (token.chip.kind === 'file' || token.chip.kind === 'dir') attachments++
+    if (token.chip.kind === 'file' || token.chip.kind === 'dir' || (token.chip.kind === 'img' && !token.chip.data)) attachments++
     if (token.chip.kind === 'quote' || token.chip.kind === 'ref') quotes++
   }
   if (attachments > 0 || quotes > 0) send({ type: 'stat', kind: 'prompt', attachments, quotes })
@@ -3595,6 +3606,16 @@ export const App = () => {
             resolvePastedFile(message)
             break
 
+          // A picture behind a chip, read by the shell for the preview under the pointer (see imagePreview.ts).
+          case 'imagePreview':
+            resolveImagePreview(message)
+            break
+
+          // A click on a picture opened nothing - the preview over the chip says so (see openPicture).
+          case 'pictureUnopened':
+            resolvePictureUnopened(message)
+            break
+
           case 'selection':
             // A reference to a piece of a file from the editor: we do not drag the text along, the agent
             // reads the file itself and sees it whole. As a chip both for a path from the project's root
@@ -5355,7 +5376,6 @@ export const App = () => {
     if (runs.length > 0) setShellRuns((current) => ({ ...current, [active]: [] }))
 
     const images = isOverride ? [] : imageAttachments(draft.tokens)
-    const attachCount = isOverride ? 0 : draft.tokens.filter((token) => token.kind === 'chip').length
 
     // What the editor shows goes along - as the setting says, unless the chip's menu said otherwise for this
     // one message (see editorOnce). The IDE reads it itself the moment the message arrives; the flag only
@@ -5390,7 +5410,6 @@ export const App = () => {
         ...(place ? { before: place } : {}),
         ...(withEditor ? { editor: true } : {}),
         text,
-        attach: attachCount ? `${attachCount} refs` : '',
         // The pieces the card will be drawn from travel with it, exactly as they do with a message sent
         // outright: what fires out of the queue arrives back here as an ordinary echo (see promptEcho).
         tokens,
@@ -6562,6 +6581,7 @@ export const App = () => {
 
       <Queue
         items={sessionQueue}
+        sessionId={active}
         onReorder={(from, to) => {
           const next = [...sessionQueue]
           const [moved] = next.splice(from, 1)
@@ -6587,6 +6607,7 @@ export const App = () => {
   return (
     <LocaleProvider locale={locale}>
     <OpenFileContext.Provider value={openFile}>
+    <OpenPictureContext.Provider value={openPicture}>
     <KnownFilesContext.Provider value={known}>
     <MissingFilesContext.Provider value={missingFiles}>
     <AgentTranscriptContext.Provider value={transcripts}>
@@ -6604,6 +6625,8 @@ export const App = () => {
       {/* The hover hints of every marked control at once - drawn into the body, so its place in this
           tree carries no meaning beyond being mounted with the panel. */}
       <Tooltips />
+      {/* The picture behind an image chip, under the pointer - the same kind of layer as the hints. */}
+      <ImagePreview />
 
       {header}
 
@@ -6939,6 +6962,9 @@ export const App = () => {
              * one thing worth carrying across a switch - the line being read - travels outside the feed,
              * by the tab it belongs to (see [feedPlace] and feed/place.ts).
              */
+            /* The tab's own feed is the one whose messages can be read back out of its transcript - a
+               picture the feed no longer holds is previewed from there (see useSaidImages). */
+            <SaidImagesContext.Provider value={active}>
             <Feed
               key={active}
               items={panel.items}
@@ -6971,6 +6997,7 @@ export const App = () => {
               carryOn={panel.carryOn}
               onCancelCarryOn={() => send({ type: 'cancelCarryOn', sessionId: active })}
             />
+            </SaidImagesContext.Provider>
           ) : (
             <AgentStreamView item={activeTask} />
           )}
@@ -7564,6 +7591,7 @@ export const App = () => {
     </AgentTranscriptContext.Provider>
     </MissingFilesContext.Provider>
     </KnownFilesContext.Provider>
+    </OpenPictureContext.Provider>
     </OpenFileContext.Provider>
     </LocaleProvider>
   )

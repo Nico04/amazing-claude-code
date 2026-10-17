@@ -906,13 +906,16 @@
   text-overflow: ellipsis;
 }
 
-.queueAttach {
-  flex: none;
-  padding: 1px 6px;
-  border-radius: var(--acc-r-xs);
-  background: var(--acc-bg-control);
-  font: 10px var(--acc-mono);
-  color: var(--acc-fg-dim);
+/* A row drawn from the message's pieces (see QueueLine): words and chips together, up to two lines. A row
+   of one line had room for a path and nothing else; with chips the names are short, and the second line
+   is what keeps a picture at the end of the message from being cut off behind the ellipsis. */
+.queueLine {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 18px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .iconButton {

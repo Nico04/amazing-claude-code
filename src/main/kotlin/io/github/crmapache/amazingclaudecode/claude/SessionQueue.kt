@@ -26,12 +26,7 @@ internal class SessionQueue {
     data class Entry(
         val id: String,
         val text: String,
-        /**
-         * What the row shows beside the text - "3 refs". Worked out by the interface and carried rather
-         * than computed here: what counts as an attachment is a question about chips in a field, and a
-         * second answer to it in Kotlin would drift from the first.
-         */
-        val attach: String,
+        /** The pictures pasted into it, in the order of their chips - sent with it, and shown under the pointer on its row. */
         val images: List<ImageAttachment>,
         val echo: JsonObject?,
         /** Queued from a paired phone rather than from the desk - the statistics tell the two apart. */

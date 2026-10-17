@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react'
 import { NOTHING_KNOWN, type KnownFiles } from '../feed/paths'
+import type { PicturePlace } from '../protocol'
 
 /** What the panel asks the IDE to open, and where in it to land. */
 export interface OpenFileRequest {
@@ -42,6 +43,22 @@ export const OpenFileContext = createContext<((request: OpenFileRequest) => void
 
 /** The editor to open a named file in, or null where there is none - see [OpenFileContext]. */
 export const useOpenFile = (): ((request: OpenFileRequest) => void) | null => useContext(OpenFileContext)
+
+/**
+ * Opening the picture behind a chip in the editor, wherever it is (see chipOpening): a file opens as itself,
+ * and a picture with no file of its own - bytes in the page, a queued message, a line of the transcript - is
+ * written out by the IDE first. A chip with a picture behind it is something a person clicks - the pointer
+ * and the preview over it say as much - and a click that opens nothing is what it may not do: the chip that
+ * was pressed is handed over too, so the preview over it can say the picture did not open (see
+ * imagePreviewLoad.ts).
+ *
+ * Null where there is no editor, as with [OpenFileContext].
+ */
+export type OpenPicture = (picture: PicturePlace, chip: HTMLElement) => void
+
+export const OpenPictureContext = createContext<OpenPicture | null>(null)
+
+export const useOpenPicture = (): OpenPicture | null => useContext(OpenPictureContext)
 
 /**
  * The project's files, for telling a file's name from a word that merely looks like one (see KnownFiles).

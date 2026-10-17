@@ -1167,6 +1167,11 @@ export const de: Dict = {
     copyPaste: 'Eingefügten Text kopieren',
     pasteShown: (shown, total) => `Erste ${shown} von ${total} Zeilen · kopiert wird alles`,
     fromOutput: 'aus der Ausgabe',
+    imagePreview: {
+      missing: 'Das Bild ließ sich nicht lesen: Die Datei ist weg, oder die Nachricht enthält es nicht mehr',
+      opens: 'Klick öffnet es',
+      unopened: 'ließ sich nicht öffnen - Klick versucht es erneut',
+    },
 
     think: { chip: 'DENKT', thoughts: (n) => `${n} ${n === 1 ? 'Gedanke' : 'Gedanken'}` },
 

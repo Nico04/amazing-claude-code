@@ -614,12 +614,18 @@
   color: var(--acc-fg-dim);
 }
 
+/* Words and chips together (see QueueLine), up to two lines - as at the desk: with names instead of paths
+   most messages fit, and the second line keeps a picture at the end from going behind the ellipsis. */
 .queueText {
   flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
   font-size: 13px;
+  line-height: 20px;
   color: var(--acc-fg-dim);
 }
 

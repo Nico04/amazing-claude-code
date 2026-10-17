@@ -75,6 +75,7 @@ paths:
 - `pressPanelKey`, `pressPanelKeyRef`, `closeSession`, `closingWorking`, `queueToken`, `panelKeys`, `stillWorking`, `case 'panelKey'`/`'panelKeys'` - panel-keys
 - `reopenTab`, `reopenPanelTab`, `takeReopened`, `panelTabTitle`, `closedTabs`, `reopenable`, `closeTabHint`, `case 'closedTabs'`/`'tabReopened'`, досылка черновика в `closeSession`, `panelTabClosed` в `closePanelTab` - reopen-tabs
 - `revertChanges`, `sendRevert`, `case 'changesReverted'` - changed-files
+- `ImagePreview` рядом с `Tooltips`, `case 'imagePreview'`, `SaidImagesContext` вокруг `Feed`, `openPicture` и `OpenPictureContext`, `sessionId` у `Queue` - image-preview
 - `missingFiles`, `case 'fileMissing'`, очистка в `openFile` - open-in-editor
 - `sideThreads`, `askAside`, `forgetSide`, `case 'sideAnswer'`/`'sideProgress'`, Esc над карточкой вопроса сбоку, `SideQuestionCard` в `dockCards` - btw
 - только в `mobile/App.tsx`: `PhoneRewind`, `refills`, `RewindSheet` - rewind; `forkFrom`/`forkWhole` (`kind: 'branch'`, `before`) - fork-tabs;
@@ -98,6 +99,7 @@ paths:
 - `activeTab`, `drafts`, `restoreTabs`, `saveDraft`, `tabShown`, `setRestoreTabs` - restore-tabs
 - `ClosedTab`, `closedTabs`, `tabReopened`, `reopenTab`, `panelTabClosed`, `TabPlace` (одно описание, `tabs.ts` его переэкспортирует), `held` у `queue` - reopen-tabs
 - `takeQueued`, `queuedTaken`, `before` у `queuePrompt` - queue-edit
+- `previewImage`, `imagePreview`, `openPicture`, `PreviewPlace`, `tokens` у `QueuedMessage` - image-preview
 - `tool_use_result`, `ToolUseResult` (дифф правки и `type: 'create'`), `FileEdit`, `RevertOutcome`, `revertChanges`,
   `changesReverted`, `FilesSettledEvent` - changed-files; `fileMissing` - open-in-editor
 - `EditorRef`, `editorContext`, `shareEditor`, `setShareEditor`, `editor` у `prompt`/`queuePrompt`/`promptEcho` - editor-context
@@ -172,10 +174,12 @@ paths:
 диктовка - voice; `savePastedFile`, `clipboardWrite`/`clipboardRead` - clipboard; `saveImage` - stats; `sessionInfo` - session-info;
 фидбэк - feedback; поиск - search; вход в аккаунт - expired-sign-in и accounts; транскрипт агента - subagents;
 `answerFork` (история и шов нового форка) - fork-tabs; `answerPanelKeys` (раскладка и перехват клавиш панели) -
-panel-keys; `answerClosedTabs` (зеркало полосы и закрытые вкладки), `drafts` на `ready` - reopen-tabs.
+panel-keys; `answerClosedTabs` (зеркало полосы и закрытые вкладки), `drafts` на `ready` - reopen-tabs; `answerPreview`,
+`rowTokens` в `sayQueue` - image-preview.
 
 **`ClaudeSessionHub.kt`** (сам по себе подгружает remote-access):
 - `prompt`: сохранение буферов - editor-sync; `sendStatus`, очередь, команда в идущий ход - turn-lifecycle
+- `previewImage`, `openPicture`, `pictureAt`, `transcriptsOf`, `QueueRows.tokens` в `queueMessage` - image-preview
 - `takeQueued`, `before` у `queuePrompt`, `enqueue` - queue-edit; `editorSeen`, `echoWith`, `context` в
   `deliverPrompt` - editor-context
 - `changeModel`, `emitLive` для усилия, `changeFastMode` - models

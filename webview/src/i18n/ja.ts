@@ -1159,6 +1159,11 @@ export const ja: Dict = {
     copyPaste: '貼り付けたテキストをコピー',
     pasteShown: (shown, total) => `全 ${total} 行のうち最初の ${shown} 行 · コピーはすべて`,
     fromOutput: '出力から',
+    imagePreview: {
+      missing: '画像を読み込めませんでした。ファイルが削除されたか、メッセージにもう保存されていません',
+      opens: 'クリックで開く',
+      unopened: '開けませんでした。クリックで再試行',
+    },
 
     think: { chip: '思考', thoughts: (n) => `${n} 件の考え` },
 

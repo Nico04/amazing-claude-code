@@ -568,6 +568,12 @@ internal object RemoteCommands {
         // answers with names a folder on it. A phone attaches its pictures through its own screen and
         // needs no file of ours to point at.
         "savePastedFile",
+        // The picture behind a chip, read off this machine's disk by a path the request names - and a
+        // phone has no pointer to hover with, so it never shows one anyway (see ImagePreviews).
+        "previewImage",
+        // The same picture opened in the editor at the desk, after writing it to this machine's disk - the
+        // phone's editor is not this one, as with openFile.
+        "openPicture",
         /*
          * Feedback. Every one of these is refused, and for a different reason each:
          *

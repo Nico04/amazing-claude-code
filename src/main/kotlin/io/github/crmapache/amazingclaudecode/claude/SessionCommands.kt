@@ -120,7 +120,6 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
                     sessionId,
                     id = field("id"),
                     text = field("text"),
-                    attach = field("attach"),
                     images = images(payload),
                     echo = echo(payload),
                     remote = !local,
@@ -136,6 +135,12 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
 
             // The pencil on a queued message - the whole message back to the asker, to be edited in the field.
             "takeQueued" -> hub.takeQueued(clientId, sessionId, field("id"), asker)
+
+            // The picture behind a chip under the pointer - answered to the asker alone (see ImagePreviews).
+            "previewImage" -> hub.previewImage(clientId, field("id"), payload["place"] as? JsonObject, asker)
+
+            // A click on a picture's chip - opened in the editor, and a picture that did not open answered (see openPicture).
+            "openPicture" -> hub.openPicture(clientId, field("id"), payload["place"] as? JsonObject, asker)
 
             "reorderQueue" -> hub.reorderQueue(
                 sessionId,

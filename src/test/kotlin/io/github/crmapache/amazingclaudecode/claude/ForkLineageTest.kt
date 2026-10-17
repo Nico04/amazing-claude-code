@@ -279,6 +279,34 @@ class ForkLineageTest {
         replied("g2", "g1", "ok forked"),
     )
 
+    /*
+     * Where a message of a fork may stand, for finding one line by its uuid (a picture under the pointer): the
+     * fork's own file first, then up through its sources - and not one of them read to say so.
+     */
+    @Test
+    fun `the files a fork's lines stand in are its own and then its sources', none of them read`() {
+        transcript(SOURCE, asked("s1", null, "first"))
+        transcript(FORK, asked("f1", null, "fork"))
+        transcript(COMPACTED, asked("c1", null, "compacted"))
+        val origins = mapOf(
+            COMPACTED to ForkOrigin(FORK, "Fork", cut = false, at = "f1"),
+            FORK to ForkOrigin(SOURCE, "Source", cut = false, at = "s1"),
+        )
+        val read = mutableListOf<String>()
+        val files = { id: String -> transcripts(id).also { read += id } }
+
+        assertEquals(
+            listOf(COMPACTED, FORK, SOURCE).map { File(folder, "$it.jsonl") },
+            ForkLineage.files(COMPACTED, files) { origins[it] },
+        )
+        // Asked for by name, nothing more: a pass over a source is what a hover must not cost.
+        assertEquals(listOf(COMPACTED, FORK, SOURCE), read)
+        // A fork not born yet has no file of its own, and its source's are where its lines are.
+        assertEquals(listOf(File(folder, "$SOURCE.jsonl")), ForkLineage.files("unborn", transcripts) { if (it == "unborn") origins[FORK] else null })
+        // A book gone wrong goes round no further than once.
+        assertEquals(listOf(File(folder, "$SOURCE.jsonl")), ForkLineage.files(SOURCE, transcripts) { ForkOrigin(SOURCE, "Self", cut = false, at = null) })
+    }
+
     private companion object {
         const val SOURCE = "0e7e1c5e-0000-4000-8000-000000000001"
         const val FORK = "0e7e1c5e-0000-4000-8000-000000000002"

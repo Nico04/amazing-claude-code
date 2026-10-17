@@ -1157,6 +1157,11 @@ export const zh: Dict = {
     copyPaste: '复制粘贴的文本',
     pasteShown: (shown, total) => `共 ${total} 行，显示前 ${shown} 行 · 复制的是全部`,
     fromOutput: '来自输出',
+    imagePreview: {
+      missing: '无法读取图片：文件已不存在，或消息中已不再保存它',
+      opens: '点击打开',
+      unopened: '无法打开，点击重试',
+    },
 
     think: { chip: '思考', thoughts: (n) => `${n} 段思考` },
 
