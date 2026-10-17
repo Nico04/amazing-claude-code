@@ -9,6 +9,18 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.43] - 2026-10-17
+
+- Added: fast mode, the panel's version of /fast in Claude Code: Opus up to 2.5 times faster, paid from usage credits. Turn it on with the "Fast mode" switch in the MODEL menu or by typing /fast in the field, and on the phone in the sheet behind the model chip. While it is on, ↯ stands beside the model's name. If Claude Code does not turn it on, for example because usage credits are off for the account, a line in the feed says why. It stays with the conversation through a fork, a move to another account or a restart of the IDE, but a new tab starts without it, so a paid mode never spreads to tabs where nobody turned it on. Picking a model that has no fast mode turns it off.
+- Added: /status shows the conversation's ID and the command that continues it in a terminal, each copied with a click. Right-clicking in the panel now offers Copy Session ID, and no longer shows the browser's Back, Forward, Print and View Page Source.
+- Added: the accounts screen shows under each usage figure how long until its window resets, and an account at its limit says when it can be used again. Before, the only way to find out was to switch to that account. The phone shows the same.
+- Changed: pressing the open file's chip in the input field opens a menu: send with every message, leave out of this message, or never send. Before, a press left the file out of one message only but looked like an on/off switch, so the file went along again with the next message or in another tab. With sending switched off, the chip now stays as a crossed-out icon instead of disappearing, and its menu can send the file with one message only.
+- Fixed: on Opus 5.5 and Haiku 5.5 the context gauge could show a red 100% while the conversation used less than a third of its window. These models have a window of a million tokens without saying so in their name, and the panel took it for two hundred thousand. The gauge now uses the window Claude Code reports for the model at the end of each turn.
+- Fixed: a phone that opened a conversation in the middle of a long turn showed a rough guess of the context until the turn ended. It now gets the last exact figure at once.
+- Fixed: after the weekly limit was reset early from the account page, the weekly ring kept showing the old figure, 99% instead of 23%, in every tab until the IDE was restarted. The account was also treated as out of usage for days: scenario runs waited for the old reset, and a tab moved to that account waited instead of carrying on. A lower figure from the server for the same window is now believed and lifts the limit. A scenario run or a tab already waiting for the old reset still needs Resume or a message.
+- Changed: on the phone, an empty section, such as no scenarios, an empty queue or no tasks, is drawn as a dashed card instead of a grey line of text, which read as a caption of the heading above it.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.42] - 2026-10-16
 
 - Added: when you choose another account in the middle of a turn, every tab that was working carries on by itself on the new account. Before, each of them stood still under "Stopped to switch account" until you wrote "carry on" in it: the agent saw only an interrupted request and took it for yours.
@@ -1036,7 +1048,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.42...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.43...HEAD
+[0.13.43]: https://github.com/crmapache/amazing-claude-code/compare/0.13.42...0.13.43
 [0.13.42]: https://github.com/crmapache/amazing-claude-code/compare/0.13.41...0.13.42
 [0.13.41]: https://github.com/crmapache/amazing-claude-code/compare/0.13.40...0.13.41
 [0.13.40]: https://github.com/crmapache/amazing-claude-code/compare/0.13.39...0.13.40
