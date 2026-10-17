@@ -148,6 +148,9 @@ internal class SessionCommands(private val hub: ClaudeSessionHub) {
              * them. Built off the interface thread: a year of days is a fair amount of JSON.
              */
             "statistics" -> ApplicationManager.getApplication().executeOnPooledThread {
+                // Before the payload, so a tab opened ahead of the first reading says it is counting.
+                runCatching { hub.stats.readTokensIfNever() }
+                    .onFailure { thisLogger().warn("Could not start reading the tokens", it) }
                 runCatching { hub.emitTo(clientId, hub.stats.payload()) }
                     .onFailure { thisLogger().warn("Could not build the statistics", it) }
             }

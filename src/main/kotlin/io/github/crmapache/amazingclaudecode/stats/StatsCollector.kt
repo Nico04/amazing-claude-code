@@ -650,6 +650,9 @@ internal class StatsCollector(
 
     fun payload(): String = StatsPayload.build(ledger, projectKey)
 
+    /** The history of tokens, read for the first time if nobody has read it yet - see TranscriptTokens. */
+    fun readTokensIfNever() = TranscriptTokens.readIfNever(workingDirectory)
+
     // --- Helpers -------------------------------------------------------------------------
 
     private fun update(change: (DayRecord) -> Unit) {

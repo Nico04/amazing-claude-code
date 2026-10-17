@@ -1287,9 +1287,10 @@ internal class ProjectCatalog(
 
         /**
          * "Today's tokens" is the most expensive thing done in the background, and by a wide margin:
-         * every project's transcripts, every line of every file touched in the last two days, parsed as
-         * JSON. So it gets a round of its own - the figure creeps rather than jumps, and five minutes of
-         * staleness on it costs nothing.
+         * every project's transcripts, every answer in every file touched in the last two days, parsed as
+         * JSON - and on the very first round every file there is, to fill the statistics' tokens by day
+         * (see TranscriptTokens). So it gets a round of its own - the figure creeps rather than jumps, and
+         * five minutes of staleness on it costs nothing.
          */
         val tokens = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
             { if (hub.hasClients()) usage.refreshTodayTokens() },

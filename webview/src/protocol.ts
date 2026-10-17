@@ -2226,6 +2226,19 @@ export interface StatisticsData {
    * and that is the truth about a day with two agents running - not a figure that disagrees with itself.
    */
   days: StatisticsDay[]
+  /**
+   * Tokens by day: "2026-10-17" -> its 24 hours, midnight first. Read out of the CLI's own transcripts
+   * rather than off the turns above, so it is every Claude Code session on the machine - subagents and
+   * scenario runs included, which a turn's own figures leave out (see TranscriptTokens). Absent from an
+   * older IDE; a day without a token is not listed.
+   */
+  tokens?: Record<string, number[]>
+  /**
+   * The transcripts are being read right now. The first reading goes through every transcript there is
+   * and takes a while: the tokens card says it is counting rather than "nothing spent", and the tab asks
+   * again every couple of seconds until it is done.
+   */
+  tokensReading?: boolean
   achievements: AchievementState[]
 }
 

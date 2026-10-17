@@ -359,6 +359,9 @@ const LIST_STALE_MS = 60_000
 /** How often the figures are asked for again while the statistics tab is being looked at. */
 const STATISTICS_REFRESH_MS = 30_000
 
+/** The same while the transcripts are being read for the tokens (see StatisticsData.tokensReading). */
+const STATISTICS_READING_MS = 2_000
+
 /**
  * How often the accounts screen asks for the list again while it is open.
  *
@@ -1809,14 +1812,19 @@ export const App = () => {
    * The statistics tab is looked at and the figures grow under it: a turn ends, a minute passes. Asked
    * for again every half-minute while it is the active tab - the ticker on the IDE's side marks minutes
    * at the same pace, so asking more often would show nothing new.
+   *
+   * Except while the IDE is reading the transcripts for the tokens: the first reading takes a while, and
+   * the chart should fill the moment it is done rather than up to half a minute later.
    */
+  const statisticsReading = statistics?.tokensReading === true
   useEffect(() => {
     if (active !== STATISTICS_GROUP) return
 
     send({ type: 'statistics' })
-    const timer = setInterval(() => send({ type: 'statistics' }), STATISTICS_REFRESH_MS)
+    const every = statisticsReading ? STATISTICS_READING_MS : STATISTICS_REFRESH_MS
+    const timer = setInterval(() => send({ type: 'statistics' }), every)
     return () => clearInterval(timer)
-  }, [active])
+  }, [active, statisticsReading])
 
   /**
    * A hand on the keyboard or the wheel counts as time in the panel - the IDE cannot see that by itself,

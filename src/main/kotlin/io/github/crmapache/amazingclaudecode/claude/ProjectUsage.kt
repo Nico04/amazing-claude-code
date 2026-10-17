@@ -5,6 +5,7 @@ import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.crmapache.amazingclaudecode.claude.accounts.ClaudeAccounts
+import io.github.crmapache.amazingclaudecode.stats.TranscriptTokens
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.JsonObject
@@ -261,7 +262,10 @@ internal class ProjectUsage(
     /**
      * Today's tokens - a scan of EVERY project's transcripts rather than a question to the current
      * conversation: it has a cost of its own, so it runs in the background, goes upwards as a separate
-     * message and lives on the rarest round of them all (see ClaudePanel.scheduleTokenUpdates).
+     * message and lives on the rarest round of them all (see ProjectCatalog, TOKENS_PERIOD_MINUTES).
+     *
+     * The same reading fills the statistics tab's tokens by day (see TranscriptTokens), so the counter
+     * and the chart never disagree about today.
      */
     fun refreshTodayTokens() {
         if (!isLoggedIn()) return
@@ -275,7 +279,7 @@ internal class ProjectUsage(
             hub.broadcastProject(
                 buildJsonObject {
                     put("type", "usage")
-                    put("todayTokens", ClaudeTokenUsage.today(workingDirectory))
+                    put("todayTokens", ClaudeTokenUsage.millions(TranscriptTokens.refresh(workingDirectory)))
                 }.toString(),
             )
         }
