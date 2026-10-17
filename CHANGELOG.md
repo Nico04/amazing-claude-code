@@ -9,6 +9,13 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.44] - 2026-10-17
+
+- Added: the statistics tab shows the tokens spent each day, in a card under the hours in the panel. They are read from Claude Code's own transcripts, so they include subagents and scenario runs, which the panel's own replies leave out and which on a busy day are most of the work. The history goes back as far as the transcripts do and is kept after Claude Code deletes them a month later. On the Today range the card shows the tokens hour by hour. The first count takes a few seconds after the update, and the card says it is counting until it is done. The "tok" counter by the input field reads the same figures, so the two always agree, and it now counts each answer at its full cost rather than the part of it written first.
+- Added: both charts on the statistics tab show the average a day for the chosen range at the right of their heading. For tokens it starts from the first day Claude Code's transcripts still hold, so days whose transcripts are gone do not count as days without work.
+- Changed: the line under the models on the statistics tab no longer shows a token count. It counted only the main thread of the panel's own replies and would have disagreed with the new tokens card.
+- Fixed: on a narrow panel, the headings of the statistics cards were cut short, such as "TOKEN…" or "WHEN …", while the note beside them stayed whole. The note is now shortened first. The dates under the charts no longer run into each other on a narrow panel either: fewer of them are shown when there is no room.
+
 ## [0.13.43] - 2026-10-17
 
 - Added: fast mode, the panel's version of /fast in Claude Code: Opus up to 2.5 times faster, paid from usage credits. Turn it on with the "Fast mode" switch in the MODEL menu or by typing /fast in the field, and on the phone in the sheet behind the model chip. While it is on, ↯ stands beside the model's name. If Claude Code does not turn it on, for example because usage credits are off for the account, a line in the feed says why. It stays with the conversation through a fork, a move to another account or a restart of the IDE, but a new tab starts without it, so a paid mode never spreads to tabs where nobody turned it on. Picking a model that has no fast mode turns it off.
@@ -38,6 +45,7 @@ commits.
 
 - Added: a tab closed by mistake opens again with Cmd+Shift+T on a Mac and Ctrl+Shift+T elsewhere, as in a browser. The next press brings back the tab closed before it, up to twenty back, and any tab works: a conversation, a fork, the statistics, the scenarios, a run being watched. The tab comes back where it stood on the strip, with what was typed in its field, its model, effort and mode, and its forks under it again. The same list is at the top of the history screen as "Recently closed", where a click brings back that very tab. Closed conversations are remembered across a restart of the IDE. Messages that were queued in a tab closed while it worked come back too, and wait for your next message rather than going off on their own: the turn they were queued behind was stopped by the close. On Windows and Linux a new tab moves from Ctrl+Shift+T to Ctrl+T, so the pair is the one browsers use.
 - Added: the search window's tabs can be switched from the keyboard. Cmd+Option+1, 2 and 3 open This chat, All chats and Ask Claude (Ctrl+Alt with the digit off a Mac), and the IDE's next and previous tab keys step through them while the window is open. The tooltips and the cheat sheet in Settings name these keys, as well as the ones for Match case and Whole words. A character typed with the right Alt key, such as @ or # on a Spanish or French keyboard, still goes into the search field.
+
 - Fixed: undoing a turn's changes to a file often refused with "Changed since, left as is", although nobody had touched the file after the turn. It happened whenever the file was changed by more than the agent's own edits: a formatter the project runs after every edit, a script or sed the agent ran in the same turn, or Claude Code adding fields to a memory file it wrote. Now each file the turn changed is checked against the disk when the turn ends, and its row in the list undoes what the turn really did to it, with figures that match the file. A file is only ever put back to the copy Claude Code kept for that very turn, so an undo never takes back the work of an earlier turn as well.
 - Fixed: a phone that was offline while a conversation was cleared, or replaced by one opened from the history, came back showing the old conversation with the new one added under it. It is now shown the new conversation from its start.
 - Changed: an answer now appears word by word, each word fading in whole. Before, the text could stop in the middle of a word, so a word often appeared in two or three pieces, each animated on its own, and the pieces could wrap onto different lines while they faded in.
@@ -1048,7 +1056,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.43...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.44...HEAD
+[0.13.44]: https://github.com/crmapache/amazing-claude-code/compare/0.13.43...0.13.44
 [0.13.43]: https://github.com/crmapache/amazing-claude-code/compare/0.13.42...0.13.43
 [0.13.42]: https://github.com/crmapache/amazing-claude-code/compare/0.13.41...0.13.42
 [0.13.41]: https://github.com/crmapache/amazing-claude-code/compare/0.13.40...0.13.41
