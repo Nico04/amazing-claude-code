@@ -9,6 +9,15 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.45] - 2026-10-17
+
+- Added: hovering a picture's chip shows the picture itself, in the input field, in a sent message and in a queued one, with the pointer over the chip. "Image #3" did not tell two screenshots apart, and a minute later did not say what the message was about. Under the picture stand its size and, for a picture picked from disk, its whole path, which the chip cuts in the middle. It works for a pasted screenshot, a picture picked in the IDE's dialog, a queued message, and a conversation opened from the history or brought back after a restart, where the picture is read out of Claude Code's own transcript. A large picture is shrunk on the way, and a photo taken with the phone held upright stands upright.
+- Fixed: clicking a picture in a conversation brought back after a restart, or in a queued message, did nothing, because such a picture has no file of its own. It now opens in the editor: the picture is written into the panel's paste folder first, and a second click opens the same file. When a picture cannot be opened, for example because its message has already left the queue, the preview over it says so instead of nothing happening.
+- Changed: a queued message is drawn as the chips it was typed with, in up to two lines: file names instead of long paths, the picture instead of "[Image #3]", and its quotes first. The "N refs" count beside it is gone. The phone's queue shows the same.
+- Fixed: putting a sent message back into the input field dropped a picture picked in the IDE's dialog and said that one picture could not come back. It now comes back as it was, and so does a picture named with @ in a conversation opened from the history, which is now drawn as a picture rather than a file.
+- Fixed: a BMP file was a picture when pasted but a plain file when picked in the dialog or read back from the history.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.44] - 2026-10-17
 
 - Added: the statistics tab shows the tokens spent each day, in a card under the hours in the panel. They are read from Claude Code's own transcripts, so they include subagents and scenario runs, which the panel's own replies leave out and which on a busy day are most of the work. The history goes back as far as the transcripts do and is kept after Claude Code deletes them a month later. On the Today range the card shows the tokens hour by hour. The first count takes a few seconds after the update, and the card says it is counting until it is done. The "tok" counter by the input field reads the same figures, so the two always agree, and it now counts each answer at its full cost rather than the part of it written first.
@@ -1056,7 +1065,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.44...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.45...HEAD
+[0.13.45]: https://github.com/crmapache/amazing-claude-code/compare/0.13.44...0.13.45
 [0.13.44]: https://github.com/crmapache/amazing-claude-code/compare/0.13.43...0.13.44
 [0.13.43]: https://github.com/crmapache/amazing-claude-code/compare/0.13.42...0.13.43
 [0.13.42]: https://github.com/crmapache/amazing-claude-code/compare/0.13.41...0.13.42
