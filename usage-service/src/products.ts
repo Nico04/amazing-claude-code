@@ -153,10 +153,10 @@ const SHARED_SETTINGS: Record<string, string> = {
   newChatEffort: 'New chats pinned to an effort',
   newChatMode: 'New chats start in mode',
   pairedDevices: 'Phones paired',
+  spellcheck: 'Spell check on',
 }
 
 export const REPORTED_SETTINGS: Record<Product, Record<string, string>> = {
-  // The spell check switch is ACC's alone until the fork has it.
-  acc: { ...SHARED_SETTINGS, accounts: 'Claude accounts', spellcheck: 'Spell check on' },
+  acc: { ...SHARED_SETTINGS, accounts: 'Claude accounts' },
   acx: { ...SHARED_SETTINGS, accounts: 'Codex accounts' },
 }

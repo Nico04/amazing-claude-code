@@ -98,22 +98,21 @@ const SHARED_FEATURES: Record<string, FeatureLabel> = {
   rewind: { group: 'conversation', label: 'Rewind a conversation to an earlier message' },
   scenario_tell: { group: 'scenarios', label: "Write to a run's main thread" },
   send_path: { group: 'editor', label: 'Send a file or folder from the project tree or the editor menu' },
+  // Claude Code's /fast in ACC (Opus faster, paid from usage credits); Codex's Fast service tier in ACX (0.4.0).
+  fast_mode: { group: 'conversation', label: 'Turn on fast mode' },
+  // /status and the id copied from the right-click menu - `claude --resume` in ACC, `codex resume` in ACX.
+  session_info: { group: 'conversation', label: "Look up or copy a conversation's id" },
+  panel_keys: { group: 'conversation', label: 'Switch, open or close tabs, or queue, by a key' },
+  // By the key or from "Recently closed" in the history.
+  reopen_tab: { group: 'conversation', label: 'Reopen a closed tab' },
+  // The list of files a turn changed, with its buttons that put them back.
+  revert_changes: { group: 'editor', label: "Revert a turn's changes to a file" },
 }
 
 export const FEATURES: Record<Product, Record<string, FeatureLabel>> = {
   acc: {
     ...SHARED_FEATURES,
     stop_task: { group: 'conversation', label: 'Stop a background task' },
-    // Claude Code's /fast - Opus faster, paid from usage credits; the Codex fork has no such switch.
-    fast_mode: { group: 'conversation', label: 'Turn on fast mode' },
-    // /status and the id copied from the right-click menu came to ACC first - for one session to send to another.
-    session_info: { group: 'conversation', label: "Look up or copy a conversation's id" },
-    // The panel's keys came to ACC first, and wait for the fork until they are ported there.
-    panel_keys: { group: 'conversation', label: 'Switch, open or close tabs, or queue, by a key' },
-    // Closed tabs opened again - by the key or from "Recently closed" in the history - came to ACC first.
-    reopen_tab: { group: 'conversation', label: 'Reopen a closed tab' },
-    // The list of files a turn changed came to ACC first, with its buttons that put them back.
-    revert_changes: { group: 'editor', label: "Revert a turn's changes to a file" },
     plugins_manage: { group: 'manage', label: 'Install or manage a Claude Code plugin' },
     account_add: { group: 'manage', label: 'Add a Claude account' },
     account_switch: { group: 'manage', label: 'Switch Claude account' },
@@ -153,6 +152,8 @@ const SHARED_SCREENS: Record<string, string> = {
   composerLayout: 'Composer layout',
   pasteCollapse: 'Pasted text',
   sendKey: 'Sending a message',
+  keys: 'Keyboard shortcuts',
+  spellcheck: 'Spell check',
   improvePrompt: 'Improve prompt',
   voice: 'Voice input',
   voiceLanguage: 'Voice input: spoken language',
@@ -169,10 +170,6 @@ export const SCREENS: Record<Product, Record<string, string>> = {
   acc: {
     ...SHARED_SCREENS,
     accounts: 'Claude accounts',
-    // The cheat sheet of keys, ACC's alone until the fork ports the panel's keys.
-    keys: 'Keyboard shortcuts',
-    // The spell check switch, ACC's alone until the fork has it.
-    spellcheck: 'Spell check',
     settingSources: 'Claude Code settings sources',
     claudeConfig: 'Claude Code settings',
   },
@@ -196,6 +193,7 @@ const SHARED_SETTINGS: Record<string, string> = {
   indicators: 'Indicators',
   sounds: 'Sound alerts',
   share_editor: 'Editor in messages',
+  spellcheck: 'Spell check',
   restore_tabs: 'Tabs on start',
   improve_prompt: 'Improve-prompt text',
   custom_models: 'Custom models',
@@ -208,7 +206,6 @@ export const SETTINGS: Record<Product, Record<string, string>> = {
   acc: {
     ...SHARED_SETTINGS,
     executable: 'Path to Claude Code',
-    spellcheck: 'Spell check',
     claude_config: 'Claude Code settings',
     setting_sources: 'Claude Code settings sources',
   },

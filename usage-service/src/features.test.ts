@@ -42,19 +42,15 @@ describe('the two plugins', () => {
 
   it('differ in their features only where the agent underneath does', () => {
     expect(apart(FEATURES.acc, FEATURES.acx)).toEqual({
-      // panel_keys, reopen_tab and revert_changes are not about the agent: the panel's keys, closed tabs
-      // opened again and the list of a turn's changes came to ACC first, and wait for the fork until they
-      // are ported there - the cheat sheet's screen below with them, and session_info, the conversation's id
-      // in /status and the right-click menu. fast_mode is the agent's: Claude Code's /fast.
-      missingHere: ['design_login', 'fast_mode', 'panel_keys', 'reopen_tab', 'revert_changes', 'session_info', 'stop_task'],
+      missingHere: ['design_login', 'stop_task'],
       notInPlugin: ['project_trust'],
     })
     expect(apart(SCREENS.acc, SCREENS.acx)).toEqual({
-      missingHere: ['claudeConfig', 'keys', 'settingSources', 'spellcheck'],
+      missingHere: ['claudeConfig', 'settingSources'],
       notInPlugin: ['codexConfig', 'newChatContext'],
     })
     expect(apart(SETTINGS.acc, SETTINGS.acx)).toEqual({
-      missingHere: ['claude_config', 'setting_sources', 'spellcheck'],
+      missingHere: ['claude_config', 'setting_sources'],
       notInPlugin: ['codex_config', 'project_trust'],
     })
   })
