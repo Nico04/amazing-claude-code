@@ -9,6 +9,11 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.46] - 2026-10-19
+
+- Added: an "Opt out of model training" switch on the Voice input screen. When it is on, every dictation asks Deepgram not to keep your audio or use it to improve its models, both at the desk and from the phone. It is off until you turn it on, which is Deepgram's own default. On the Pay as you go and Growth plans the price is the same either way.
+- Note for phones: reload the page in your browser after this one, or dictations from the phone will not carry the opt-out.
+
 ## [0.13.45] - 2026-10-17
 
 - Added: hovering a picture's chip shows the picture itself, in the input field, in a sent message and in a queued one, with the pointer over the chip. "Image #3" did not tell two screenshots apart, and a minute later did not say what the message was about. Under the picture stand its size and, for a picture picked from disk, its whole path, which the chip cuts in the middle. It works for a pasted screenshot, a picture picked in the IDE's dialog, a queued message, and a conversation opened from the history or brought back after a restart, where the picture is read out of Claude Code's own transcript. A large picture is shrunk on the way, and a photo taken with the phone held upright stands upright.
@@ -1065,7 +1070,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.45...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.46...HEAD
+[0.13.46]: https://github.com/crmapache/amazing-claude-code/compare/0.13.45...0.13.46
 [0.13.45]: https://github.com/crmapache/amazing-claude-code/compare/0.13.44...0.13.45
 [0.13.44]: https://github.com/crmapache/amazing-claude-code/compare/0.13.43...0.13.44
 [0.13.43]: https://github.com/crmapache/amazing-claude-code/compare/0.13.42...0.13.43
