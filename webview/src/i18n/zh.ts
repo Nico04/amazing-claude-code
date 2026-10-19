@@ -852,6 +852,9 @@ export const zh: Dict = {
     deviceDefaultHint: '跟随系统的设置',
     deviceNote: '改动会在下一次听写时生效。',
 
+    trainingOptOut: '不用于模型训练',
+    trainingOptOutHint: '请求 Deepgram 不保留你的听写内容，也不用它来改进模型。Pay as you go 和 Growth 套餐的价格不受影响。',
+
     promo: {
       title: '喜欢在这里口述吗？',
       body: '在任何其他窗口里也能按住热键说话 - 我的另一个应用会把你说的话直接写进光标所在处。现在注册，就对你一直免费。',

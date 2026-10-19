@@ -166,11 +166,16 @@ the meantime and nothing is listening while you are not dictating.
 **Nothing is recorded.** The audio is not written to disk, not kept in memory past the moment it is
 sent, and not logged; the words come back into the input field and are yours from then on. The plugin's
 own debug report never contains any of it - what a dictation writes there is that one happened, in
-which language, at what sample rate.
+which language, at what sample rate, and whether it opted out of model training.
 
 What Deepgram does with the audio is between you and Deepgram: they are the processor here, under
 whatever terms your account with them says. The plugin sends the audio, the chosen language and nothing
 else - no file names, no project name, no part of your conversation.
+
+By default Deepgram may keep audio to improve its models, under its Model Improvement Program. The
+"Opt out of model training" switch on the Voice input screen asks it not to, on every dictation, from the
+desk and from your phone alike (`mip_opt_out=true` on the request). The switch is off until you turn it
+on, which leaves your account as Deepgram set it up.
 
 **Dictating from your phone** works the same way, with one difference: the phone records with its own
 microphone and streams to Deepgram itself, so the audio never crosses the relay. The key stays in the

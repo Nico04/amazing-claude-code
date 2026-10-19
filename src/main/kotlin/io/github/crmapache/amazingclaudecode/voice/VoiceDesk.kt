@@ -84,6 +84,11 @@ internal class VoiceDesk(
         announce()
     }
 
+    fun setTrainingOptOut(optOut: Boolean) {
+        ClaudePreferences.voiceTrainingOptOut = optOut
+        announce()
+    }
+
     fun setDevice(id: String) {
         ClaudePreferences.voiceDevice = id
         announce()
@@ -242,6 +247,7 @@ internal class VoiceDesk(
             put("enabled", ClaudePreferences.voiceEnabled)
             put("language", VoiceLanguages.sanitize(ClaudePreferences.voiceLanguage))
             put("device", ClaudePreferences.voiceDevice)
+            put("trainingOptOut", ClaudePreferences.voiceTrainingOptOut)
             put("keyHint", VoiceKeys.hint())
 
             putJsonArray("languages") {

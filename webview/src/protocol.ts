@@ -2111,6 +2111,8 @@ type ShellMessageBody =
       /** The chosen input device by its name; empty means the system's own default. */
       device: string
       devices: VoiceDevice[]
+      /** Whether Deepgram is asked to keep dictations out of its model training (`mip_opt_out`). */
+      trainingOptOut: boolean
       keyHint: string
       hotkeys: Record<VoiceHotkeySlot, VoiceHotkey>
     }
@@ -2161,6 +2163,8 @@ type ShellMessageBody =
       /** The language chosen at the desk: the same person is speaking, and two places to set it drift. */
       language?: string
       model?: string
+      /** The desk's answer to Deepgram's model training, for the same reason. Absent from older plugins. */
+      trainingOptOut?: boolean
       error?: string
     }
 
@@ -3170,6 +3174,7 @@ export type WebviewMessage =
   | { type: 'voiceEnabled'; enabled: boolean }
   | { type: 'voiceLanguage'; language: string }
   | { type: 'voiceDevice'; device: string }
+  | { type: 'voiceTrainingOptOut'; optOut: boolean }
   /**
    * The Deepgram key, on its way to the system keychain (see VoiceKeys). Empty forgets it.
    *

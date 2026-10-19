@@ -609,6 +609,7 @@ internal object RemoteCommands {
         "voiceEnabled",
         "voiceLanguage",
         "voiceDevice",
+        "voiceTrainingOptOut",
         "voiceKey",
         "voiceBalance",
         "voiceCaptureHotkey",

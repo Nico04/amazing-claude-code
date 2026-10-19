@@ -518,6 +518,7 @@ const NO_VOICE: VoiceSettings = {
   languages: [],
   device: '',
   devices: [],
+  trainingOptOut: false,
   keyHint: '',
   hotkeys: {
     push: { caps: [] },
@@ -2797,6 +2798,7 @@ export const App = () => {
               languages: message.languages,
               device: message.device,
               devices: message.devices,
+              trainingOptOut: message.trainingOptOut,
               keyHint: message.keyHint,
               hotkeys: message.hotkeys,
             })
@@ -7267,6 +7269,7 @@ export const App = () => {
             onClear={(slot) => send({ type: 'voiceClearHotkey', slot })}
             onOpenLanguages={() => openScreen('voiceLanguage')}
             onOpenDevices={() => openScreen('voiceDevice')}
+            onTrainingOptOut={(optOut) => send({ type: 'voiceTrainingOptOut', optOut })}
             onOpenSite={() => send({ type: 'openExternal', url: DEEPGRAM_URL })}
             onOpenLink={openLink}
           />

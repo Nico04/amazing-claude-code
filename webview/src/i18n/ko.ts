@@ -852,6 +852,9 @@ export const ko: Dict = {
     deviceDefaultHint: '시스템 설정을 그대로 따릅니다',
     deviceNote: '바꾼 내용은 다음 받아쓰기부터 적용됩니다.',
 
+    trainingOptOut: '모델 학습에서 제외',
+    trainingOptOutHint: '받아쓰기 내용을 보관하지 말고 모델 개선에도 쓰지 말라고 Deepgram에 요청합니다. Pay as you go와 Growth 요금제에서는 가격이 같습니다.',
+
     promo: {
       title: '여기서 받아쓰기가 마음에 드나요?',
       body: '다른 창에서도 키를 누른 채 말해 보세요. 제가 만든 또 다른 앱이 말한 내용을 커서가 있는 곳에 그대로 적어 줍니다. 지금 가입하면 계속 무료예요.',

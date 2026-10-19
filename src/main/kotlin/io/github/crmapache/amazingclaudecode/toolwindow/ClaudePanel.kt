@@ -797,6 +797,8 @@ internal class ClaudePanel(
 
             "voiceDevice" -> voice.setDevice(field("device"))
 
+            "voiceTrainingOptOut" -> voice.setTrainingOptOut(payload["optOut"]?.jsonPrimitive?.booleanOrNull == true)
+
             "voiceKey" -> voice.setKey(field("key"))
 
             "voiceBalance" -> voice.refreshBalance()

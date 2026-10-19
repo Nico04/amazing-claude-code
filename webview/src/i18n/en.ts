@@ -1133,6 +1133,10 @@ export const en = {
     deviceDefaultHint: 'Follows whatever the system is set to',
     deviceNote: 'Changing this takes effect on the next dictation.',
 
+    /** A switch for Deepgram's `mip_opt_out`. Since March 2026 it does not change the listed price on those two plans. */
+    trainingOptOut: 'Opt out of model training',
+    trainingOptOutHint: 'Asks Deepgram not to keep your dictations or use them to improve its models. On the Pay as you go and Growth plans the price is the same either way.',
+
     /** The card at the foot of this screen - the author's other app. The product's name is not here: it
         is written the same in every language (see DICTATION_PRODUCT). */
     promo: {

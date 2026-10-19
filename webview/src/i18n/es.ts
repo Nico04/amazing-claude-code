@@ -856,6 +856,9 @@ export const es: Dict = {
     deviceDefaultHint: 'Sigue lo que tenga configurado el sistema',
     deviceNote: 'El cambio se aplica en el próximo dictado.',
 
+    trainingOptOut: 'Excluir del entrenamiento de modelos',
+    trainingOptOutHint: 'Pide a Deepgram que no guarde tus dictados ni los use para mejorar sus modelos. En los planes Pay as you go y Growth el precio es el mismo.',
+
     promo: {
       title: '¿Te gusta dictar aquí?',
       body: 'Mantén una tecla y habla en cualquier otra ventana: mi otra app escribe tu voz allí donde estés. Regístrate ahora y para ti seguirá siendo gratis.',

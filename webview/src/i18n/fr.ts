@@ -860,6 +860,9 @@ export const fr: Dict = {
     deviceDefaultHint: 'Suit ce que le système a choisi',
     deviceNote: 'Le changement prendra effet à la prochaine dictée.',
 
+    trainingOptOut: 'Exclure de l’entraînement des modèles',
+    trainingOptOutHint: 'Demande à Deepgram de ne pas conserver vos dictées ni de s’en servir pour améliorer ses modèles. Avec les offres Pay as you go et Growth, le prix reste le même.',
+
     promo: {
       title: 'La dictée ici vous plaît ?',
       body: "Maintenez une touche et parlez dans n'importe quelle autre fenêtre : mon autre application écrit votre voix là où vous êtes. Inscrivez-vous maintenant et ce sera gratuit pour vous à vie.",

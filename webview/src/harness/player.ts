@@ -529,6 +529,7 @@ let voiceSettings = {
   enabled: true,
   language: 'en',
   device: '',
+  trainingOptOut: false,
   keyHint: '…9f2c',
   hotkeys: {
     push: { caps: [{ glyph: 'option', text: '', side: 'right' }] },
@@ -574,6 +575,7 @@ const voiceConfig = (): ShellMessage => ({
   languages: VOICE_LANGUAGES,
   device: voiceSettings.device,
   devices: VOICE_DEVICES,
+  trainingOptOut: voiceSettings.trainingOptOut,
   keyHint: voiceSettings.keyHint,
   hotkeys: voiceSettings.hotkeys,
 })
@@ -619,6 +621,12 @@ const answerVoice = (message: WebviewMessage): void => {
 
   if (message.type === 'voiceDevice') {
     voiceSettings = { ...voiceSettings, device: message.device }
+    sendVoiceConfig()
+    return
+  }
+
+  if (message.type === 'voiceTrainingOptOut') {
+    voiceSettings = { ...voiceSettings, trainingOptOut: message.optOut }
     sendVoiceConfig()
     return
   }

@@ -854,6 +854,9 @@ export const ja: Dict = {
     deviceDefaultHint: 'システムの設定にそのまま従います',
     deviceNote: '変更は次の音声入力から有効になります。',
 
+    trainingOptOut: 'モデルの学習に使わせない',
+    trainingOptOutHint: '音声入力の内容を保存せず、モデルの改善にも使わないよう Deepgram に求めます。Pay as you go と Growth プランでは料金は変わりません。',
+
     promo: {
       title: 'ここでの音声入力は快適ですか？',
       body: 'ほかのウィンドウでもキーを押しながら話すだけ。もう一つの拙作が、いま入力中の場所に声を文字にして書き込みます。今登録した方には、ずっと無料のままです。',

@@ -378,6 +378,17 @@ internal object ClaudePreferences {
         set(value) = write(VOICE_LANGUAGE_KEY, value.trim())
 
     /**
+     * Whether Deepgram is asked to keep dictations out of its model training (`mip_opt_out`).
+     *
+     * Off until it is turned on, which is Deepgram's own default: the plugin does not decide on somebody's
+     * behalf how their account takes part in that program. A machine setting like the rest of voice input,
+     * and the phone dictates by it too - see VoiceGrant.
+     */
+    var voiceTrainingOptOut: Boolean
+        get() = read(VOICE_TRAINING_OPT_OUT_KEY) == "true"
+        set(value) = write(VOICE_TRAINING_OPT_OUT_KEY, if (value) "true" else "")
+
+    /**
      * The input device by its mixer name. Empty means whatever the system calls the default, which is
      * what almost everybody wants and what follows a headset being plugged in.
      */
@@ -472,6 +483,7 @@ internal object ClaudePreferences {
     private const val VOICE_ENABLED_KEY = "acc.voice.enabled"
     private const val VOICE_LANGUAGE_KEY = "acc.voice.language"
     private const val VOICE_DEVICE_KEY = "acc.voice.device"
+    private const val VOICE_TRAINING_OPT_OUT_KEY = "acc.voice.trainingOptOut"
     private const val VOICE_PUSH_KEY = "acc.voice.push"
     private const val VOICE_HOLD_KEY = "acc.voice.hold"
     private const val VOICE_PUSH_MOUSE_KEY = "acc.voice.pushMouse"

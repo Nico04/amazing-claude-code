@@ -326,7 +326,8 @@ internal object UsageFeatures {
         "setClaudeConfig" -> "claude_config"
         "setSettingSources" -> "setting_sources"
         "setExecutablePath" -> "executable"
-        "voiceEnabled", "voiceKey", "voiceLanguage", "voiceDevice", "voiceCaptureHotkey", "voiceClearHotkey" -> "voice"
+        "voiceEnabled", "voiceKey", "voiceLanguage", "voiceDevice", "voiceTrainingOptOut", "voiceCaptureHotkey",
+        "voiceClearHotkey" -> "voice"
         "setRelayUrl" -> "relay"
         else -> null
     }
