@@ -9,6 +9,17 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.47] - 2026-10-21
+
+- Changed: the speech bubble beside the heart, and Feedback in the menu, no longer send a message to the author. The plugin is made by one person, it takes a large share of my Claude subscription and of my time, and the form filled up faster than I could read it. The screen now says how to get something changed: leave a tip on Ko-fi and write in the message what you would like, and I'll build it, or make the change yourself and open a pull request, and I'll review it. The debug report for the open tab is still there, to copy into a pull request about a bug; the plugin itself sends it nowhere. The email address the old form remembered is deleted from the IDE's settings.
+- Changed: your own message in the chat now has only the copy button in its corner. Edit and send again, Pin and Rewind to here moved into a menu behind the three dots next to it. A pinned message still shows its lit pin in the corner, and clicking it unpins. Whatever can't be done right now stays in the menu greyed out, with the reason written under it.
+- Changed: Claude's answers get the same corner: copy, and the three dots with Pin behind them.
+- Changed: the right of the panel's header now holds three buttons: a new tab, a fork of the open tab, and the menu. The branch, the PR link and the count of other devices watching the project are gone from there. The "+" at the end of the tab strip moved into this group, and the fork buttons on the tabs gave way to the one in the header.
+- Fixed: Escape while a menu is open (model, effort, mode and the rest) closes the menu. It used to reach the panel and stop Claude's turn.
+- Fixed: when a subagent asked for a permission, the card was missing from that agent's own screen and its chip did not turn yellow, so an agent waiting for you looked like it was still working and never finished. A subagent's permission now stands over the input field on every screen of the conversation, main and each agent's, and says which agent is asking and what it was sent to do. While it waits, the line above the field says "Waiting for you", and the agent's screen and its card in the conversation say the same instead of "Working". The phone shows such a permission too, with the same line about who is asking.
+- Fixed: with a menu open, the jump to the latest message took two clicks, one to close the menu and one for itself, and nothing lit up under the pointer on the way. It now works on the first click, and so does anything in the feed that opens a file or a picture: a chip, a path, the file line under a message, a row in the list of changed files. The menu closes on that same click. A click that would allow, send or undo something still only closes the menu.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.46] - 2026-10-19
 
 - Added: an "Opt out of model training" switch on the Voice input screen. When it is on, every dictation asks Deepgram not to keep your audio or use it to improve its models, both at the desk and from the phone. It is off until you turn it on, which is Deepgram's own default. On the Pay as you go and Growth plans the price is the same either way.
@@ -1070,7 +1081,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.46...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.47...HEAD
+[0.13.47]: https://github.com/crmapache/amazing-claude-code/compare/0.13.46...0.13.47
 [0.13.46]: https://github.com/crmapache/amazing-claude-code/compare/0.13.45...0.13.46
 [0.13.45]: https://github.com/crmapache/amazing-claude-code/compare/0.13.44...0.13.45
 [0.13.44]: https://github.com/crmapache/amazing-claude-code/compare/0.13.43...0.13.44
