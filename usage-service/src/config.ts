@@ -30,7 +30,11 @@ export interface Config {
    * (see UsageReporter), so this ceiling is about an office behind one address rather than about a person.
    */
   perIpPerHour: number
-  /** How many hops in front of this service are ours - the same rule as the feedback service's. */
+  /**
+   * How many hops in front of this service are ours. Zero ignores x-forwarded-for entirely - the only safe
+   * default, since the caller writes that header; one is right behind a single reverse proxy, which is how
+   * the public instance runs (see addressOf in server.ts).
+   */
   trustedProxies: number
   /** The shared secret the plugin sends. A speed bump against scanners, not authentication. */
   key: string

@@ -62,6 +62,7 @@ import type { FeedItem, TaskItem, UserItem } from '../feed/types'
 import { clipboardMessage } from '../feed/tokens'
 import { forkPointAfter, forkTakesCode, lastSeenUuid, type RewindChoice } from '../feed/rewind'
 import { usageOf, type UsageFacts } from '../feed/usage'
+import { agentsWaiting } from '../feed/streamStatus'
 import { NARROW, ROOMY } from './images'
 import type { PhoneAsk } from './askSteps'
 import { chatHits, rowOf } from '../feed/search'
@@ -2835,6 +2836,7 @@ export const App = () => {
           <ClockContext.Provider value={clockOf(screen.agentId).now}>
             <AgentScreen
               task={task}
+              waiting={task ? agentsWaiting(feed.state.items, cards.answeredAsks).has(task.id) : false}
               onStop={() => {
                 if (!task?.taskId) return
                 command(screen.agentId, screen.projectKey, {

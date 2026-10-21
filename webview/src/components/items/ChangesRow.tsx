@@ -4,6 +4,7 @@ import type { ChangesItem, FileChange } from '../../feed/types'
 import { useMissingFiles, useOpenFile } from '../../hooks/useOpenFile'
 import { useT } from '../../i18n'
 import s from '../feed.module.css'
+import { pastMenu } from '../Menu'
 
 /**
  * Putting back what the turn changed: one file, or every file the list holds (see ChangeRevert in the IDE) -
@@ -252,6 +253,8 @@ const ChangedFile = ({
           className={`${rowClass} ${s.changeRowLink}`}
           aria-label={`${t.feed.copy.openFile}: ${shown}`}
           data-tooltip={t.feed.copy.openFile}
+          // The row opens its file; the revert beside it changes the file, and stays behind the menu.
+          {...pastMenu}
           onClick={() => openFile({ path: file.path })}
         >
           {content}

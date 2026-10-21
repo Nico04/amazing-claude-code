@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { isSideComposerLayout, type ComposerLayout } from '../composerLayout'
-import { BranchChip, SPARK_PATH } from './StatusBar'
+import { SPARK_PATH } from './StatusBar'
 import s from './shell.module.css'
 import { useT } from '../i18n'
 import type { Dict } from '../i18n/en'
@@ -84,13 +84,14 @@ interface HeaderProps {
   onCloseSession: (id: string) => void
   onNewSession: () => void
   /**
-   * Fork a tab's conversation, whole - the button on every conversation's tab, beside the cross (see
-   * App.fork). The panel's own tabs (the statistics, a scenario's run) hold no conversation and have none.
+   * Fork the open tab's conversation, whole (see App.fork) - the button on the right of the header, between
+   * the new tab and the menu, the way Amazing IDE has it. The tabs carry none of their own: one on every tab
+   * stood beside the one up here, and the strip is the place for names (2026-10-21).
    */
   onFork?: (sessionId: string) => void
   /**
-   * The tabs with a conversation to fork. The others keep the button, dimmed and saying why: it stands on
-   * every tab so that a tab's width never depends on it (see sessionTab).
+   * The tabs with a conversation to fork. With any other open - one nobody has written into, the statistics,
+   * the scenarios - the header's button goes dead and says why.
    */
   forkable?: ReadonlySet<string>
   /**
@@ -150,20 +151,6 @@ interface HeaderProps {
    * than a dozen places here.
    */
   layout: ComposerLayout
-  /**
-   * The branch and its PR live in one and the same place in every layout: on the right of the header,
-   * before the burger. They used to live in three different places depending on the layout (the status
-   * line, the task line, the composer itself) - now there is one source of truth rather than three copies
-   * that would have to be kept in agreement.
-   */
-  gitBranch?: string
-  pullRequest?: string
-  onOpenPullRequest?: () => void
-  /**
-   * How many others are watching this project - a browser page beside the IDE, later a phone. Zero
-   * hides the mark entirely: the ordinary case is nobody, and a permanent "0" would be noise.
-   */
-  watchers?: number
   /**
    * The tabs of the strip that hold no conversation: the statistics, the scenarios, a run being watched.
    *
@@ -535,9 +522,9 @@ const unitIdOf = (node: HTMLElement, drag: Drag): string | undefined => {
 
 /**
  * What stands in the strip under its own name: a tab - its conversation, or the panel tab it is (see
- * sessionTab and panelTab) - and the "+" after them, which is no tab but moves with the row all the same.
+ * sessionTab and panelTab).
  */
-const keyOf = (node: HTMLElement): string | undefined => node.dataset.tab ?? node.dataset.group ?? node.dataset.strip
+const keyOf = (node: HTMLElement): string | undefined => node.dataset.tab ?? node.dataset.group
 
 /** How long a dropped tab's landing lasts. The same as the transition in shell.module.css. */
 const LANDING_MS = 160
@@ -562,10 +549,10 @@ const dotTitle = (t: Dict): Record<SessionState, string> => ({
 /**
  * A branch: one line splitting in two - what a fork is. Drawn rather than typed: the fork glyph a fork's
  * tab wears before its name comes out of the system's fallback font at a size of its own, and as a button
- * beside the cross it read as a speck.
+ * it read as a speck.
  */
 const ForkIcon = () => (
-  <svg className={s.forkIcon} viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+  <svg className={s.menuIcon} viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
     <circle cx="4.5" cy="3.5" r="1.6" />
     <circle cx="11.5" cy="3.5" r="1.6" />
     <circle cx="8" cy="12.5" r="1.6" />
@@ -576,10 +563,17 @@ const ForkIcon = () => (
 
 /**
  * Three lines as a drawing rather than the "☰" character: the typographic version has a seat of its own
- * in the font and sits below the middle of its line - next to the branch (see BranchChip), whose centre
- * is honest, the difference read to the eye as an unpainted row. Drawn, the lines stand strictly in the
- * centre of the viewBox, and with it of the button.
+ * in the font and sits below the middle of its line, and beside the drawn buttons next to it the
+ * difference read to the eye as an unpainted row. Drawn, the lines stand strictly in the centre of the
+ * viewBox, and with it of the button.
  */
+/** A new tab - drawn for the same reason as the burger beside it: "+" in the font sits off its centre. */
+const PlusIcon = () => (
+  <svg className={s.menuIcon} viewBox="0 0 16 16" aria-hidden="true">
+    <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+  </svg>
+)
+
 const HamburgerIcon = () => (
   <svg className={s.menuIcon} viewBox="0 0 16 16" aria-hidden="true">
     <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -602,10 +596,6 @@ export const Header = ({
   onReturnToInput,
   onOpenMenu,
   layout,
-  gitBranch,
-  watchers = 0,
-  pullRequest,
-  onOpenPullRequest,
   panelTabs = EMPTY_PANEL_TABS,
   onPickPanelTab,
   onClosePanelTab,
@@ -1089,6 +1079,12 @@ export const Header = ({
   }
   /** Every such tab clamped to the strip it is actually in - a stale place must not point past its end. */
   const panels = panelTabs.map((tab) => ({ ...tab, at: Math.min(Math.max(tab.at, 0), groups.length) }))
+  /**
+   * Whether the header's fork has a conversation to carry: the open tab's own, by the same set the tabs'
+   * buttons read. A panel tab open (the statistics, the scenarios) is not in it, and neither is a tab nobody
+   * has written into yet.
+   */
+  const openForkable = forkable.has(activeSession)
 
   const sessionTab = (session: Session, startsGroup: boolean, groupSize: number) => {
     const color = colorForGroup(session.groupId)
@@ -1162,25 +1158,6 @@ export const Header = ({
         ) : (
           <TabTitle title={session.title} hint={!dragging} />
         )}
-        {/* On the tab it forks, beside the cross: both are things done to this conversation. On every tab and
-            always: shown on the open tab alone, it widened the tab it came to and narrowed the one it left,
-            and a narrow strip jumped on every switch. A tab with nothing to fork keeps it dimmed, with a
-            hint saying why - aria-disabled rather than disabled, or the hint would never come up. */}
-        {onFork ? (
-          <button
-            type="button"
-            className={`${s.tabForkButton} ${forkable.has(session.id) ? '' : s.tabForkButtonOff}`}
-            aria-label={t.header.fork}
-            aria-disabled={forkable.has(session.id) ? undefined : true}
-            data-tooltip={forkable.has(session.id) ? t.header.fork : t.header.forkEmpty}
-            onClick={(event) => {
-              event.stopPropagation()
-              if (forkable.has(session.id)) onFork(session.id)
-            }}
-          >
-            <ForkIcon />
-          </button>
-        ) : null}
         <button
           type="button"
           className={s.tabClose}
@@ -1278,33 +1255,41 @@ export const Header = ({
           </Fragment>
         ))}
         {panels.filter((tab) => tab.at >= groups.length).map(panelTab)}
-
-        {/* Named for the strip's drag arithmetic (see keyOf): it goes where the drop is going to put it. */}
-        <button
-          type="button"
-          className={s.tabAdd}
-          data-strip="add"
-          style={dragStyle('add')}
-          data-tooltip={newTabKey ? `${t.header.newSession} (${newTabKey})` : t.header.newSession}
-          onClick={onNewSession}
-        >
-          +
-        </button>
       </div>
 
       <div className={s.spacer} />
 
+      {/* Three of the panel's own, in a place that does not move: a new tab, a fork of the open one, and the
+          menu - the way Amazing IDE has them. The "+" stood at the end of the strip once and wandered with
+          it, a row down whenever the tabs wrapped. The branch and its PR stood here too, and gave way: the
+          IDE shows the branch already, and the phone, which has no IDE around it, keeps both on its project
+          card. */}
       <div className={s.headerTools}>
-        {watchers > 0 && (
-          <span
-            className={s.watchers}
-            data-tooltip={t.header.watchers(watchers)}
-          >
-            ◉ {watchers}
-          </span>
-        )}
+        <button
+          type="button"
+          className={s.historyButton}
+          aria-label={t.header.newSession}
+          data-tooltip={newTabKey ? `${t.header.newSession} (${newTabKey})` : t.header.newSession}
+          onClick={onNewSession}
+        >
+          <PlusIcon />
+        </button>
 
-        <BranchChip gitBranch={gitBranch} pullRequest={pullRequest} onOpenPullRequest={onOpenPullRequest} />
+        {onFork ? (
+          <button
+            type="button"
+            className={s.historyButton}
+            aria-label={t.header.fork}
+            // Dead with aria-disabled rather than disabled, or the hint saying why would never come up.
+            aria-disabled={openForkable ? undefined : true}
+            data-tooltip={openForkable ? t.header.fork : t.header.forkEmpty}
+            onClick={() => {
+              if (openForkable) onFork(activeSession)
+            }}
+          >
+            <ForkIcon />
+          </button>
+        ) : null}
 
         <button
           type="button"

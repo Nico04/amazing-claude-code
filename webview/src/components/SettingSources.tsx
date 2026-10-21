@@ -74,7 +74,7 @@ export const SettingSources = ({
         <span className={s.screenNote}>{t.settingSources.repositoryQuiet}</span>
       )}
 
-      {supported === false ? <span className={s.attachNote}>{t.settingSources.needsNewer}</span> : null}
+      {supported === false ? <span className={s.warnNote}>{t.settingSources.needsNewer}</span> : null}
     </div>
   </div>
 )

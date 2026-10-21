@@ -51,8 +51,8 @@ export const pt: Dict = {
       customModels: { title: 'MODELOS PRÓPRIOS', hint: 'os que o Claude Code não oferece' },
       language: { title: 'IDIOMA', hint: 'em que idioma o painel fala' },
       accounts: { title: 'CONTAS DO CLAUDE', hint: 'qual assinatura paga o trabalho' },
-      feedback: { title: 'FEEDBACK', hint: 'um bug, uma ideia ou só um oi' },
-      feedbackLog: { title: 'O QUE VAI ANEXADO', hint: 'o relatório inteiro, antes de ir' },
+      feedback: { title: 'FEEDBACK', hint: 'como pedir uma mudança' },
+      feedbackLog: { title: 'RELATÓRIO DE DEPURAÇÃO', hint: 'o relatório inteiro, para copiar' },
       usageStats: { title: 'ESTATÍSTICAS DE USO', hint: 'contadores anônimos, só se você permitir' },
       usageStatsReport: { title: 'O QUE É ENVIADO', hint: 'o relatório inteiro, como iria' },
     },
@@ -65,7 +65,7 @@ export const pt: Dict = {
       remote: { label: 'Acesso remoto', sub: 'Estado, relay, dispositivos pareados' },
       accounts: { label: 'Contas do Claude', sub: 'Trocar sem sair da conta' },
       settings: { label: 'Configurações', sub: 'Tema, sons, novas conversas, idioma' },
-      feedback: { label: 'Enviar feedback', sub: 'Um bug, uma ideia ou só um oi' },
+      feedback: { label: 'Feedback', sub: 'Como pedir uma mudança' },
     },
 
     author: {
@@ -253,7 +253,7 @@ export const pt: Dict = {
       hint: 'A semana própria de um modelo, como na página da conta - só enquanto o plano tiver uma',
     },
     tokens: { label: 'Tokens de hoje', hint: 'Gastos hoje, em todos os projetos' },
-    feedback: { label: 'Botão de feedback', hint: 'O balão que abre o formulário - o menu mantém o próprio acesso' },
+    feedback: { label: 'Botão de feedback', hint: 'O balão que abre a tela de feedback - o menu mantém o próprio acesso' },
     thanks: { label: 'Coração', hint: 'Uma estrela, uma avaliação, uma palavra a um amigo ou uma gorjeta' },
   },
 
@@ -1033,7 +1033,6 @@ export const pt: Dict = {
     forkEmpty: 'Ainda não há nada para bifurcar: esta aba não tem conversa',
     renameTab: 'Renomear conversa',
     menu: 'Menu',
-    watchers: (n) => `Há mais ${n} ${n === 1 ? 'cliente vendo' : 'clientes vendo'} este projeto`,
   },
 
   side: {
@@ -1136,6 +1135,7 @@ export const pt: Dict = {
     copyBlock: 'Copiar este bloco',
     copyReply: 'Copiar a resposta inteira',
     moreActions: 'Mais',
+    messageMenu: 'ESTA MENSAGEM',
     copyMessage: 'Copiar esta mensagem, com os caminhos do que foi anexado',
     editor: {
       selected: (n, name) => (n === 1 ? `1 linha de ${name}` : `${n} linhas de ${name}`),
@@ -1144,7 +1144,6 @@ export const pt: Dict = {
     },
     reuse: {
       label: 'Editar e enviar de novo',
-      hint: 'Devolver esta mensagem ao campo de entrada, para editar e enviar de novo',
       lostImages: (n: number): string =>
         n === 1
           ? 'Volta ao campo de entrada, mas a imagem colada não - anexe-a de novo'
@@ -1152,7 +1151,7 @@ export const pt: Dict = {
     },
     rewind: {
       label: 'Retroceder até aqui',
-      hint: 'Retroceder até aqui: esta mensagem e tudo depois dela saem da conversa',
+      hint: 'Esta mensagem e tudo depois dela saem da conversa',
       steering: 'Escrita enquanto o Claude trabalhava - retroceda até a mensagem que começou aquele turno',
     },
     forkWhole: 'Esta bifurcação não pôde ser cortada na mensagem escolhida, então leva a conversa inteira.',
@@ -1569,40 +1568,26 @@ export const pt: Dict = {
   },
 
   feedback: {
-    button: 'Relatar um bug ou mandar uma ideia',
-    kinds: {
-      bug: { label: 'Bug', placeholder: 'O que aconteceu, e o que você esperava no lugar?' },
-      idea: { label: 'Ideia', placeholder: 'O que você gostaria que o painel fizesse?' },
-      hello: { label: 'Oi', placeholder: 'Qualquer coisa - isto chega a uma pessoa, não a uma fila.' },
+    button: 'Quer mudar alguma coisa?',
+    lead:
+      'Eu faço este plugin sozinho, e ele leva boa parte da minha assinatura do Claude e muito do meu tempo. Por isso não recebo mais pedidos nem relatos de bugs por aqui. Se você quer que algo mude, há dois caminhos:',
+    ways: {
+      tip: {
+        title: 'Apoie e peça',
+        body: 'Deixe uma gorjeta no Ko-fi e escreva na mensagem o que você gostaria. Eu faço.',
+      },
+      code: {
+        title: 'Faça você mesmo',
+        body: 'O código é aberto: faça a mudança e abra um pull request. Eu reviso e talvez faça o merge.',
+      },
     },
-    email: 'E-MAIL',
-    emailOptional: 'opcional',
-    attachments: 'ANEXOS',
-    addFiles: 'Adicionar arquivos',
-    removeFile: (name) => `Remover: ${name}`,
-    attachTotal: (count, max, size, budget) => `${count} de ${max} · ${size} de ${budget}`,
-    logs: 'Anexar logs de depuração',
-    logsFromTab: (tab) => `Da aba ${tab} - `,
-    logsFromOpenTab: 'Da aba que você tem aberta agora: ',
-    logsWhat:
-      'versões, tempos e o que deu errado. Nada da sua conversa, dos seus nomes de arquivo ou dos seus caminhos - e você pode ler tudo antes de enviar.',
-    logsOnlyBug: 'Só com um bug: o relatório conta algo que deu errado, e aqui não há o que contar.',
-    seeWhat: 'Ver exatamente o que vai anexado',
-    send: 'Enviar',
-    sending: 'Enviando…',
-    sentPartly: (note) => `Enviado, mas não tudo. ${note}`,
-    sent: 'Enviado. Obrigado ❤️ - isto chega direto a mim.',
-    notSent: 'Não deu para enviar. Nada se perdeu - tente de novo.',
+    thanks: 'Obrigado por usar o plugin',
+    report: 'Relatório de depuração desta aba',
     reportNote: (tab) =>
-      `Este é o anexo inteiro, palavra por palavra${tab ? `, para a aba ${tab}` : ''}. Ele é montado aqui, na sua IDE, com o que o próprio plugin viu: versões, o formato daquela conversa e tudo o que falhou. Nomes de arquivo aparecem como hashes curtos, então o mesmo arquivo se lê como o mesmo sem dizer qual é.`,
+      `Para um pull request sobre um bug, ou para quando eu pedir. É o relatório inteiro${tab ? ` da aba ${tab}` : ''}, montado aqui, no seu IDE, com o que o próprio plugin viu: versões, a forma da conversa e o que falhou - nenhuma palavra do que foi dito. Nomes de arquivo aparecem como hashes curtos.`,
     building: 'Montando…',
     copy: 'Copiar',
-    problems: {
-      empty: 'Escreva algumas palavras primeiro.',
-      tooLong: (max) => `Isso passa de ${max} caracteres.`,
-      tooMany: (max) => `No máximo ${max} arquivos.`,
-      tooHeavy: (budget) => `Os arquivos somam mais de ${budget}.`,
-    },
+    copied: 'Copiado',
   },
 
   mcp: {
@@ -1934,8 +1919,6 @@ export const pt: Dict = {
 
   status: {
     todayTokens: 'Tokens gastos hoje, em todos os projetos',
-    openPr: 'Abrir o pull request no navegador',
-    noPr: 'sem PR',
     effortHint: (effort) => `Esforço de raciocínio: ${effort}`,
     modelHint: (model) => `Modelo: ${model}`,
     modelHintSwitched: (model, from) => `Modelo: ${model} - o Claude Code mudou para ele sozinho, saindo de ${from}`,
@@ -1967,6 +1950,7 @@ export const pt: Dict = {
     label: 'PERMISSÃO',
     decisions: { once: 'Permitir uma vez', always: 'Sempre permitir', deny: 'Negar' },
     underMode: (mode) => `Modo: ${mode}`,
+    askedBy: (agent) => `Pedido por ${agent}`,
   },
 
   selectors: {

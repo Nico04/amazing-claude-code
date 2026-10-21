@@ -1,6 +1,7 @@
 import type { DetailLine, DetailNote, Hunk, ToolChip, ToolItem, ToolMeta } from '../../feed/types'
 import s from '../feed.module.css'
 import { Caret } from './Caret'
+import { pastMenu } from '../Menu'
 import { editAnchor, filePathOf } from '../../feed/tools'
 import { useOpenFile, type OpenFileRequest } from '../../hooks/useOpenFile'
 import { useT } from '../../i18n'
@@ -144,6 +145,7 @@ export const ToolCard = ({ item, open, awaitingPermission, onToggle }: ToolCardP
                second button repeating the path with nothing to do. */
             aria-label={`${t.feed.copy.openFile}: ${item.target}`}
             data-tooltip={t.feed.copy.openFile}
+            {...pastMenu}
             onClick={(event) => {
               event.stopPropagation()
               openFile(file)

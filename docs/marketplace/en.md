@@ -88,7 +88,7 @@ permission rules, MCP servers and skills all come with it. No proxy, no account 
 - **No account, and no analytics unless you allow them.** The panel asks once whether it may send
   anonymous daily counts of how it is used, and sends nothing until you press Allow - the settings
   show the whole report first, and turning it off deletes what was sent. Apart from that, with
-  remote access off, only a feedback report you write yourself ever leaves the machine.
+  remote access off, nothing leaves the machine.
 - **Your permission rules stay yours.** The CLI decides what to ask about, with your settings,
   rules and hooks. The plugin adds no hook of its own and never starts a session in a laxer mode
   than the one on screen.

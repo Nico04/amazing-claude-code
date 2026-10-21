@@ -351,17 +351,6 @@ internal object ClaudePreferences {
         set(value) = write(REMOTE_RELAY_KEY, value.trim())
 
     /**
-     * The address a person left on the feedback screen last time, so they need not type it again.
-     *
-     * Kept in the ordinary settings rather than in the password safe: it is what somebody chose to give
-     * out in order to be answered, not a secret. It is theirs alone - nothing is ever sent to it from
-     * here, and it travels only inside a message they pressed Send on.
-     */
-    var feedbackEmail: String
-        get() = read(FEEDBACK_EMAIL_KEY)
-        set(value) = write(FEEDBACK_EMAIL_KEY, value.trim())
-
-    /**
      * Whether the microphone button and its hotkeys exist at all.
      *
      * Off until it is turned on, like remote access above and for a smaller version of the same reason:
@@ -445,6 +434,20 @@ internal object ClaudePreferences {
     private const val MAX_MODEL_NAME = 120
     private const val MAX_CUSTOM_MODELS = 30
 
+    init {
+        forgetRetired()
+    }
+
+    /**
+     * Wipe what a retired feature left in the IDE's settings - for now, the address the old feedback form
+     * remembered between visits. The form is gone, and with it the only reason to keep a person's address
+     * here, so it goes on the first read of any preference rather than staying behind for good. Cheap to
+     * repeat: an absent key stays absent.
+     */
+    internal fun forgetRetired() {
+        runCatching { PropertiesComponent.getInstance().unsetValue(RETIRED_FEEDBACK_EMAIL_KEY) }
+    }
+
     private fun read(key: String): String = PropertiesComponent.getInstance().getValue(key).orEmpty()
 
     private fun write(key: String, value: String) {
@@ -479,7 +482,6 @@ internal object ClaudePreferences {
     private const val SOUND_VOLUMES_KEY = "acc.sounds.volumes"
     private const val REMOTE_ENABLED_KEY = "acc.remote.enabled"
     private const val REMOTE_RELAY_KEY = "acc.remote.relayUrl"
-    private const val FEEDBACK_EMAIL_KEY = "acc.feedback.email"
     private const val VOICE_ENABLED_KEY = "acc.voice.enabled"
     private const val VOICE_LANGUAGE_KEY = "acc.voice.language"
     private const val VOICE_DEVICE_KEY = "acc.voice.device"
@@ -488,4 +490,7 @@ internal object ClaudePreferences {
     private const val VOICE_HOLD_KEY = "acc.voice.hold"
     private const val VOICE_PUSH_MOUSE_KEY = "acc.voice.pushMouse"
     private const val VOICE_HOLD_MOUSE_KEY = "acc.voice.holdMouse"
+
+    /** Kept only so that it can be wiped - see [forgetRetired]. */
+    private const val RETIRED_FEEDBACK_EMAIL_KEY = "acc.feedback.email"
 }

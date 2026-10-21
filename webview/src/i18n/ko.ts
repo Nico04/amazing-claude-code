@@ -51,8 +51,8 @@ export const ko: Dict = {
       customModels: { title: '커스텀 모델', hint: 'Claude Code에 없는 모델' },
       language: { title: '언어', hint: '패널이 쓰는 언어' },
       accounts: { title: 'Claude 계정', hint: '어느 구독으로 일하는지' },
-      feedback: { title: '피드백', hint: '버그, 아이디어, 그냥 인사도 좋아요' },
-      feedbackLog: { title: '함께 보내는 내용', hint: '보내기 전 전체 보고서' },
+      feedback: { title: '피드백', hint: '변경을 요청하는 방법' },
+      feedbackLog: { title: '디버그 보고서', hint: '복사할 수 있는 전체 보고서' },
       usageStats: { title: '사용 통계', hint: '익명 집계, 허용할 때만' },
       usageStatsReport: { title: '보내는 내용', hint: '다음에 보낼 보고서 전체' },
     },
@@ -65,7 +65,7 @@ export const ko: Dict = {
       remote: { label: '원격 접속', sub: '상태, 릴레이, 연결된 기기' },
       accounts: { label: 'Claude 계정', sub: '로그아웃 없이 전환하기' },
       settings: { label: '설정', sub: '테마, 알림음, 새 대화, 언어' },
-      feedback: { label: '피드백 보내기', sub: '버그, 아이디어, 그냥 인사도 좋아요' },
+      feedback: { label: '피드백', sub: '변경을 요청하는 방법' },
     },
 
     author: {
@@ -253,7 +253,7 @@ export const ko: Dict = {
       hint: '계정 페이지와 같은 모델 전용 주간 - 요금제에 있을 때만 보여요',
     },
     tokens: { label: '오늘의 토큰', hint: '오늘 쓴 토큰 (모든 프로젝트 합계)' },
-    feedback: { label: '피드백 버튼', hint: '양식을 여는 말풍선 - 메뉴에서는 언제든 열 수 있어요' },
+    feedback: { label: '피드백 버튼', hint: '피드백 화면을 여는 말풍선 - 메뉴에서는 언제든 열 수 있어요' },
     thanks: { label: '하트', hint: '별, 리뷰, 친구에게 한마디, 또는 후원' },
   },
 
@@ -1027,7 +1027,6 @@ export const ko: Dict = {
     forkEmpty: '아직 포크할 것이 없습니다: 이 탭에는 아직 대화가 없습니다',
     renameTab: '대화 이름 바꾸기',
     menu: '메뉴',
-    watchers: (n) => `다른 ${n}곳에서 이 프로젝트를 보고 있어요`,
   },
 
   side: {
@@ -1129,6 +1128,7 @@ export const ko: Dict = {
     copyBlock: '이 블록 복사',
     copyReply: '답변 전체 복사',
     moreActions: '더 보기',
+    messageMenu: '이 메시지',
     copyMessage: '이 메시지 복사 - 첨부는 경로로',
     editor: {
       selected: (n, name) => `${name}의 ${n}줄`,
@@ -1137,7 +1137,6 @@ export const ko: Dict = {
     },
     reuse: {
       label: '고쳐서 다시 보내기',
-      hint: '이 메시지를 입력창으로 되돌려 고쳐서 다시 보냅니다',
       lostImages: (n: number): string =>
         n === 1
           ? '입력창으로 돌아가지만 붙여넣은 이미지는 함께 오지 않습니다. 다시 첨부하세요'
@@ -1145,7 +1144,7 @@ export const ko: Dict = {
     },
     rewind: {
       label: '여기로 되감기',
-      hint: '여기로 되감기: 이 메시지와 그 뒤의 모든 것이 대화에서 빠져요',
+      hint: '이 메시지와 그 뒤의 모든 것이 대화에서 빠져요',
       steering: 'Claude가 작업하는 동안 쓴 메시지예요 - 그 턴을 시작한 메시지로 되감으세요',
     },
     forkWhole: '이 포크는 고른 메시지에서 자를 수 없어서 대화 전체를 담고 있어요.',
@@ -1560,40 +1559,26 @@ export const ko: Dict = {
   },
 
   feedback: {
-    button: '버그를 알리거나 아이디어 보내기',
-    kinds: {
-      bug: { label: '버그', placeholder: '무슨 일이 있었고, 원래는 어떻게 되리라 생각했나요?' },
-      idea: { label: '아이디어', placeholder: '패널이 무엇을 해 주면 좋을까요?' },
-      hello: { label: '인사', placeholder: '무엇이든 좋아요 - 대기열이 아니라 사람에게 닿습니다.' },
+    button: '바꾸고 싶은 게 있나요?',
+    lead:
+      '이 플러그인은 저 혼자 만들고 있고, Claude 구독의 상당 부분과 많은 시간이 들어갑니다. 그래서 이제 여기서는 요청과 버그 제보를 받지 않아요. 무언가 바꾸고 싶다면 두 가지 방법이 있어요:',
+    ways: {
+      tip: {
+        title: '후원하고 요청하기',
+        body: 'Ko-fi에서 후원하고 메시지에 원하는 것을 적어 주세요. 제가 만들게요.',
+      },
+      code: {
+        title: '직접 만들기',
+        body: '코드는 공개되어 있어요. 변경하고 풀 리퀘스트를 열어 주세요. 검토하고 병합할 수도 있어요.',
+      },
     },
-    email: '이메일',
-    emailOptional: '선택',
-    attachments: '첨부',
-    addFiles: '파일 추가',
-    removeFile: (name) => `빼기: ${name}`,
-    attachTotal: (count, max, size, budget) => `${count}/${max} · ${size}/${budget}`,
-    logs: '디버그 로그 첨부',
-    logsFromTab: (tab) => `${tab} 탭에서 - `,
-    logsFromOpenTab: '지금 열려 있는 탭에서: ',
-    logsWhat:
-      '버전, 소요 시간, 그리고 잘못된 부분. 대화 내용도, 파일 이름도, 경로도 들어가지 않아요 - 보내기 전에 전부 읽어 볼 수 있습니다.',
-    logsOnlyBug: '버그일 때만 가능해요. 보고서는 무언가 잘못된 이야기인데, 여기엔 이야기할 게 없어요.',
-    seeWhat: '무엇이 함께 가는지 그대로 보기',
-    send: '보내기',
-    sending: '보내는 중…',
-    sentPartly: (note) => `보냈지만 전부는 아니에요. ${note}`,
-    sent: '보냈어요. 고마워요 ❤️ - 저에게 바로 갑니다.',
-    notSent: '보내지 못했어요. 잃은 건 없으니 다시 시도해 주세요.',
+    thanks: '플러그인을 써 주셔서 고마워요',
+    report: '이 탭의 디버그 보고서',
     reportNote: (tab) =>
-      `이게 첨부되는 전부예요, 한 글자도 빼지 않고${tab ? ` (${tab} 탭)` : ''}. 당신의 IDE 안에서, 플러그인이 직접 본 것으로 만들어집니다: 버전, 그 대화의 모양, 실패한 것들. 파일 이름은 짧은 해시로 나와서 같은 파일은 같은 것으로 읽히지만 어떤 파일인지는 드러나지 않아요.`,
+      `버그에 관한 풀 리퀘스트에 붙이거나, 제가 요청할 때 보내 주세요. 전체 보고서입니다${tab ? ` (탭 ${tab})` : ''}. 플러그인이 직접 본 것으로 IDE 안에서 만들어져요: 버전, 대화의 형태, 실패한 것 - 대화 내용은 한 글자도 들어가지 않아요. 파일 이름은 짧은 해시로 표시돼요.`,
     building: '만드는 중…',
     copy: '복사',
-    problems: {
-      empty: '먼저 몇 마디 적어 주세요.',
-      tooLong: (max) => `${max}자를 넘었어요.`,
-      tooMany: (max) => `파일은 ${max}개까지예요.`,
-      tooHeavy: (budget) => `파일 합계가 ${budget}을(를) 넘었어요.`,
-    },
+    copied: '복사했어요',
   },
 
   mcp: {
@@ -1922,8 +1907,6 @@ export const ko: Dict = {
 
   status: {
     todayTokens: '오늘 쓴 토큰 (모든 프로젝트 합계)',
-    openPr: '브라우저에서 pull request 열기',
-    noPr: 'PR 없음',
     effortHint: (effort) => `사고 강도: ${effort}`,
     modelHint: (model) => `모델: ${model}`,
     modelHintSwitched: (model, from) => `모델: ${model} - Claude Code가 ${from}에서 스스로 옮겼어요`,
@@ -1955,6 +1938,7 @@ export const ko: Dict = {
     label: '권한',
     decisions: { once: '이번만 허용', always: '항상 허용', deny: '거절' },
     underMode: (mode) => `${mode} 모드`,
+    askedBy: (agent) => `${agent}의 요청`,
   },
 
   selectors: {

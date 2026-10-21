@@ -296,7 +296,6 @@ internal class ProjectCatalog(
             put("type", "init")
             put("projectName", project.name)
             put("workingDirectory", project.basePath.orEmpty())
-            ProjectFacts.gitBranch(project)?.let { put("gitBranch", it) }
             // The panel's own version, shown at the foot of the menu. Asked of the platform rather
             // than kept as a constant of ours: a second copy of a number that Gradle already patches
             // into plugin.xml is a number that will one day disagree with it.

@@ -60,7 +60,7 @@ paths:
 - `settingSources`, `settingSourcesFacts`, `openSettingSources` - setting-sources
 - `openLink` - side-menu
 - `mcpLoading` - idle-sleep
-- состояние формы обратной связи - feedback
+- экран обратной связи и его отладочный отчёт (`feedbackReport`) - feedback
 - новогодние украшения - holiday
 - экран без вкладок (`sessions.length === 0`, `Welcome`), `markPanelReady` на первый `auth` - welcome
 - голосовая вставка в черновик - voice
@@ -153,8 +153,8 @@ paths:
 `indicators` и пустые контейнеры на рельсе и в compact - indicators; сворачивание вставки - paste;
 `queueToken`, `queueKey`, `pressQueueKey`, `seenQueueToken` - panel-keys.
 
-**`webview/src/components/feed.module.css`**: `.userActions` - message-reuse; `.taskLog` - subagents;
-`.toolHead` и его распорка `::before` - tool-cards; `.pins`, `.pinOn`, `.textPinnable` - pins;
+**`webview/src/components/feed.module.css`**: `.userActions`, `.moreOpen` - message-reuse; `.taskLog` - subagents;
+`.toolHead` и его распорка `::before` - tool-cards; `.pins`, `.pinOn`, `.textWithMenu`, `.textPinned` - pins;
 `.chipPasteCopy` - paste; `.rowLit` - search; `.changes`, `.change*` - changed-files.
 
 **Слои (z-index)**: лестница записана в `holiday.module.css`. Полка пинов 19, кнопка «вниз» 20, вуаль 21,

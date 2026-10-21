@@ -58,7 +58,7 @@ class UsageFeaturesTest {
             "agentTranscript", "openFile", "revertChanges", "clipboardWrite", "pick", "savePastedFile", "resumeSession", "search",
             "searchAi", "voiceStart", "startPairing", "scenarioRun", "scenarioSave", "scenarioDraft",
             "scenarioSchedule", "scenarioQueue", "scenarioAnswer", "saveImage", "mcpAdd", "pluginInstall",
-            "accountAdd", "accountUse", "designLogin", "feedbackSend", "setTheme", "setTextSize", "setLanguage",
+            "accountAdd", "accountUse", "designLogin", "setTheme", "setTextSize", "setLanguage",
             "setComposerLayout", "setSendKey", "setPasteCollapse", "setCalmColors", "setHiddenIndicators",
             "soundSettings", "setShareEditor", "setRestoreTabs", "setSpellcheck", "setImproveInstructions",
             "setCustomModels",

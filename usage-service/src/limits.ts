@@ -4,9 +4,9 @@
  * Two uses: reports (a generous ceiling - an office behind one address is many machines) and attempts at
  * the admin password (a tight one - a person mistypes it twice, a script tries it thousands of times).
  *
- * Whole windows rather than a sliding one, as in the feedback service next door: a count and the window
- * it belongs to is all that is kept, and it is forgotten when the window turns. The addresses live in
- * memory only, never on disk - this service keeps no address of anybody anywhere.
+ * Whole windows rather than a sliding one: a count and the window it belongs to is all that is kept, and
+ * it is forgotten when the window turns. The addresses live in memory only, never on disk - this service
+ * keeps no address of anybody anywhere.
  */
 export class Limits {
   private window = 0

@@ -186,8 +186,8 @@ const NEW_CHAT_SCREENS: MenuScreen[] = ['newChatModel', 'newChatEffort', 'newCha
 
 /**
  * Where a step back leads from each screen. Three of them stand one level deeper than the rest: the
- * preferences belong to "Settings", "what travels" to remote access, and the report's preview to the
- * feedback form it is about - coming back from any of them to the root list would lose the screen one
+ * preferences belong to "Settings", "what travels" to remote access, and the debug report to the
+ * feedback screen that offers it - coming back from any of them to the root list would lose the screen one
  * was in the middle of.
  */
 export const parentOf = (screen: MenuScreen): MenuScreen => {
@@ -947,7 +947,7 @@ export const SettingsScreen = ({
           value={summary.language}
           onClick={() => onPick('language')}
         />
-        {/* Last: it is about the plugin rather than about working in it, the way "Send feedback" closes
+        {/* Last: it is about the plugin rather than about working in it, the way "Feedback" closes
             the root list - and like that row it takes the heart's colour, because both lead to the author. */}
         <Row
           icon="usageStats"

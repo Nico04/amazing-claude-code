@@ -532,7 +532,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      */
     fun register(client: SessionClient) {
         clients[client.id] = client
-        broadcastClients()
+        countWatchers()
     }
 
     /** A client says what it has and is caught up with the rest. */
@@ -752,7 +752,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
 
     fun detach(clientId: String) {
         clients.remove(clientId)
-        broadcastClients()
+        countWatchers()
     }
 
     /**
@@ -817,38 +817,27 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      * How many devices are watching over the network right now, as the agent counts them.
      *
      * Reported rather than inferred: from here, the whole relay is one client no matter how many
-     * phones are behind it, and "one client" is exactly what the panel must not say when two people
+     * phones are behind it, and "one client" is exactly what the count must not say when two people
      * are watching - or when nobody is.
      */
     fun noteRemoteWatchers(count: Int) {
-        if (remoteWatchers.getAndSet(count) != count) broadcastClients()
+        if (remoteWatchers.getAndSet(count) != count) countWatchers()
     }
 
-    private fun broadcastClients() {
-        // The panel is itself a client and is not worth telling a person about: they are looking at it.
-        // Neither is the relay's own connection - what matters there is the devices behind it, which it
-        // counts for us.
-        val local = clients.values.filterNot {
-            it.id.startsWith(PANEL_PREFIX) || it.id.startsWith(RELAY_PREFIX)
+    /**
+     * Who else is watching this project, for the statistics (see StatsCollector.noteWatchers).
+     *
+     * Counted and no longer said: the panel's header showed it once as "◉ 2" beside the branch, and both left
+     * it for a new tab and a fork (2026-10-21). The phone never read it.
+     */
+    private fun countWatchers() {
+        // The panel is itself a client and is no one else watching. Neither is the relay's own
+        // connection - what matters there is the devices behind it, which it counts for us.
+        val local = clients.values.count {
+            !it.id.startsWith(PANEL_PREFIX) && !it.id.startsWith(RELAY_PREFIX)
         }
-        val watchers = local
 
-        stats.noteWatchers(watchers.size + remoteWatchers.get())
-
-        broadcastProject(
-            buildJsonObject {
-                put("type", "clients")
-                put("count", watchers.size + remoteWatchers.get())
-                putJsonArray("clients") {
-                    watchers.forEach { watcher ->
-                        addJsonObject {
-                            put("id", watcher.id)
-                            put("local", watcher.isLocal)
-                        }
-                    }
-                }
-            }.toString(),
-        )
+        stats.noteWatchers(local + remoteWatchers.get())
     }
 
     /**
@@ -3642,7 +3631,6 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
             "commands",
             // The commands a conversation came to know after its catalogue - a mod's (see AddedCommands).
             "addedCommands",
-            "clients",
             "remoteState",
             "mcpServers",
             "plugins",

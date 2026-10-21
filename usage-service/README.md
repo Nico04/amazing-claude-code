@@ -9,7 +9,7 @@ Amazing Codex GUI (`acx`, a repository of its own). One service, one database an
 dashboard shows one plugin at a time.
 
 It is the third server in this repository and the only one that keeps anything. The relay holds nothing
-on disk by design, and the feedback service forgets a message the moment it has forwarded it. Both
+on disk by design, and the feedback service only turns the old plugin's form away and keeps nothing. Both
 promises are written into their READMEs, and a database does not belong beside either of them, so this is
 a service of its own.
 

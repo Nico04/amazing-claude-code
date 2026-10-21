@@ -66,8 +66,8 @@ export const en = {
       customModels: { title: 'CUSTOM MODELS', hint: 'ones Claude Code does not offer' },
       language: { title: 'LANGUAGE', hint: 'what the panel speaks' },
       accounts: { title: 'CLAUDE ACCOUNTS', hint: 'which subscription pays for the work' },
-      feedback: { title: 'FEEDBACK', hint: 'a bug, an idea, or just hello' },
-      feedbackLog: { title: 'WHAT GETS ATTACHED', hint: 'the whole report, before it goes' },
+      feedback: { title: 'FEEDBACK', hint: 'how to get something changed' },
+      feedbackLog: { title: 'DEBUG REPORT', hint: 'the whole report, to copy' },
       usageStats: { title: 'USAGE STATISTICS', hint: 'anonymous counts, only if you allow' },
       usageStatsReport: { title: 'WHAT GETS SENT', hint: 'the whole report, as it would go' },
     },
@@ -80,7 +80,7 @@ export const en = {
       remote: { label: 'Remote access', sub: 'State, relay, paired devices' },
       accounts: { label: 'Claude accounts', sub: 'Switch without signing out' },
       settings: { label: 'Settings', sub: 'Theme, sounds, new chats, language' },
-      feedback: { label: 'Send feedback', sub: 'A bug, an idea, or just hello' },
+      feedback: { label: 'Feedback', sub: 'How to get something changed' },
     },
 
     /**
@@ -325,7 +325,7 @@ export const en = {
       hint: 'A model’s own week, as on the account page - shown only while the plan keeps one',
     },
     tokens: { label: 'Tokens today', hint: 'Spent today, across every project' },
-    feedback: { label: 'Feedback button', hint: 'The bubble that opens the feedback form - the menu keeps its own way in' },
+    feedback: { label: 'Feedback button', hint: 'The bubble that opens the feedback screen - the menu keeps its own way in' },
     thanks: { label: 'Heart', hint: 'A star, a review, a word to a friend, or a tip' },
   },
 
@@ -1317,15 +1317,13 @@ export const en = {
     closeHint: (close: string, reopen: string): string => `${close} · ${reopen} opens it again`,
     conversations: 'Conversations',
     newSession: 'New session',
-    /** The button beside "+": a fork of the conversation on screen, whole - see App.fork. */
+    /** A fork of the open tab's conversation, whole - the button on the right of the header (see App.fork). */
     fork: 'Fork this conversation: a new tab that carries on from here, while this one stays as it is',
     /** The same button on a tab nobody has written into yet - there is no conversation to carry. */
     forkEmpty: 'Nothing to fork yet: this tab has no conversation',
     /** The field a double click on a conversation's tab opens in place of its name. */
     renameTab: 'Rename conversation',
     menu: 'Menu',
-    /** How many others have this project open - a browser page beside the IDE, or a phone. */
-    watchers: (n: number): string => `${n} other ${n === 1 ? 'client is' : 'clients are'} watching this project`,
   },
 
   /** The card of side questions over the field - `/btw` (see SideQuestion.tsx). */
@@ -1456,9 +1454,11 @@ export const en = {
     jumpToLatest: 'Jump to latest',
     copyBlock: 'Copy this block',
     copyReply: 'Copy the whole reply',
-    /** The three dots on a card, which open everything else it can do - the phone's alone. */
+    /** The three dots on a card, which open everything else it can do - the phone's sheet, or the desk's menu. */
     moreActions: 'More',
-    /** The two buttons in the head of a message of one's own - see UserCard. */
+    /** The heading of the menu behind those dots on a message of one's own, at the desk (see CardMenu). */
+    messageMenu: 'THIS MESSAGE',
+    /** The one button left standing in the head of a message of one's own - see UserCard. */
     copyMessage: 'Copy this message, with the paths of what was attached',
     editor: {
       /** Under a sent message: the lines selected in the editor that went to the agent with it. */
@@ -1470,20 +1470,22 @@ export const en = {
     },
     reuse: {
       label: 'Edit and send again',
-      hint: 'Put this message back into the input field, to edit and send again',
       /**
-       * Said instead of the hint when a pasted picture cannot come back: only the caption for it is left
-       * in a conversation read off the disk, and the bytes are what the agent was actually shown.
+       * Said under the menu's entry when a pasted picture cannot come back: only the caption for it is
+       * left in a conversation read off the disk, and the bytes are what the agent was actually shown.
        */
       lostImages: (n: number): string =>
         n === 1
           ? 'Back into the input field - but the pasted image cannot come with it, attach it again'
           : `Back into the input field - but the ${n} pasted images cannot come with it, attach them again`,
     },
-    /** The third button in the head of a message of one's own - it opens the rewind dialog (see RewindDialog). */
+    /**
+     * The last entry of the menu on a message of one's own - it opens the rewind dialog (see RewindDialog).
+     * `hint` is said under it: what goes, before anything does.
+     */
     rewind: {
       label: 'Rewind to here',
-      hint: 'Rewind to here: this message and everything after it leave the conversation',
+      hint: 'This message and everything after it leave the conversation',
       /** On a message written while a turn was running: there is no clean point before it to go back to. */
       steering: 'Written while Claude was working - rewind to the message that started that turn',
     },
@@ -1492,9 +1494,9 @@ export const en = {
     /** The code a fork was to take along, not put back - see FORK_CODE in feed/rewind.ts. */
     forkCode: (why: string): string => `The fork is open, but the code here could not be put back: ${why}`,
     /**
-     * The pin button in the corner of a message, and the strip it puts the message into (see
-     * feed/pins.ts). `crowded` stands in for `add` on a button gone dead because three are pinned
-     * already - it is the one line that says why it will not work and what to do about it.
+     * The pin - a button in the corner of an answer, an entry in the menu of a message of one's own - and
+     * the strip it puts the message into (see feed/pins.ts). `crowded` is said on a pin gone dead because
+     * three are pinned already - it is the one line that says why it will not work and what to do about it.
      */
     pin: {
       add: 'Pin it to the top of the chat',
@@ -2052,42 +2054,26 @@ export const en = {
   },
 
   feedback: {
-    button: 'Report a bug or send an idea',
-    kinds: {
-      bug: { label: 'Bug', placeholder: 'What happened, and what did you expect instead?' },
-      idea: { label: 'Idea', placeholder: 'What would you like the panel to do?' },
-      hello: { label: 'Hello', placeholder: 'Anything at all - it reaches a person, not a queue.' },
+    button: 'Want something changed?',
+    lead:
+      "I build this plugin on my own, and it takes a large share of my Claude subscription and a lot of my time. So I no longer take requests and bug reports here. If you'd like something changed, there are two ways:",
+    ways: {
+      tip: {
+        title: 'Support and ask',
+        body: "Tip on Ko-fi and write in the message what you'd like. I'll build it.",
+      },
+      code: {
+        title: 'Build it yourself',
+        body: "The code is open: make the change and open a pull request. I'll review it and may merge it.",
+      },
     },
-    email: 'EMAIL',
-    emailOptional: 'optional',
-    attachments: 'ATTACHMENTS',
-    addFiles: 'Add files',
-    removeFile: (name: string): string => `Remove ${name}`,
-    attachTotal: (count: number, max: number, size: string, budget: string): string =>
-      `${count} of ${max} · ${size} of ${budget}`,
-    logs: 'Attach debug logs',
-    logsFromTab: (tab: string): string => `From the tab ${tab} - `,
-    logsFromOpenTab: 'From the tab you have open now: ',
-    logsWhat:
-      'versions, timings and what went wrong. Not your conversation, not your file names, not your paths - and you can read the whole thing before it goes.',
-    logsOnlyBug:
-      'Only with a bug: the report is an account of something going wrong, and there is nothing here for it to describe.',
-    seeWhat: 'See exactly what gets attached',
-    send: 'Send',
-    sending: 'Sending…',
-    sentPartly: (note: string): string => `Sent, but not everything. ${note}`,
-    sent: 'Sent. Thank you ❤️ - it goes straight to me.',
-    notSent: 'It could not be sent. Nothing was lost - try again.',
+    thanks: 'Thank you for using the plugin',
+    report: 'Debug report for this tab',
     reportNote: (tab: string): string =>
-      `This is the entire attachment, word for word${tab ? `, for the tab ${tab}` : ''}. It is built here, in your IDE, from what the plugin itself saw: versions, the shape of that conversation, and anything that failed. File names appear as short hashes, so the same file reads as the same file without saying which one it is.`,
+      `For a pull request about a bug, or for when I ask. This is the whole report${tab ? ` for the tab ${tab}` : ''}, built here in your IDE from what the plugin itself saw: versions, the shape of the conversation and anything that failed - none of what was said. File names appear as short hashes.`,
     building: 'Building it…',
     copy: 'Copy',
-    problems: {
-      empty: 'Write a few words first.',
-      tooLong: (max: number): string => `That is longer than ${max} characters.`,
-      tooMany: (max: number): string => `No more than ${max} files.`,
-      tooHeavy: (budget: string): string => `The files add up to more than ${budget}.`,
-    },
+    copied: 'Copied',
   },
 
   mcp: {
@@ -2487,8 +2473,6 @@ export const en = {
 
   status: {
     todayTokens: 'Tokens spent today, across all projects',
-    openPr: 'Open pull request in browser',
-    noPr: 'no PR',
     effortHint: (effort: string): string => `Reasoning effort: ${effort}`,
     modelHint: (model: string): string => `Model: ${model}`,
     /** The CLI moved the conversation to another model by itself - see SwitchItem. */
@@ -2529,6 +2513,8 @@ export const en = {
     decisions: { once: 'Allow once', always: 'Always allow', deny: 'Deny' },
     /** Which permission mode the question was asked under - `mode` is the short caption of that mode. */
     underMode: (mode: string): string => `${mode} mode`,
+    /** Which subagent's call it is, when it is not the conversation's own turn - `agent` is its chip's name. */
+    askedBy: (agent: string): string => `Asked by ${agent}`,
   },
 
   selectors: {

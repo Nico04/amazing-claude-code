@@ -9,7 +9,7 @@ import { useNow } from '../../hooks/useNow'
 import { OpenAgentContext, type OpenedAgent } from '../../hooks/useOpenAgent'
 import { contextOf } from '../../feed/build'
 import type { PanelState } from '../../feed/panelState'
-import { awaiting, buildAgentTabs, mainStatusOf, streamStatus } from '../../feed/streamStatus'
+import { agentsWaiting, awaiting, buildAgentTabs, mainStatusOf, streamStatus } from '../../feed/streamStatus'
 import { countSessionImages } from '../../feed/tokens'
 import { openedAgentOf } from '../../feed/workflow'
 import type { FeedItem, TaskItem, TodoItem } from '../../feed/types'
@@ -391,7 +391,10 @@ export const Thread = ({
         ) : null}
 
         {resolvedStream !== 'main' ? (
-          <AgentStreamView item={activeTask} />
+          <AgentStreamView
+            item={activeTask}
+            waiting={activeTask ? agentsWaiting(feed.items, cards.answeredAsks).has(activeTask.id) : false}
+          />
         ) : loading && feed.items.length === 0 ? (
           <p className={m.empty}>{t.mobile.thread.loading}</p>
         ) : (

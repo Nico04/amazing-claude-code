@@ -155,25 +155,10 @@ const download = (name: string, base64: string): void => {
 }
 
 /*
- * The IDE's half of the feedback screen, played by the harness.
- *
- * The screen is the one place in the panel that asks the shell for things it cannot make up itself - the
- * address kept from last time, the files a native dialog picked, the debug report - so without an answer
- * here it would sit empty and none of it could be looked at. The files are invented; the report is a
- * sample of the real shape (see FeedbackReport on the plugin's side).
- *
- * Sending fails every third time on purpose. The failed path has its own banner and leaves the draft
- * where it was, and that is precisely the state one never reaches by accident when checking by hand.
+ * The IDE's half of the feedback screen, played by the harness: the debug report it offers to copy. The
+ * report is a sample of the real shape (see FeedbackReport on the plugin's side) - without an answer here
+ * its screen would sit on "Building it…" and could not be looked at.
  */
-let feedbackFiles: { id: string; name: string; bytes: number }[] = []
-let feedbackSends = 0
-
-const SAMPLE_FILES = [
-  { name: 'screenshot.png', bytes: 184_320 },
-  { name: 'idea.md', bytes: 2_140 },
-  { name: 'crash-report.txt', bytes: 51_200 },
-]
-
 const SAMPLE_REPORT = [
   'Amazing Claude Code GUI 0.8.1',
   'WebStorm 2026.2 (WS-262.19173.4)',
@@ -413,46 +398,9 @@ const answerUsageStats = (message: WebviewMessage): void => {
 }
 
 const answerFeedback = (message: WebviewMessage): void => {
-  const state = (note?: string): void => {
-    window.__accReceive?.({
-      type: 'feedbackState',
-      email: 'you@example.com',
-      attachments: feedbackFiles,
-      ...(note ? { note } : {}),
-    })
-  }
-
-  if (message.type === 'feedbackOpen') state()
-
+  // A beat late on purpose, so that the screen's "Building it…" can be looked at too.
   if (message.type === 'feedbackReport') {
-    window.__accReceive?.({ type: 'feedbackLog', text: SAMPLE_REPORT })
-  }
-
-  if (message.type === 'feedbackAttach') {
-    const next = SAMPLE_FILES[feedbackFiles.length % SAMPLE_FILES.length]
-    if (next) {
-      feedbackFiles = [...feedbackFiles, { id: `f${feedbackFiles.length + 1}`, ...next }]
-      state(feedbackFiles.length >= 3 ? 'One of them was skipped: it is bigger than 10 MB.' : undefined)
-    }
-  }
-
-  if (message.type === 'feedbackDetach') {
-    feedbackFiles = feedbackFiles.filter((file) => file.id !== message.id)
-    state()
-  }
-
-  if (message.type === 'feedbackSend') {
-    feedbackSends += 1
-    const ok = feedbackSends % 3 !== 0
-    if (ok) feedbackFiles = []
-
-    setTimeout(() => {
-      window.__accReceive?.(
-        ok
-          ? { type: 'feedbackSent', ok: true }
-          : { type: 'feedbackSent', ok: false, error: 'The feedback service did not answer. Try again.' },
-      )
-    }, 700)
+    setTimeout(() => window.__accReceive?.({ type: 'feedbackLog', text: SAMPLE_REPORT }), 300)
   }
 }
 
@@ -464,8 +412,8 @@ const answerFeedback = (message: WebviewMessage): void => {
  * were. That is the half of the feature worth looking at without an IDE: the attachments have to come back
  * as chips, in their new place, and none of them may go missing.
  *
- * Every third press fails, as with the feedback screen above: the strip that explains a failed rewrite is
- * otherwise a piece of interface nobody ever sees.
+ * Every third press fails on purpose: the strip that explains a failed rewrite is otherwise a piece of
+ * interface nobody ever sees.
  */
 let improveRuns = 0
 
@@ -928,8 +876,8 @@ const answerResume = (message: WebviewMessage): void => {
       type: 'user',
       uuid: uuid(1),
       // With a pasted image in it, because a transcript keeps only the caption for one: the bytes stayed
-      // in the panel that sent them. That is what the reuse button has to warn about before it is pressed
-      // (see feed/reuse.ts), and a replay is the only place to see the warning.
+      // in the panel that sent them. That is what the menu's "edit and send again" has to warn about before
+      // it is pressed (see feed/reuse.ts), and a replay is the only place to see the warning.
       message: {
         role: 'user',
         content: [{ type: 'text', text: `Where did we leave off on ${name}? [Image #1]` }],

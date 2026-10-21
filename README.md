@@ -71,8 +71,8 @@ The short version, in full in [PRIVACY.md](PRIVACY.md):
 - **No account, and no analytics unless you allow them.** The panel asks once whether it may
   send anonymous daily counts of how it is used (which features, how often, how long), and
   sends nothing until you press Allow. The settings screen shows the whole report before it
-  goes, and turning it off deletes what was already sent. Apart from that and a feedback
-  report you write yourself, nothing leaves the machine while remote access is off.
+  goes, and turning it off deletes what was already sent. Apart from that, nothing leaves
+  the machine while remote access is off.
 - **Your permission rules stay yours.** What is worth asking about is decided by the CLI -
   your settings, your allow and deny rules, your hooks - exactly as in the terminal. The
   plugin adds no hook of its own (it used to; see "Permissions" below), and it never starts
@@ -81,9 +81,9 @@ The short version, in full in [PRIVACY.md](PRIVACY.md):
   human decides. See "Permissions".
 - **Remote access is off** until you turn it on, and even then the relay carries sealed
   envelopes it cannot read - see "Remote access from your phone".
-- **The feedback report is built from a whitelist,** not copied out of your conversation,
-  and one button shows the exact text that will travel - see "Telling the author
-  something".
+- **The debug report is built from a whitelist,** not copied out of your conversation,
+  and the plugin never sends it: you read it whole and copy it yourself - see "Asking for a
+  change".
 - **Source available** under the Elastic License 2.0: everything above can be checked
   rather than believed.
 
@@ -374,22 +374,25 @@ forgets its key, and from that moment nothing from it can be opened.
 Notes on platforms: on iOS notifications work only for the app added to the home screen, and only on
 iOS 16.4 or newer. On Android the ordinary browser is enough.
 
-## Telling the author something
+## Asking for a change
 
-The speech bubble beside the heart opens a form: a bug, an idea, or nothing in particular, with an
-optional address to answer to, up to ten files, and a debug report attached unless you switch it off.
-The same screen is in the menu, as **Send feedback**.
+The plugin is built by one person, and it takes a large share of that person's Claude subscription and
+time. So it no longer takes messages: the speech bubble beside the heart (and **Feedback** in the menu)
+opens a screen that names the two ways a change gets in. You can leave a tip on
+[Ko-fi](https://ko-fi.com/mzpizote) and write in the message what you would like - I'll build it. Or you
+can make the change yourself and open a pull request here; I'll review it and may merge it. "Running it"
+below covers building the plugin from source.
 
-The report is technical only - the plugin's version, the IDE and its build, the operating system, the
-version of Claude Code, and an outline of what the open tab did: which tool ran, how many bytes went in
-and came back, what failed and when. No messages, no answers, no file contents, no commands, no paths,
-no project name; file names appear as short hashes, so the same file reads as the same file without
-saying which one. The screen names the tab it describes, and **see exactly what gets attached** shows
-the whole string that will travel - there is no fuller version kept back for the wire.
+The same screen still offers a debug report for the open tab, for a pull request about a bug or for when
+I ask about one. It is technical only - the plugin's version, the IDE and its build, the operating system,
+the version of Claude Code, and an outline of what the tab did: which tool ran, how many bytes went in and
+came back, what failed and when. No messages, no answers, no file contents, no commands, no paths, no
+project name; file names appear as short hashes, so the same file reads as the same file without saying
+which one. The plugin never sends it: the screen shows the whole string, and Copy copies exactly that.
 
-It goes to a small service beside the relay (`feedback-service/` in this repository), which forwards it
-to the author's Telegram and stores nothing. This is the one thing the plugin sends without remote
-access being on, and only ever on a press of Send; `PRIVACY.md` has the whole account of it.
+Older versions of the plugin had a form here that posted to a service beside the relay
+(`feedback-service/` in this repository). That service now answers the old form with the same two ways
+and forwards nothing.
 
 ## What's missing so far
 
@@ -461,7 +464,7 @@ without the owner's permission.
 ## Saying thanks
 
 The plugin is free and built by one person. If it saves you time, a tip on Ko-fi lets me spend more
-hours on it. Bug reports and ideas help just as much.
+hours on it, and the message with the tip is the place to say what you would like changed.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/K7R4280V03)
 

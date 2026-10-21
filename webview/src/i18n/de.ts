@@ -54,8 +54,8 @@ export const de: Dict = {
       customModels: { title: 'EIGENE MODELLE', hint: 'die, die Claude Code nicht anbietet' },
       language: { title: 'SPRACHE', hint: 'welche Sprache das Panel spricht' },
       accounts: { title: 'CLAUDE-KONTEN', hint: 'welches Abo die Arbeit bezahlt' },
-      feedback: { title: 'FEEDBACK', hint: 'ein Bug, eine Idee oder einfach hallo' },
-      feedbackLog: { title: 'WAS MITGESCHICKT WIRD', hint: 'der ganze Bericht, bevor er geht' },
+      feedback: { title: 'FEEDBACK', hint: 'wie du eine Änderung bekommst' },
+      feedbackLog: { title: 'DEBUG-BERICHT', hint: 'der ganze Bericht, zum Kopieren' },
       usageStats: { title: 'NUTZUNGSSTATISTIK', hint: 'anonyme Zähler, nur wenn du es erlaubst' },
       usageStatsReport: { title: 'WAS GESENDET WIRD', hint: 'der ganze Bericht, so wie er ginge' },
     },
@@ -68,7 +68,7 @@ export const de: Dict = {
       remote: { label: 'Fernzugriff', sub: 'Status, Relay, gekoppelte Geräte' },
       accounts: { label: 'Claude-Konten', sub: 'Wechseln, ohne dich abzumelden' },
       settings: { label: 'Einstellungen', sub: 'Farbdesign, Töne, neue Chats, Sprache' },
-      feedback: { label: 'Feedback senden', sub: 'Ein Bug, eine Idee oder einfach hallo' },
+      feedback: { label: 'Feedback', sub: 'Wie du eine Änderung bekommst' },
     },
 
     author: {
@@ -256,7 +256,7 @@ export const de: Dict = {
       hint: 'Die eigene Woche eines Modells, wie auf der Kontoseite - nur solange der Plan eine hat',
     },
     tokens: { label: 'Tokens heute', hint: 'Heute verbraucht, über alle Projekte' },
-    feedback: { label: 'Feedback-Knopf', hint: 'Die Sprechblase, die das Formular öffnet - das Menü behält seinen eigenen Weg dorthin' },
+    feedback: { label: 'Feedback-Knopf', hint: 'Die Sprechblase, die den Feedback-Bildschirm öffnet - das Menü behält seinen eigenen Weg dorthin' },
     thanks: { label: 'Herz', hint: 'Ein Stern, eine Bewertung, ein Wort an einen Freund oder ein Trinkgeld' },
   },
 
@@ -1036,7 +1036,6 @@ export const de: Dict = {
     forkEmpty: 'Noch nichts zu forken: In diesem Tab gibt es noch keine Unterhaltung',
     renameTab: 'Gespräch umbenennen',
     menu: 'Menü',
-    watchers: (n) => `${n} weitere ${n === 1 ? 'Ansicht sieht' : 'Ansichten sehen'} dieses Projekt`,
   },
 
   side: {
@@ -1139,6 +1138,7 @@ export const de: Dict = {
     copyBlock: 'Diesen Block kopieren',
     copyReply: 'Die ganze Antwort kopieren',
     moreActions: 'Mehr',
+    messageMenu: 'DIESE NACHRICHT',
     copyMessage: 'Diese Nachricht kopieren - mit den Pfaden der Anhänge',
     editor: {
       selected: (n, name) => (n === 1 ? `1 Zeile aus ${name}` : `${n} Zeilen aus ${name}`),
@@ -1147,7 +1147,6 @@ export const de: Dict = {
     },
     reuse: {
       label: 'Bearbeiten und neu senden',
-      hint: 'Diese Nachricht zurück ins Eingabefeld holen, um sie zu bearbeiten und neu zu senden',
       lostImages: (n: number): string =>
         n === 1
           ? 'Geht zurück ins Eingabefeld, das eingefügte Bild aber nicht - hänge es neu an'
@@ -1155,7 +1154,7 @@ export const de: Dict = {
     },
     rewind: {
       label: 'Bis hierher zurückspulen',
-      hint: 'Bis hierher zurückspulen: diese Nachricht und alles danach verlassen das Gespräch',
+      hint: 'Diese Nachricht und alles danach verlassen das Gespräch',
       steering: 'Geschrieben, während Claude arbeitete - spul zu der Nachricht zurück, mit der dieser Durchgang begann',
     },
     forkWhole: 'Dieser Fork ließ sich nicht an der gewählten Nachricht abschneiden und enthält daher das ganze Gespräch.',
@@ -1573,41 +1572,26 @@ export const de: Dict = {
   },
 
   feedback: {
-    button: 'Einen Bug melden oder eine Idee schicken',
-    kinds: {
-      bug: { label: 'Bug', placeholder: 'Was ist passiert, und was hättest du stattdessen erwartet?' },
-      idea: { label: 'Idee', placeholder: 'Was soll das Panel können?' },
-      hello: { label: 'Hallo', placeholder: 'Was auch immer - das landet bei einem Menschen, nicht in einer Warteschlange.' },
+    button: 'Möchtest du etwas ändern?',
+    lead:
+      'Ich baue dieses Plugin allein, und es kostet mich einen großen Teil meines Claude-Abos und viel Zeit. Deshalb nehme ich hier keine Wünsche und Bug-Meldungen mehr an. Wenn du etwas geändert haben möchtest, gibt es zwei Wege:',
+    ways: {
+      tip: {
+        title: 'Unterstützen und wünschen',
+        body: 'Gib ein Trinkgeld auf Ko-fi und schreib in die Nachricht, was du dir wünschst. Ich setze es um.',
+      },
+      code: {
+        title: 'Selbst bauen',
+        body: 'Der Code ist offen: Mach die Änderung und öffne einen Pull Request. Ich schaue ihn mir an und merge ihn vielleicht.',
+      },
     },
-    email: 'E-MAIL',
-    emailOptional: 'freiwillig',
-    attachments: 'ANHÄNGE',
-    addFiles: 'Dateien hinzufügen',
-    removeFile: (name) => `Entfernen: ${name}`,
-    attachTotal: (count, max, size, budget) => `${count} von ${max} · ${size} von ${budget}`,
-    logs: 'Debug-Logs anhängen',
-    logsFromTab: (tab) => `Aus dem Tab ${tab} - `,
-    logsFromOpenTab: 'Aus dem Tab, den du gerade offen hast: ',
-    logsWhat:
-      'Versionen, Zeiten und was schiefging. Nicht dein Gespräch, nicht deine Dateinamen, nicht deine Pfade - und du kannst alles lesen, bevor es rausgeht.',
-    logsOnlyBug:
-      'Nur bei einem Bug: der Bericht erzählt von etwas, das schiefging, und hier gibt es nichts zu erzählen.',
-    seeWhat: 'Genau ansehen, was mitgeschickt wird',
-    send: 'Senden',
-    sending: 'Wird gesendet…',
-    sentPartly: (note) => `Gesendet, aber nicht alles. ${note}`,
-    sent: 'Gesendet. Danke ❤️ - das kommt direkt bei mir an.',
-    notSent: 'Konnte nicht gesendet werden. Nichts ist verloren - versuch es noch mal.',
+    thanks: 'Danke, dass du das Plugin nutzt',
+    report: 'Debug-Bericht dieses Tabs',
     reportNote: (tab) =>
-      `Das ist der ganze Anhang, Wort für Wort${tab ? `, für den Tab ${tab}` : ''}. Er wird hier gebaut, in deiner IDE, aus dem, was das Plugin selbst gesehen hat: Versionen, die Form dieses Gesprächs und alles, was fehlschlug. Dateinamen erscheinen als kurze Hashes, damit dieselbe Datei sich als dieselbe liest, ohne zu verraten, welche es ist.`,
+      `Für einen Pull Request zu einem Bug, oder wenn ich danach frage. Das ist der ganze Bericht${tab ? ` für den Tab ${tab}` : ''}, hier in deiner IDE gebaut aus dem, was das Plugin selbst gesehen hat: Versionen, die Form des Gesprächs und was schiefging - kein Wort von dem, was gesagt wurde. Dateinamen erscheinen als kurze Hashes.`,
     building: 'Wird gebaut…',
     copy: 'Kopieren',
-    problems: {
-      empty: 'Schreib erst ein paar Worte.',
-      tooLong: (max) => `Das ist länger als ${max} Zeichen.`,
-      tooMany: (max) => `Nicht mehr als ${max} Dateien.`,
-      tooHeavy: (budget) => `Die Dateien machen zusammen mehr als ${budget}.`,
-    },
+    copied: 'Kopiert',
   },
 
   mcp: {
@@ -1940,8 +1924,6 @@ export const de: Dict = {
 
   status: {
     todayTokens: 'Heute verbrauchte Tokens, über alle Projekte',
-    openPr: 'Pull Request im Browser öffnen',
-    noPr: 'kein PR',
     effortHint: (effort) => `Denkaufwand: ${effort}`,
     modelHint: (model) => `Modell: ${model}`,
     modelHintSwitched: (model, from) => `Modell: ${model} - Claude Code ist von ${from} aus selbst gewechselt`,
@@ -1973,6 +1955,7 @@ export const de: Dict = {
     label: 'BERECHTIGUNG',
     decisions: { once: 'Einmal erlauben', always: 'Immer erlauben', deny: 'Ablehnen' },
     underMode: (mode) => `Modus: ${mode}`,
+    askedBy: (agent) => `Angefragt von ${agent}`,
   },
 
   selectors: {

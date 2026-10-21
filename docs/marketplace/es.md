@@ -95,7 +95,7 @@ proxy y sin ninguna cuenta nuestra.
 - **Sin cuenta, y sin analítica si no la permites.** El panel pregunta una vez si puede enviar
   contadores diarios anónimos de uso y no envía nada hasta que pulsas Permitir: los ajustes
   muestran antes el informe entero, y al desactivarlo se borra lo enviado. Aparte de eso, con el
-  acceso remoto apagado, solo sale de la máquina un informe de fallo que escribes tú.
+  acceso remoto apagado, nada sale de la máquina.
 - **Tus reglas de permisos siguen siendo tuyas.** Qué preguntar lo decide el CLI con tus ajustes,
   tus reglas y tus hooks. El plugin no añade ningún hook propio y nunca arranca una sesión en un
   modo más laxo que el que ves en pantalla.

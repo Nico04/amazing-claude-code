@@ -93,7 +93,6 @@ const SHARED_FEATURES: Record<string, FeatureLabel> = {
 
   mcp_manage: { group: 'manage', label: 'Add, remove or sign in to an MCP server' },
 
-  feedback_sent: { group: 'feedback', label: 'Send feedback' },
   // Claude Code's rewind requests in ACC; Codex's thread/revert and its own patches undone in ACX (0.3.0).
   rewind: { group: 'conversation', label: 'Rewind a conversation to an earlier message' },
   scenario_tell: { group: 'scenarios', label: "Write to a run's main thread" },
@@ -124,6 +123,9 @@ export const FEATURES: Record<Product, Record<string, FeatureLabel>> = {
     account_add: { group: 'manage', label: 'Add a Codex account' },
     account_switch: { group: 'manage', label: 'Switch Codex account' },
     project_trust: { group: 'project', label: 'Trust a project with its Codex settings' },
+    // ACC's feedback screen stopped taking messages (it now points to a tip or a pull request), so only
+    // the fork still sends one - until it catches up with that screen.
+    feedback_sent: { group: 'feedback', label: 'Send feedback' },
   },
 }
 
@@ -161,7 +163,7 @@ const SHARED_SCREENS: Record<string, string> = {
   customModels: 'Custom models',
   language: 'Language',
   feedback: 'Feedback',
-  feedbackLog: 'Feedback: what gets attached',
+  feedbackLog: 'Feedback: the debug report',
   usageStats: 'Usage statistics',
   usageStatsReport: 'Usage statistics: what gets sent',
 }

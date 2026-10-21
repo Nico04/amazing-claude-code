@@ -187,9 +187,8 @@ internal class ClaudePanel(
     }
 
     /**
-     * The feedback screen's side of the house: the files picked for it, the debug report, and the one
-     * request the plugin makes of the internet on its own (see FeedbackDesk). It answers through this
-     * window rather than through the hub - what it does belongs to no conversation.
+     * The feedback screen's side of the house: the debug report it offers to copy (see FeedbackDesk). It
+     * answers through this window rather than through the hub - what it does belongs to no conversation.
      */
     private val feedback = FeedbackDesk(project, hub) { message -> webview?.send(message) }
 
@@ -342,8 +341,8 @@ internal class ClaudePanel(
      * the interface to the embedded browser is registered for the whole IDE process and cannot be taken
      * back (see the note at the top of plugin.xml), so after a live swap the page is asked of a plugin
      * that is no longer there and nothing is served. What that leaves on screen is a grey rectangle with
-     * no word on it - and no way to report it either, since the feedback button lives inside the very
-     * panel that is missing. This is that word.
+     * no word on it, and nothing inside the panel can explain it - the panel is the very thing missing.
+     * This is that word.
      */
     private fun buildStalledNotice(): JComponent =
         JBPanel<JBPanel<*>>(BorderLayout()).apply {
@@ -743,9 +742,6 @@ internal class ClaudePanel(
                 )
             }
 
-            // Feedback. Handled here rather than by the conversation's commands on purpose: this is the
-            // one place a remote client cannot reach (see FeedbackDesk), and these messages read files
-            // off this machine and post them outwards.
             /*
              * The anonymous usage report: the answer to its question, and the report shown whole before it
              * is allowed. Both belong to this window rather than to the conversations - a machine's answer
@@ -770,13 +766,12 @@ internal class ClaudePanel(
                 )
             }
 
+            // The feedback screen. Handled here rather than by the conversation's commands on purpose: this
+            // is the one place a remote client cannot reach (see FeedbackDesk), and the report is built
+            // out of a conversation's journal.
             "feedbackOpen" -> feedback.opened()
 
             "feedbackReport" -> feedback.report(field("sessionId"))
-
-            "feedbackAttach" -> feedback.attach()
-
-            "feedbackDetach" -> feedback.detach(field("id"))
 
             /*
              * Voice input. Handled here rather than by the conversation's commands for the same reason
@@ -808,14 +803,6 @@ internal class ClaudePanel(
             "voiceStopCapture" -> voice.stopCapturing()
 
             "voiceClearHotkey" -> voice.clearHotkey(field("slot"))
-
-            "feedbackSend" -> feedback.send(
-                kind = field("kind"),
-                sessionId = field("sessionId"),
-                text = field("text"),
-                email = field("email"),
-                logs = payload["logs"]?.jsonPrimitive?.booleanOrNull == true,
-            )
 
             /**
              * A batch travelled into the page in pieces and did not survive the trip - see the bridge in

@@ -1,5 +1,6 @@
 package io.github.crmapache.amazingclaudecode.claude
 
+import com.intellij.ide.util.PropertiesComponent
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 /**
@@ -8,6 +9,18 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
  * again".
  */
 class ClaudePreferencesTest : BasePlatformTestCase() {
+
+    /**
+     * The address the old feedback form remembered. The form is gone, so a person's address has no business
+     * staying in the IDE's settings - and PRIVACY.md says it is deleted.
+     */
+    fun testTheOldFeedbackAddressIsWiped() {
+        PropertiesComponent.getInstance().setValue("acc.feedback.email", "someone@example.com")
+
+        ClaudePreferences.forgetRetired()
+
+        assertNull(PropertiesComponent.getInstance().getValue("acc.feedback.email"))
+    }
 
     fun testSnapshotKeepsWhatWasWritten() {
         ClaudePreferences.mode = "acceptEdits"

@@ -38,14 +38,7 @@ import type { RevertChanges } from './components/items/ChangesRow'
 import { RewindDialog } from './components/RewindDialog'
 import { Feed } from './components/Feed'
 import type { FeedMemory, FeedPlace } from './feed/place'
-import {
-  Feedback,
-  FeedbackLog,
-  emptyFeedback,
-  feedbackLogs,
-  feedbackProblem,
-  type FeedbackDraft,
-} from './components/Feedback'
+import { Feedback, FeedbackLog } from './components/Feedback'
 import { Header, type PanelTab, type Session, type SessionState } from './components/Header'
 import { History } from './components/History'
 import { Garland, Snowfall } from './components/Holiday'
@@ -119,7 +112,6 @@ import composer from './components/composer.module.css'
 import s from './components/shell.module.css'
 import { askReply, EMPTY_ASK_DRAFT, type AskDraft } from './feed/askDraft'
 import { bashCommand, shellText, type ShellRun } from './feed/bash'
-import { withBranch, type BranchFacts } from './feed/branch'
 import { contextOf, initialPanelState, reducePanel, type PanelState } from './feed/build'
 import { deferFollowUpForCompact } from './feed/compact'
 import { FAST_MARK, FAST_MODE, fastAsked, fastModeShown, fastModeSub, modelHasFastMode, type FastModeShown } from './feed/fastMode'
@@ -153,10 +145,12 @@ import {
   type LocalCommand,
 } from './feed/slash'
 import {
+  agentLabel,
+  agentsWaiting,
+  askerOf,
   awaitsYou,
   buildAgentTabs,
   mainStatusOf,
-  ownStream,
   pendingAsk,
   pendingPermission,
   pendingPlan,
@@ -544,12 +538,6 @@ export const App = () => {
   const sessionsRef = useRef(sessions)
   sessionsRef.current = sessions
   const [active, setActive] = useState(MAIN_SESSION)
-  /**
-   * The branch and its pull request on the header - the folder's, not any tab's (see feed/branch.ts). They
-   * lived in the opening tab's feed once, and closing that tab took them off the header until the branch
-   * next changed.
-   */
-  const [branch, setBranch] = useState<BranchFacts>({})
   const [drafts, setDrafts] = useState<Record<string, Draft>>({})
   /**
    * A queued message taken out into this tab's field to be edited, by tab - and where it goes back to:
@@ -902,12 +890,6 @@ export const App = () => {
    */
   const [loggingOut, setLoggingOut] = useState<{ id: string; label: string } | null>(null)
   /**
-   * Which of the modal panels is open - one value rather than three independent booleans. That way they
-   * are mutually exclusive by construction: opening the plugins closes the history by itself rather than
-   * leaving it hanging quietly under the new one on top of it.
-   */
-  const [watchers, setWatchers] = useState(0)
-  /**
    * The menu behind the burger: whether it is out, and which of its screens is showing.
    *
    * The screen is kept while it is shut so that closing does not make the contents jump on the way out -
@@ -1132,7 +1114,7 @@ export const App = () => {
    * Kept here rather than inside the tab because the tab is unmounted the moment another one is looked
    * at: a description typed into the new-scenario form, or a scenario half written in the editor, used
    * to be lost to a glance at a chat - while the model asked to write it went on working behind an empty
-   * screen. The same reasoning the feedback draft above lives by.
+   * screen.
    */
   /**
    * When each Run button was last pressed - see startScenario and pressedAgain.
@@ -1248,12 +1230,10 @@ export const App = () => {
   const [pluginsFetchedAt, setPluginsFetchedAt] = useState(0)
   const [pluginMessage, setPluginMessage] = useState<{ ok: boolean; text: string } | null>(null)
   /**
-   * The feedback screen's draft. It lives here rather than inside the screen because the screen is
-   * unmounted the moment one steps into the report's preview beside it (see the SideMenu block below) -
-   * and a half-written message that vanishes for looking at what it would attach is worse than no
-   * preview at all.
+   * The debug report the feedback screen offers to copy. Null means "not built yet": it is asked for
+   * afresh every time its screen is opened (see openScreen) and shown as the IDE built it.
    */
-  const [feedback, setFeedback] = useState<FeedbackDraft>(emptyFeedback)
+  const [feedbackReport, setFeedbackReport] = useState<string | null>(null)
   /**
    * The catalogue of models from the CLI itself, per account - the same shape and the same reason as the
    * usage figures beside it (see UsageBook).
@@ -2272,15 +2252,16 @@ export const App = () => {
   }, [])
 
   /**
-   * The main stream's permission/ask/plan can be decided only by whoever is looking at this very tab - the
-   * decision cards are rendered out of the active session's panel.items (see permission/ask just below and
-   * Feed's onPlanDecision), so watching one active session is enough rather than driving this across every
-   * open tab. We react to a change in awaitsYou and carry it into the panel (attentionStarted /
-   * attentionEnded - see build.ts) so that streamStatus can subtract the waiting time from "Claude is
-   * thinking - Xm Ys" rather than charge it to the agent.
+   * A permission/ask/plan can be decided only by whoever is looking at this very tab - the decision cards
+   * are rendered out of the active session's panel.items (see permission/ask just below and Feed's
+   * onPlanDecision), so watching one active session is enough rather than driving this across every open
+   * tab. We react to a change in awaitsYou and carry it into the panel (attentionStarted / attentionEnded -
+   * see build.ts) so that streamStatus can subtract the waiting time from "Claude is thinking - Xm Ys"
+   * rather than charge it to the agent. A subagent's decision is waited for the same way: the card stands
+   * over the field on every screen (see pendingPermission), and the work does not move until it is answered.
    */
   useEffect(() => {
-    const awaiting = panel.items.some((item) => ownStream(item) && awaitsYou(item, cards))
+    const awaiting = panel.items.some((item) => awaitsYou(item, cards))
     dispatchPanel({ session: active, action: { kind: awaiting ? 'attentionStarted' : 'attentionEnded' } })
   }, [active, panel.items, cards])
 
@@ -2361,9 +2342,6 @@ export const App = () => {
               setSpellcheckState(message.preferences.spellcheck !== false)
             }
             if (message.improve) setImproveInstructions(message.improve)
-            // Only until the fact itself has said: `project` is sent again whenever the branch changes, and
-            // carries the PR along with it, while this is a snapshot taken when the panel was put together.
-            setBranch((held) => ({ ...held, gitBranch: held.gitBranch ?? message.gitBranch }))
             feed({
               session: MAIN_SESSION,
               action: {
@@ -2474,10 +2452,6 @@ export const App = () => {
            */
           case 'customModels':
             setCustomModelsState(message.models)
-            break
-
-          case 'project':
-            setBranch((held) => withBranch(held, message))
             break
 
           /**
@@ -2635,10 +2609,6 @@ export const App = () => {
               pairing: message.pairing,
               pending: message.pending,
             })
-            break
-
-          case 'clients':
-            setWatchers(message.count)
             break
 
           case 'sessionReset':
@@ -3392,44 +3362,8 @@ export const App = () => {
             }
             break
 
-          /*
-           * The feedback screen's three answers. The address and the files come from the IDE, which is
-           * where they are kept; the note beside them is what it has to say about the last pick - a file
-           * too big, one too many - and it is cleared by the next one rather than by a timer.
-           */
-          case 'feedbackState':
-            setFeedback((current) => ({
-              ...current,
-              // Whatever the person has done to the field wins - including emptying it. An empty field
-              // is not "nothing typed yet": see emailTouched in Feedback.
-              email: current.emailTouched ? current.email : message.email,
-              attachments: message.attachments,
-              note: message.note ?? null,
-            }))
-            break
-
           case 'feedbackLog':
-            setFeedback((current) => ({ ...current, report: message.text }))
-            break
-
-          case 'feedbackSent':
-            setFeedback((current) =>
-              message.ok
-                ? // Sent: the draft goes, the address stays. Somebody who writes once often writes twice,
-                  // and asking for it again would read as if the first one had not counted.
-                  {
-                    ...emptyFeedback(),
-                    email: current.email,
-                    // Not "sent" when something was left behind: it went, but not all of it, and the
-                    // one thing worse than a failure here is a thank-you that hides one.
-                    message: message.note ? { kind: 'partly', note: message.note } : { kind: 'sent' },
-                  }
-                : {
-                    ...current,
-                    sending: false,
-                    message: { kind: 'failed', said: message.error },
-                  },
-            )
+            setFeedbackReport(message.text)
             break
 
           case 'permission':
@@ -3930,7 +3864,7 @@ export const App = () => {
    * inherited by each field that does not say otherwise, and the ones that do say "false" are the fields for
    * names, paths and keys, where an underline is never wanted. Removed rather than set to "true" when on, so
    * the browser's own default holds, and on the root rather than on the input field alone because the
-   * same person writes the answer to a question, the feedback and the improve-prompt text too.
+   * same person writes the answer to a question, a scenario and the improve-prompt text too.
    *
    * The browser drops the underlines already drawn when the attribute changes, so switching it off clears
    * a field mid-sentence rather than at the next word.
@@ -4277,7 +4211,7 @@ export const App = () => {
   /**
    * A fork: the agent carries on in a new conversation, and the original stays as it was.
    *
-   * Three doors lead here. The button on a tab and `/fork` fork the conversation whole. A selection's
+   * Three doors lead here. The fork button on the right of the header and `/fork` fork the conversation whole. A selection's
    * "Fork from here" forks it up to the turn the selection is in, and the selection travels as a quote above
    * the input field (not editable, and not cluttering the field). The rewind dialog's "In a new tab" forks it
    * up to before a message of the person's, and that message goes into the fork's field to be said again.
@@ -4404,7 +4338,7 @@ export const App = () => {
     [active, sessions],
   )
 
-  /** A tab's whole conversation, forked - the button on the tab (see Header). */
+  /** A tab's whole conversation, forked - the button on the right of the header (see Header). */
   const forkWhole = useCallback((sessionId: string) => fork('', { from: sessionId }), [fork])
 
   /**
@@ -5147,7 +5081,7 @@ export const App = () => {
   )
 
   /**
-   * The rewind button on a message of one's own: the dialog opens at once, and the IDE is asked what the
+   * The rewind entry in the menu of a message of one's own: the dialog opens at once, and the IDE is asked what the
    * code part would touch (see RewindDialog). Stable, for the memoized feed - the same reason as above.
    */
   const openRewind = useCallback((item: UserItem) => {
@@ -5182,7 +5116,7 @@ export const App = () => {
    * held once at mount, so that it always sees the dialog as it stands now.
    *
    * Done: the dialog closes and the message goes back into the field, chips, quotes and pictures and all,
-   * by the road the reuse button takes - one step of the undo history over whatever was being written. Its
+   * by the road "edit and send again" takes - one step of the undo history over whatever was being written. Its
    * card is gone from the feed by now: the `rewound` message travels ahead of this answer. A code part that
    * failed after the conversation went says so in the feed, where the person is looking once the dialog is
    * gone. Refused: the dialog stays, and says why.
@@ -5703,6 +5637,8 @@ export const App = () => {
    */
   const permission = pendingPermission(panel.items, resolvedStream)
   const ask = pendingAsk(panel.items, cards.answeredAsks, resolvedStream)
+  /** The agent the permission card came from, named on it - the card stands on every screen (see pendingPermission). */
+  const permissionAsker = permission ? askerOf(permission, panel.items) : undefined
   const tabs = useMemo(
     () =>
       sessions.map((session) => ({
@@ -5992,17 +5928,14 @@ export const App = () => {
       }
     }
 
-    // The address to answer to, and the files still picked from an earlier visit, are kept by the IDE
-    // rather than by the page: the panel is reloaded far more often than a person changes their mind.
-    if (screen === 'feedback') {
-      setFeedback((current) => ({ ...current, message: null, note: null }))
-      send({ type: 'feedbackOpen' })
-    }
+    // The IDE starts reading the CLI's version as the screen opens, so that the report one step further
+    // already has it rather than saying it is still being read (see FeedbackEnvironment).
+    if (screen === 'feedback') send({ type: 'feedbackOpen' })
 
     // Built afresh every time it is opened, never remembered: a report from ten minutes ago would be
     // shown as if it described what just went wrong.
     if (screen === 'feedbackLog') {
-      setFeedback((current) => ({ ...current, report: null }))
+      setFeedbackReport(null)
       send({ type: 'feedbackReport', sessionId: reportedSession()?.id ?? active })
     }
 
@@ -6186,16 +6119,6 @@ export const App = () => {
     // The tick on "share" belongs to the menu that is open, not to the panel: opened again, it asks again.
     setShared(false)
     setMenu({ kind: 'thanks', anchor })
-  }
-
-  /**
-   * Open the current branch's PR in the system browser - the link itself lives in the panel and travels
-   * outwards only on a click. The branch and its PR live in the header (see Header), one and the same place
-   * under any layout.
-   */
-  const openPullRequest = () => {
-    const url = branch.pullRequestUrl
-    if (url) send({ type: 'openExternal', url })
   }
 
   /**
@@ -6498,10 +6421,6 @@ export const App = () => {
         newTabKey={keyText(panelKeys.newTab)}
         closeTabKey={closeTabHint}
         calls={calls}
-        watchers={watchers}
-        gitBranch={branch.gitBranch}
-        pullRequest={branch.pullRequest}
-        onOpenPullRequest={openPullRequest}
       />
   )
 
@@ -6537,7 +6456,12 @@ export const App = () => {
 
   const dockCards = (
     <>
-      <PermissionPanel item={permission} composerEmpty={!draftReady} onDecide={decidePermission} />
+      <PermissionPanel
+        item={permission}
+        asker={permissionAsker ? { label: agentLabel(permissionAsker), meta: permissionAsker.meta } : undefined}
+        composerEmpty={!draftReady}
+        onDecide={decidePermission}
+      />
 
       {/* The usage question waits its turn: while the agent is asking something of the person, that is
           the card they should be reading, and a request of ours on top of it would be in the way. */}
@@ -7001,7 +6925,10 @@ export const App = () => {
             />
             </SaidImagesContext.Provider>
           ) : (
-            <AgentStreamView item={activeTask} />
+            <AgentStreamView
+              item={activeTask}
+              waiting={activeTask ? agentsWaiting(panel.items, cards.answeredAsks).has(activeTask.id) : false}
+            />
           )}
 
           {/* One agent of a fleet, over the whole output area - the feed and the agent screen alike, since
@@ -7505,32 +7432,7 @@ export const App = () => {
         ) : null}
 
         {sideMenu.open && sideMenu.screen === 'feedback' ? (
-          <Feedback
-            draft={feedback}
-            conversation={reportedSession()?.title ?? ''}
-            onChange={(change) => setFeedback((current) => ({ ...current, ...change }))}
-            onAttach={() => {
-              setFeedback((current) => ({ ...current, note: null }))
-              send({ type: 'feedbackAttach' })
-            }}
-            onDetach={(id) => send({ type: 'feedbackDetach', id })}
-            onPreview={() => openScreen('feedbackLog')}
-            onSend={() => {
-              // The same check the button obeys, once more before anything travels: the button can be
-              // reached by keyboard while it is disabled in some browsers, and this one is cheap.
-              if (feedbackProblem(t, feedback)) return
-
-              setFeedback((current) => ({ ...current, sending: true, message: null }))
-              send({
-                type: 'feedbackSend',
-                kind: feedback.kind,
-                sessionId: reportedSession()?.id ?? active,
-                text: feedback.text.trim(),
-                email: feedback.email.trim(),
-                logs: feedbackLogs(feedback),
-              })
-            }}
-          />
+          <Feedback onOpenLink={openLink} onReport={() => openScreen('feedbackLog')} />
         ) : null}
 
         {sideMenu.open && sideMenu.screen === 'usageStats' ? (
@@ -7547,10 +7449,10 @@ export const App = () => {
 
         {sideMenu.open && sideMenu.screen === 'feedbackLog' ? (
           <FeedbackLog
-            text={feedback.report}
+            text={feedbackReport}
             conversation={reportedSession()?.title ?? ''}
             onCopy={() => {
-              if (feedback.report) send({ type: 'clipboardWrite', text: feedback.report, html: '' })
+              if (feedbackReport) send({ type: 'clipboardWrite', text: feedbackReport, html: '' })
             }}
           />
         ) : null}

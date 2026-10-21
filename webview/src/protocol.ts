@@ -965,7 +965,6 @@ type ShellMessageBody =
       type: 'init'
       projectName: string
       workingDirectory: string
-      gitBranch?: string
       /** The panel's own version, shown at the foot of the menu (see SideMenu). */
       pluginVersion?: string
       /** The choice of model, effort and mode: it outlives both tabs and IDE restarts. */
@@ -1427,15 +1426,6 @@ type ShellMessageBody =
    * feed held describes something else now.
    */
   | { type: 'sessionReset'; sessionId: string }
-  /**
-   * Who else is watching this project right now.
-   *
-   * The panel itself is not in the list - a person needs no telling that the window in front of them is
-   * open. What matters is everyone else: a browser page beside the IDE today, a phone tomorrow. "It is
-   * always visible in the IDE that someone is connected remotely" is a requirement of the remote access
-   * plan (§3.4), not a nicety, and it is far cheaper to build now than to bolt on later.
-   */
-  | { type: 'clients'; count: number; clients: { id: string; local: boolean }[] }
   /**
    * Whether this IDE can be reached from outside, and how that is going.
    *
@@ -2035,24 +2025,11 @@ type ShellMessageBody =
    */
   | ({ type: 'statistics' } & StatisticsData)
   /**
-   * The feedback screen's own state: the address a person left last time, and the files they have picked
-   * for this one. The files are named by an id rather than by a path - the path stays in the IDE (see
-   * FeedbackAttachments on the plugin's side), so the panel cannot name a file the person did not pick,
-   * and a path cannot leak out of a screen that sends things to a stranger's server.
-   */
-  | { type: 'feedbackState'; email: string; attachments: FeedbackAttachment[]; note?: string }
-  /**
-   * The debug report, as text, in answer to `feedbackReport`. This is the whole of what the "attach
-   * debug logs" switch attaches - what is shown here and what is sent are the same string, which is the
-   * only way "nothing private travels" can be checked rather than believed.
+   * The debug report, as text, in answer to `feedbackReport`. Shown whole and copied whole - what is on
+   * the screen and what lands in the clipboard are the same string, which is the only way "nothing
+   * private in it" can be checked rather than believed.
    */
   | { type: 'feedbackLog'; text: string }
-  /**
-   * How the sending went. `error` is a sentence for a person, not a status code; `note` is what went with
-   * it but should not have gone silently - a file that grew past the limit between being picked and being
-   * sent, which is precisely the file a bug report is usually about.
-   */
-  | { type: 'feedbackSent'; ok: boolean; error?: string; note?: string }
   /**
    * The draft rewritten - the answer to a press of the sparkle button (see `improvePrompt` below).
    *
@@ -2931,34 +2908,22 @@ export type WebviewMessage =
   /** Build the report as it would go next and answer with `usageStatsReport`. */
   | { type: 'usageStatsPreview' }
   /**
-   * Feedback: a message to the plugin's author, with files and a debug report beside it.
+   * The feedback screen: opened (the IDE starts reading the CLI's version for the report), and the debug
+   * report it offers.
    *
-   * All of it is handled by the panel's own window rather than by the conversation's commands (see
-   * ClaudePanel on the plugin's side): it belongs to no conversation, and a message that makes the IDE
-   * read files off the disk and post them to a server is exactly the kind a remote client must never be
-   * able to send. It is refused for them twice over - by the list in RemoteCommands, and by never
-   * reaching the place that handles it.
+   * Both are handled by the panel's own window rather than by the conversation's commands (see
+   * ClaudePanel on the plugin's side): they belong to no conversation, and the report is built out of a
+   * conversation's journal - which is the conversation - so a remote client must never be able to ask for
+   * it. It is refused for them twice over - by the list in RemoteCommands, and by never reaching the place
+   * that handles it.
    */
   | { type: 'feedbackOpen' }
   /**
    * Build the debug report and answer with `feedbackLog` - asked for when the preview is opened. The
    * conversation is named because the report describes one: the tab being looked at is the one the
-   * complaint is about, and the IDE has several open.
+   * bug is about, and the IDE has several open.
    */
   | { type: 'feedbackReport'; sessionId: string }
-  /** Open the IDE's file dialog and add whatever is chosen; answered with a fresh `feedbackState`. */
-  | { type: 'feedbackAttach' }
-  | { type: 'feedbackDetach'; id: string }
-  | {
-      type: 'feedbackSend'
-      kind: FeedbackKind
-      sessionId: string
-      text: string
-      /** May be empty: an answer is offered, not required. */
-      email: string
-      /** Whether the report goes with it. The panel sends the flag; the text itself is built here. */
-      logs: boolean
-    }
   /**
    * Rewrite what stands in the input field (see feed/improve.ts here and PromptImprover on the IDE's
    * side).
@@ -3159,7 +3124,7 @@ export type WebviewMessage =
   /**
    * Voice input (see VoiceDesk on the IDE's side).
    *
-   * Handled by the panel's own window like the feedback messages above, and refused to a remote client
+   * Handled by the panel's own window like the feedback screen's messages above, and refused to a remote client
    * twice over - by the list in RemoteCommands and by never reaching the place that handles them. The
    * microphone belongs to the machine the IDE runs on, and a message that opens it from across the
    * network is a listening device whatever it was meant for.
@@ -3289,21 +3254,8 @@ export type VoiceBalance =
   | { state: 'rejected' }
   | { state: 'failed' }
 
-/** What a piece of feedback is about. The words on the screen differ; these are what travel. */
-export type FeedbackKind = 'bug' | 'idea' | 'hello'
-
 /** Where the usage question stands on this machine: never answered, allowed, declined. */
 export type UsageStatsConsent = 'unknown' | 'granted' | 'declined'
-
-/**
- * A file picked for a piece of feedback, as the panel is allowed to know it: enough to draw a row and
- * to take it back off the list, and nothing that says where on the disk it came from.
- */
-export interface FeedbackAttachment {
-  id: string
-  name: string
-  bytes: number
-}
 
 export type AgentStatus = 'idle' | 'running'
 

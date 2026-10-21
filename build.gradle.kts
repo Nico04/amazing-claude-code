@@ -172,9 +172,9 @@ intellijPlatform {
               <li><b>Everything runs on your machine.</b> No proxy, no server of ours in the middle.
               Your Claude sign-in belongs to the CLI - the plugin never reads it or hunts for API keys
               on your disk.</li>
-              <li><b>No telemetry, no analytics, no account.</b> With remote access off, the only thing
-              that ever leaves is a feedback report you write and send yourself - and one button shows
-              its exact text first.</li>
+              <li><b>No account, and no analytics unless you allow them.</b> The panel asks once whether
+              it may send anonymous daily counts of how it is used, and shows the whole report first.
+              Apart from that, with remote access off, nothing leaves the machine.</li>
               <li><b>Your permission rules stay yours.</b> The CLI decides what to ask about, with your
               settings, rules and hooks. The plugin adds no hook of its own and never starts a session
               in a laxer mode than the one on screen.</li>
@@ -431,18 +431,6 @@ tasks.withType<RunIdeTask>().configureEach {
     // without clicking through the panel first; an ordinary IDE never sees it.
     providers.gradleProperty("remoteRelay").orNull?.let { url ->
         systemProperty("acc.remote.relay", url)
-    }
-
-    // -PfeedbackUrl=http://localhost:8081 points the feedback screen at a receiver running on this
-    // machine instead of the published one, and -PfeedbackKey overrides the shared secret it sends with
-    // it. The whole chain - screen, report, service, Telegram - has to be checkable end to end, and the
-    // address people's real reports go to is not the thing to test against.
-    providers.gradleProperty("feedbackUrl").orNull?.let { url ->
-        systemProperty("acc.feedback.url", url)
-    }
-
-    providers.gradleProperty("feedbackKey").orNull?.let { key ->
-        systemProperty("acc.feedback.key", key)
     }
 
     // The anonymous usage report never goes to the published service from here: a sandbox's days are

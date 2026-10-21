@@ -245,7 +245,7 @@ export interface UserItem {
   /**
    * Written into a turn that was still running. The CLI does not make such a message a turn of its own: it
    * hands it to the agent between two steps of the running one, so there is no clean "before" to cut the
-   * conversation back to - the rewind button stands disabled on it and says so (see UserCard).
+   * conversation back to - the rewind entry of its menu stands dead on it and says so (see feed/messageMenu.ts).
    */
   steering?: boolean
   /**

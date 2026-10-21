@@ -13,9 +13,9 @@ import type { Store } from './store.js'
  * fork, Amazing Codex GUI (see products.ts) - and the page the author reads them on.
  *
  * Its own service rather than a route on the feedback service or the relay, because it is the only one of
- * the three that keeps anything: the relay holds nothing on disk by design, the feedback service forgets
- * a message the moment it is forwarded, and both say so in their own READMEs. A database belongs beside
- * neither of those promises.
+ * the three that keeps anything: the relay holds nothing on disk by design, the feedback service only
+ * turns the old plugin's form away and keeps nothing either, and both say so in their own READMEs. A
+ * database belongs beside neither of those promises.
  *
  * What it keeps is counts under a random identifier and nothing else. The address a report came from is
  * used for one thing - the hourly ceiling below, in memory - and never written anywhere, the log
@@ -234,8 +234,15 @@ const page = (response: ServerResponse, status: number, html: string): void => {
 }
 
 /**
- * Who is asking, for the ceilings only - read from the end of x-forwarded-for, as far as our own proxies
- * reach, and from the socket when none is configured (see the feedback service for the whole argument).
+ * Who is asking, for the ceilings only.
+ *
+ * The header is read only as far as our own proxies reach (see Config.trustedProxies), and from the end of
+ * the chain rather than the start. x-forwarded-for grows left to right - each hop appends the address it
+ * saw - so the entries at the far left are whatever the caller wrote there, and the entry our own proxy
+ * added is the last one. Taking the first entry would let anybody walk past the per-address ceiling by
+ * sending a different header every time. With no trusted proxy configured the header is ignored
+ * altogether and the socket answers; a chain shorter than expected means somebody reached us past a hop,
+ * and the socket is the only honest answer then too.
  */
 export const addressOf = (request: IncomingMessage, trustedProxies: number): string => {
   const socket = request.socket.remoteAddress?.replace(/^::ffff:/, '') ?? ''

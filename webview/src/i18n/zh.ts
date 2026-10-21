@@ -51,8 +51,8 @@ export const zh: Dict = {
       customModels: { title: '自定义模型', hint: 'Claude Code 没有列出的那些' },
       language: { title: '语言', hint: '面板使用的语言' },
       accounts: { title: 'Claude 账号', hint: '这些工作由哪个订阅付费' },
-      feedback: { title: '反馈', hint: '问题、想法，或者只是打个招呼' },
-      feedbackLog: { title: '将要附带的内容', hint: '发送之前的完整报告' },
+      feedback: { title: '反馈', hint: '如何提出修改' },
+      feedbackLog: { title: '调试报告', hint: '完整报告，可复制' },
       usageStats: { title: '使用统计', hint: '匿名计数，仅在你允许时' },
       usageStatsReport: { title: '将要发送的内容', hint: '下一次发送的完整报告' },
     },
@@ -65,7 +65,7 @@ export const zh: Dict = {
       remote: { label: '远程访问', sub: '状态、中继、已配对设备' },
       accounts: { label: 'Claude 账号', sub: '不用退出登录也能切换' },
       settings: { label: '设置', sub: '主题、提示音、新对话、语言' },
-      feedback: { label: '发送反馈', sub: '问题、想法，或者只是打个招呼' },
+      feedback: { label: '反馈', sub: '如何提出修改' },
     },
 
     author: {
@@ -253,7 +253,7 @@ export const zh: Dict = {
       hint: '模型自己的一周，与账户页面一致 - 仅在套餐有此额度时显示',
     },
     tokens: { label: '今日 token', hint: '今天消耗的，所有项目合计' },
-    feedback: { label: '反馈按钮', hint: '打开反馈表单的气泡 - 菜单里始终可以打开' },
+    feedback: { label: '反馈按钮', hint: '打开反馈页面的气泡 - 菜单里始终可以打开' },
     thanks: { label: '爱心', hint: '一颗星、一条评价、向朋友推荐，或打赏一下' },
   },
 
@@ -1027,7 +1027,6 @@ export const zh: Dict = {
     forkEmpty: '还没有可以分叉的内容：这个标签页里还没有对话',
     renameTab: '重命名对话',
     menu: '菜单',
-    watchers: (n) => `另有 ${n} 个客户端正在看这个项目`,
   },
 
   side: {
@@ -1129,6 +1128,7 @@ export const zh: Dict = {
     copyBlock: '复制这段代码',
     copyReply: '复制整条回复',
     moreActions: '更多',
+    messageMenu: '这条消息',
     copyMessage: '复制这条消息，附件以路径形式复制',
     editor: {
       selected: (n, name) => `${name} 中的 ${n} 行`,
@@ -1137,7 +1137,6 @@ export const zh: Dict = {
     },
     reuse: {
       label: '修改后重新发送',
-      hint: '把这条消息放回输入框，修改后重新发送',
       lostImages: (n: number): string =>
         n === 1
           ? '会回到输入框，但粘贴的图片带不回来，请重新附上'
@@ -1145,7 +1144,7 @@ export const zh: Dict = {
     },
     rewind: {
       label: '回退到这里',
-      hint: '回退到这里：这条消息及之后的一切都会离开对话',
+      hint: '这条消息及之后的一切都会离开对话',
       steering: '这条是在 Claude 工作时写的 - 请回退到开启那一轮的消息',
     },
     forkWhole: '这个分叉没能在所选消息处截断，所以带上了整段对话。',
@@ -1561,40 +1560,26 @@ export const zh: Dict = {
   },
 
   feedback: {
-    button: '报告问题或提个想法',
-    kinds: {
-      bug: { label: '问题', placeholder: '发生了什么？你原本期待的是什么？' },
-      idea: { label: '想法', placeholder: '你希望这个面板能做什么？' },
-      hello: { label: '打招呼', placeholder: '随便说点什么 - 这会到一个人手里，不是排队系统。' },
+    button: '想改点什么？',
+    lead:
+      '这个插件由我一个人开发，它占用了我 Claude 订阅的很大一部分和大量时间。所以我不再在这里接收需求和问题报告。如果你想改点什么，有两种方式：',
+    ways: {
+      tip: {
+        title: '支持并提出需求',
+        body: '在 Ko-fi 上打赏，并在留言里写下你想要什么。我来实现。',
+      },
+      code: {
+        title: '自己动手',
+        body: '代码是公开的：做出修改并提交 pull request。我会审阅，也可能会合并。',
+      },
     },
-    email: '邮箱',
-    emailOptional: '可不填',
-    attachments: '附件',
-    addFiles: '添加文件',
-    removeFile: (name) => `移除：${name}`,
-    attachTotal: (count, max, size, budget) => `${count} / ${max} · ${size} / ${budget}`,
-    logs: '附带调试日志',
-    logsFromTab: (tab) => `来自标签页 ${tab} - `,
-    logsFromOpenTab: '来自当前打开的标签页：',
-    logsWhat:
-      '版本、耗时和出错的地方。不含你的对话内容、文件名和路径 - 而且发送前你可以整份读一遍。',
-    logsOnlyBug: '只在报告问题时可用：这份报告是在讲哪里出了错，而这里没有可讲的。',
-    seeWhat: '看看究竟会附带什么',
-    send: '发送',
-    sending: '发送中…',
-    sentPartly: (note) => `已发送，但不是全部。${note}`,
-    sent: '已发送。谢谢 ❤️ - 这会直接到我手里。',
-    notSent: '没能发出去。什么都没丢 - 再试一次吧。',
+    thanks: '感谢你使用这个插件',
+    report: '这个标签页的调试报告',
     reportNote: (tab) =>
-      `这就是附件的全部内容，一字不差${tab ? `，对应标签页 ${tab}` : ''}。它是在你的 IDE 里、用插件自己看到的东西拼出来的：版本、那次对话的形状，以及所有失败的地方。文件名以短哈希出现，同一个文件读起来还是同一个，但不会说是哪一个。`,
+      `可以附在关于问题的 pull request 里，或者在我需要时发给我。这是完整的报告${tab ? `（标签页 ${tab}）` : ''}，在你的 IDE 里根据插件自己看到的内容生成：版本、对话的结构以及出错的地方 - 不包含对话里的任何文字。文件名以短哈希显示。`,
     building: '正在生成…',
     copy: '复制',
-    problems: {
-      empty: '先写几句吧。',
-      tooLong: (max) => `超过 ${max} 个字符了。`,
-      tooMany: (max) => `最多 ${max} 个文件。`,
-      tooHeavy: (budget) => `这些文件加起来超过 ${budget} 了。`,
-    },
+    copied: '已复制',
   },
 
   mcp: {
@@ -1929,8 +1914,6 @@ export const zh: Dict = {
 
   status: {
     todayTokens: '今天所有项目消耗的 token',
-    openPr: '在浏览器中打开 pull request',
-    noPr: '无 PR',
     effortHint: (effort) => `思考强度：${effort}`,
     modelHint: (model) => `模型：${model}`,
     modelHintSwitched: (model, from) => `模型：${model} - Claude Code 自己从 ${from} 切了过来`,
@@ -1962,6 +1945,7 @@ export const zh: Dict = {
     label: '授权',
     decisions: { once: '这次允许', always: '总是允许', deny: '拒绝' },
     underMode: (mode) => `${mode}模式`,
+    askedBy: (agent) => `来自 ${agent}`,
   },
 
   selectors: {

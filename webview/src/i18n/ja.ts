@@ -53,8 +53,8 @@ export const ja: Dict = {
       customModels: { title: 'カスタムモデル', hint: 'Claude Code が挙げないもの' },
       language: { title: '言語', hint: 'パネルが話す言語' },
       accounts: { title: 'Claude アカウント', hint: 'どのサブスクリプションで支払うか' },
-      feedback: { title: 'フィードバック', hint: '不具合、アイデア、ひとことでも' },
-      feedbackLog: { title: '添付される内容', hint: '送る前のレポート全文' },
+      feedback: { title: 'フィードバック', hint: '変更を頼むには' },
+      feedbackLog: { title: 'デバッグレポート', hint: 'コピー用のレポート全文' },
       usageStats: { title: '利用状況の統計', hint: '匿名のカウント、許可した場合のみ' },
       usageStatsReport: { title: '送信される内容', hint: '次に送られるレポートの全文' },
     },
@@ -67,7 +67,7 @@ export const ja: Dict = {
       remote: { label: 'リモートアクセス', sub: '状態、リレー、ペアリング済みの端末' },
       accounts: { label: 'Claude アカウント', sub: 'サインアウトせずに切り替え' },
       settings: { label: '設定', sub: 'テーマ、通知音、新しいチャット、言語' },
-      feedback: { label: 'フィードバックを送る', sub: '不具合、アイデア、ひとことでも' },
+      feedback: { label: 'フィードバック', sub: '変更を頼むには' },
     },
 
     author: {
@@ -255,7 +255,7 @@ export const ja: Dict = {
       hint: 'アカウントページと同じ、モデル専用の週 - プランにある間だけ表示されます',
     },
     tokens: { label: '今日のトークン', hint: '今日使った分（全プロジェクト合計）' },
-    feedback: { label: 'フィードバックボタン', hint: 'フォームを開く吹き出し - メニューからはいつでも開けます' },
+    feedback: { label: 'フィードバックボタン', hint: 'フィードバック画面を開く吹き出し - メニューからはいつでも開けます' },
     thanks: { label: 'ハート', hint: 'スター、レビュー、友人へのひとこと、またはチップ' },
   },
 
@@ -1029,7 +1029,6 @@ export const ja: Dict = {
     forkEmpty: 'まだフォークできるものがありません：このタブにはまだ会話がありません',
     renameTab: '会話の名前を変更',
     menu: 'メニュー',
-    watchers: (n) => `ほかに ${n} 件がこのプロジェクトを見ています`,
   },
 
   side: {
@@ -1131,6 +1130,7 @@ export const ja: Dict = {
     copyBlock: 'このブロックをコピー',
     copyReply: '返信全体をコピー',
     moreActions: 'その他',
+    messageMenu: 'このメッセージ',
     copyMessage: 'このメッセージをコピー（添付はパスとして）',
     editor: {
       selected: (n, name) => `${name} の ${n} 行`,
@@ -1139,7 +1139,6 @@ export const ja: Dict = {
     },
     reuse: {
       label: '直して送り直す',
-      hint: 'このメッセージを入力欄に戻して、直して送り直します',
       lostImages: (n: number): string =>
         n === 1
           ? '入力欄に戻りますが、貼り付けた画像は戻りません。もう一度添付してください'
@@ -1147,7 +1146,7 @@ export const ja: Dict = {
     },
     rewind: {
       label: 'ここまで巻き戻す',
-      hint: 'ここまで巻き戻す：このメッセージ以降のすべてが会話から外れます',
+      hint: 'このメッセージ以降のすべてが会話から外れます',
       steering: 'Claude の作業中に書いたものです - そのターンを始めたメッセージまで巻き戻してください',
     },
     forkWhole: 'このフォークは選んだメッセージで切れなかったため、会話全体を引き継いでいます。',
@@ -1577,40 +1576,26 @@ export const ja: Dict = {
   },
 
   feedback: {
-    button: '不具合を報告する、またはアイデアを送る',
-    kinds: {
-      bug: { label: '不具合', placeholder: '何が起きて、本来はどうなると思っていましたか？' },
-      idea: { label: 'アイデア', placeholder: 'パネルに何ができるとよいですか？' },
-      hello: { label: 'ひとこと', placeholder: '何でもどうぞ - 届くのは人であって、受付の列ではありません。' },
+    button: '何か変えてほしいですか？',
+    lead:
+      'このプラグインはわたしひとりで作っていて、Claude のサブスクリプションのかなりの部分と多くの時間を使っています。そのため、ここで要望や不具合報告を受け付けるのはやめました。何か変えたいときは、ふたつの方法があります：',
+    ways: {
+      tip: {
+        title: '支援してリクエストする',
+        body: 'Ko-fi でチップを贈り、メッセージに希望を書いてください。わたしが実装します。',
+      },
+      code: {
+        title: '自分で作る',
+        body: 'コードは公開されています。変更してプルリクエストを送ってください。レビューして、マージするかもしれません。',
+      },
     },
-    email: 'メール',
-    emailOptional: '任意',
-    attachments: '添付',
-    addFiles: 'ファイルを追加',
-    removeFile: (name) => `外す：${name}`,
-    attachTotal: (count, max, size, budget) => `${count}／${max} · ${size}／${budget}`,
-    logs: 'デバッグログを添付',
-    logsFromTab: (tab) => `タブ ${tab} から - `,
-    logsFromOpenTab: 'いま開いているタブから：',
-    logsWhat:
-      'バージョン、所要時間、うまくいかなかったこと。会話の中身も、ファイル名も、パスも入りません - 送る前に全文を読めます。',
-    logsOnlyBug: '不具合のときだけです。レポートは何かが壊れた記録であり、ここには書くことがありません。',
-    seeWhat: '添付される内容をそのまま見る',
-    send: '送信',
-    sending: '送信中…',
-    sentPartly: (note) => `送信しましたが、すべてではありません。${note}`,
-    sent: '送信しました。ありがとうございます ❤️ - 直接わたしに届きます。',
-    notSent: '送信できませんでした。失われたものはありません - もう一度お試しください。',
+    thanks: 'プラグインを使ってくれてありがとうございます',
+    report: 'このタブのデバッグレポート',
     reportNote: (tab) =>
-      `これが添付の全文です${tab ? `（タブ ${tab}）` : ''}。あなたの IDE の中で、プラグイン自身が見たものから組み立てられます：バージョン、その会話の形、失敗したことすべて。ファイル名は短いハッシュで出るので、同じファイルは同じものとして読めますが、どのファイルかは分かりません。`,
+      `不具合についてのプルリクエストに貼るか、わたしが頼んだときに送ってください。これはレポートの全文です${tab ? `（タブ ${tab}）` : ''}。プラグイン自身が見たものから、あなたの IDE の中で作られます：バージョン、会話の形、失敗したこと - 会話の言葉は一切含みません。ファイル名は短いハッシュで表示されます。`,
     building: '組み立て中…',
     copy: 'コピー',
-    problems: {
-      empty: 'まず何か書いてください。',
-      tooLong: (max) => `${max} 文字を超えています。`,
-      tooMany: (max) => `ファイルは ${max} 個までです。`,
-      tooHeavy: (budget) => `ファイルの合計が ${budget} を超えています。`,
-    },
+    copied: 'コピーしました',
   },
 
   mcp: {
@@ -1939,8 +1924,6 @@ export const ja: Dict = {
 
   status: {
     todayTokens: '今日使ったトークン（全プロジェクト合計）',
-    openPr: 'ブラウザで pull request を開く',
-    noPr: 'PR なし',
     effortHint: (effort) => `思考の深さ：${effort}`,
     modelHint: (model) => `モデル: ${model}`,
     modelHintSwitched: (model, from) => `モデル: ${model} - Claude Code が ${from} から自分で切り替えました`,
@@ -1972,6 +1955,7 @@ export const ja: Dict = {
     label: '権限',
     decisions: { once: '今回だけ許可', always: '常に許可', deny: '拒否' },
     underMode: (mode) => `${mode}モード`,
+    askedBy: (agent) => `${agent} からのリクエスト`,
   },
 
   selectors: {

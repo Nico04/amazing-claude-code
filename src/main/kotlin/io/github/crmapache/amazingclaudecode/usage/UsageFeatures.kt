@@ -79,7 +79,6 @@ internal object UsageFeatures {
         "account_add",
         "account_switch",
         "design_login",
-        "feedback_sent",
     )
 
     /**
@@ -303,7 +302,6 @@ internal object UsageFeatures {
         "accountAdd" -> "account_add"
         "accountUse" -> "account_switch"
         "designLogin" -> "design_login"
-        "feedbackSend" -> "feedback_sent"
         else -> settingOf(type)?.let { SETTING + it }
     }
 

@@ -43,7 +43,7 @@ describe('the two plugins', () => {
   it('differ in their features only where the agent underneath does', () => {
     expect(apart(FEATURES.acc, FEATURES.acx)).toEqual({
       missingHere: ['design_login', 'stop_task'],
-      notInPlugin: ['project_trust'],
+      notInPlugin: ['feedback_sent', 'project_trust'],
     })
     expect(apart(SCREENS.acc, SCREENS.acx)).toEqual({
       missingHere: ['claudeConfig', 'settingSources'],
