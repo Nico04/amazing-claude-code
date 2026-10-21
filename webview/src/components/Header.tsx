@@ -84,8 +84,8 @@ interface HeaderProps {
   onCloseSession: (id: string) => void
   onNewSession: () => void
   /**
-   * Fork the open tab's conversation, whole (see App.fork) - the button on the right of the header, between
-   * the new tab and the menu, the way Amazing IDE has it. The tabs carry none of their own: one on every tab
+   * Fork the open tab's conversation, whole (see App.fork) - the button on the right of the header, beside
+   * the menu, the way Amazing IDE has it. The tabs carry none of their own: one on every tab
    * stood beside the one up here, and the strip is the place for names (2026-10-21).
    */
   onFork?: (sessionId: string) => void
@@ -522,9 +522,16 @@ const unitIdOf = (node: HTMLElement, drag: Drag): string | undefined => {
 
 /**
  * What stands in the strip under its own name: a tab - its conversation, or the panel tab it is (see
- * sessionTab and panelTab).
+ * sessionTab and panelTab) - and the "+" after them, which is no tab but moves with the row all the same.
  */
-const keyOf = (node: HTMLElement): string | undefined => node.dataset.tab ?? node.dataset.group
+const keyOf = (node: HTMLElement): string | undefined => node.dataset.tab ?? node.dataset.group ?? node.dataset.strip
+
+/**
+ * The class of the strip's last tab, the one that keeps the room the "+" stands in (see .tabTail). Read once
+ * and checked: a gesture hands it from tab to tab by hand (see projectionFor), and classList refuses an
+ * empty name with an exception.
+ */
+const TAIL_CLASS = s.tabTail ?? ''
 
 /** How long a dropped tab's landing lasts. The same as the transition in shell.module.css. */
 const LANDING_MS = 160
@@ -562,18 +569,21 @@ const ForkIcon = () => (
 )
 
 /**
- * Three lines as a drawing rather than the "☰" character: the typographic version has a seat of its own
- * in the font and sits below the middle of its line, and beside the drawn buttons next to it the
- * difference read to the eye as an unpainted row. Drawn, the lines stand strictly in the centre of the
- * viewBox, and with it of the button.
+ * A new tab - drawn for the same reason as the burger (see below): "+" in the font sits off its centre, and
+ * as the strip's own button it is the same drawing it wore in the header.
  */
-/** A new tab - drawn for the same reason as the burger beside it: "+" in the font sits off its centre. */
 const PlusIcon = () => (
   <svg className={s.menuIcon} viewBox="0 0 16 16" aria-hidden="true">
     <path d="M8 2.5v11M2.5 8h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 )
 
+/**
+ * Three lines as a drawing rather than the "☰" character: the typographic version has a seat of its own
+ * in the font and sits below the middle of its line, and beside the drawn button next to it the
+ * difference read to the eye as an unpainted row. Drawn, the lines stand strictly in the centre of the
+ * viewBox, and with it of the button.
+ */
 const HamburgerIcon = () => (
   <svg className={s.menuIcon} viewBox="0 0 16 16" aria-hidden="true">
     <path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -732,7 +742,10 @@ export const Header = ({
    *
    * By the flex `order` of the strip's own children rather than by moving nodes: React owns those nodes,
    * and the "+" at the end gets its number like everybody else and stays at the end. It moves with the
-   * rest, too: left where it stood, it lay over the tab that came to the end of its row.
+   * rest, too: left where it stood, it lay over the tab that came to the end of its row. The room it
+   * stands in belongs to the last tab (see .tabTail), and that rule goes by the markup as well - so it is
+   * handed to the tab the drop puts last, or the "+" would be measured inside a tab that has moved on and
+   * the row it ends would come out a button too long.
    *
    * The height comes along: a drop that folds the strip onto one more row pushes a tab onto a row that is
    * not there yet, and that tab hid under the panel until the hand let go. The strip grows for it while
@@ -781,12 +794,24 @@ export const Header = ({
       leader.style.marginLeft = '0px'
       marked.style.marginLeft = 'var(--acc-group-gap)'
     }
+    // The same at the other end: the room the "+" stands in goes to the tab the drop puts last.
+    const tail = sequence.filter((node) => node.dataset.group).at(-1)
+    const tailed = TAIL_CLASS ? children.find((node) => node.classList.contains(TAIL_CLASS)) : undefined
+    const handTail = tail !== undefined && tailed !== undefined && tail !== tailed
+    if (handTail) {
+      tailed.classList.remove(TAIL_CLASS)
+      tail.classList.add(TAIL_CLASS)
+    }
     const projected = layoutOf()
     const projectedHeight = root.offsetHeight
     for (const node of sequence) node.style.order = ''
     if (handOver) {
       leader.style.marginLeft = ''
       marked.style.marginLeft = ''
+    }
+    if (handTail) {
+      tail.classList.remove(TAIL_CLASS)
+      tailed.classList.add(TAIL_CLASS)
     }
     root.style.minHeight = asked
 
@@ -1085,6 +1110,13 @@ export const Header = ({
    * has written into yet.
    */
   const openForkable = forkable.has(activeSession)
+  /** The panel's own tabs standing after the last conversation, in the order they are drawn. */
+  const trailing = panels.filter((tab) => tab.at >= groups.length)
+  /**
+   * The strip's last tab, the one the "+" is glued to: it keeps the room the "+" stands in (see .tabTail), so
+   * the two wrap as one and the "+" never goes down a row by itself.
+   */
+  const tailId = trailing.at(-1)?.id ?? groups.at(-1)?.tabs.at(-1)?.id
 
   const sessionTab = (session: Session, startsGroup: boolean, groupSize: number) => {
     const color = colorForGroup(session.groupId)
@@ -1109,6 +1141,7 @@ export const Header = ({
           s.tab,
           session.id === activeSession ? s.tabActive : '',
           startsGroup ? s.tabGroupStart : '',
+          session.id === tailId ? TAIL_CLASS : '',
           // Everything the gesture carries is lifted, not only the tab under the hand: a group travels
           // whole, so all its tabs rise with it, while a fork moved inside its group rises alone.
           (dragging?.kind === 'tab' ? dragging.id === session.id : dragging?.id === session.groupId)
@@ -1190,6 +1223,7 @@ export const Header = ({
         s.tabStatistics,
         s.tabGroupStart,
         tab.active ? s.tabActive : '',
+        tab.id === tailId ? TAIL_CLASS : '',
         dragging?.id === tab.id ? s.tabDragging : '',
       ]
         .filter(Boolean)
@@ -1254,27 +1288,32 @@ export const Header = ({
             {group.tabs.map((session, place) => sessionTab(session, place === 0, group.tabs.length))}
           </Fragment>
         ))}
-        {panels.filter((tab) => tab.at >= groups.length).map(panelTab)}
-      </div>
+        {trailing.map(panelTab)}
 
-      <div className={s.spacer} />
-
-      {/* Three of the panel's own, in a place that does not move: a new tab, a fork of the open one, and the
-          menu - the way Amazing IDE has them. The "+" stood at the end of the strip once and wandered with
-          it, a row down whenever the tabs wrapped. The branch and its PR stood here too, and gave way: the
-          IDE shows the branch already, and the phone, which has no IDE around it, keeps both on its project
-          card. */}
-      <div className={s.headerTools}>
+        {/* Right after the last tab and glued to it: the tab keeps the room this stands in (see .tabTail),
+            so when the row runs out the two go down together, and the "+" never stands on a row alone. It
+            was in the header beside the menu for a release, and the hand looking for it went to the end of
+            the tabs first. Named for the strip's drag arithmetic (see keyOf): it goes where the drop is
+            going to put it. */}
         <button
           type="button"
-          className={s.historyButton}
+          className={`${s.historyButton} ${s.tabAdd}`}
+          data-strip="add"
+          style={dragStyle('add')}
           aria-label={t.header.newSession}
           data-tooltip={newTabKey ? `${t.header.newSession} (${newTabKey})` : t.header.newSession}
           onClick={onNewSession}
         >
           <PlusIcon />
         </button>
+      </div>
 
+      <div className={s.spacer} />
+
+      {/* Two of the panel's own, in a place that does not move: a fork of the open tab and the menu - the way
+          Amazing IDE has them. The branch and its PR stood here once, and gave way: the IDE shows the branch
+          already, and the phone, which has no IDE around it, keeps both on its project card. */}
+      <div className={s.headerTools}>
         {onFork ? (
           <button
             type="button"

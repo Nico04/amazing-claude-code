@@ -369,6 +369,15 @@
      the hand, away from the places the gesture had measured. */
   align-content: flex-start;
   min-width: 0;
+  /* The "+" after the last tab: its size, which is the header button's own in either layout (see
+     .historyButton and its compact size), and how far it stands off the tab. The room for both is kept by
+     the last tab (see .tabTail). */
+  --acc-add: 28px;
+  --acc-add-gap: 4px;
+}
+
+.headerCompact .tabs {
+  --acc-add: 26px;
 }
 
 /* A tab is as wide as its name, and a long name first grows into the room its row has. The rows are laid
@@ -472,6 +481,24 @@
 
 .tabGroupStart:first-child {
   margin-left: 0;
+}
+
+/*
+ * The strip's last tab keeps the room the "+" stands in, as a margin of its own: a flex row wraps by its
+ * items' outer sizes, so the tab and the room go down a row together, and the "+" (whose own outer size is
+ * nothing, see .tabAdd) stays beside it on whatever row it lands. A "+" of its own width wrapped alone onto
+ * a row of its own whenever the last row was full.
+ *
+ * The basis gives way for a narrow strip: there a tab alone on its row is wider than the row, and a row
+ * already overflowing takes nothing more - not even something of no size - so the "+" went down by itself
+ * after all. Never wider than the row less the room and a group's gap, the tab and the "+" fit together.
+ *
+ * Handed by the markup to the last tab, and by hand to the one a drop is going to put last while a gesture
+ * measures it (see projectionFor in Header).
+ */
+.tabTail {
+  margin-right: calc(var(--acc-add-gap) + var(--acc-add));
+  flex-basis: min(210px, 100% - var(--acc-add-gap) - var(--acc-add) - var(--acc-group-gap, 0px));
 }
 
 /* The line-height is shared with .tabTitle: the fork sign is mono 11px while the title is sans 12px, and
@@ -766,9 +793,9 @@
 }
 
 /*
- * The new tab, the fork and the burger (see Header). 2px apart, the gap of Amazing IDE's own three: they are
- * one row of the panel's actions, and their hovers nearly touching is what says so. No min-width: 0 - the
- * three never shrink, and the tabs wrap instead.
+ * The fork and the burger (see Header). 2px apart, the gap of Amazing IDE's own buttons: they are one row of
+ * the panel's actions, and their hovers nearly touching is what says so. No min-width: 0 - the two never
+ * shrink, and the tabs wrap instead.
  */
 .headerTools {
   display: flex;
@@ -814,6 +841,23 @@
   color: var(--acc-fg-ghost);
   opacity: 0.5;
   cursor: default;
+}
+
+/* The new tab, at the end of the strip in the room the last tab keeps for it (see .tabTail). Pulled back
+   over its own width, so that its outer size is nothing: the row breaks before the last tab or not at all,
+   never between the two. */
+.tabAdd {
+  align-self: center;
+  width: var(--acc-add);
+  height: var(--acc-add);
+  /* It makes room for a dragged tab the way the tabs do (see .tab): a tab carried to the end of a row can
+     push it onto the next one. */
+  transition: transform 0.16s ease;
+}
+
+/* Only after a tab: on a strip with none it stands at the start, and pulled back it would leave the strip. */
+.tab ~ .tabAdd {
+  margin-left: calc(-1 * var(--acc-add));
 }
 
 /* --- The stream switcher --------------------------------------------------- */
