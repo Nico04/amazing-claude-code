@@ -9,6 +9,10 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.48] - 2026-10-21
+
+- Changed: the "+" for a new tab is back at the end of the tabs, right after the last one, and it never wraps onto a row by itself any more. When the row runs out, it goes down together with the last tab. Dragging tabs takes it along: while you drag, it already stands after the tab that is going to be last.
+
 ## [0.13.47] - 2026-10-21
 
 - Changed: the speech bubble beside the heart, and Feedback in the menu, no longer send a message to the author. The plugin is made by one person, it takes a large share of my Claude subscription and of my time, and the form filled up faster than I could read it. The screen now says how to get something changed: leave a tip on Ko-fi and write in the message what you would like, and I'll build it, or make the change yourself and open a pull request, and I'll review it. The debug report for the open tab is still there, to copy into a pull request about a bug; the plugin itself sends it nowhere. The email address the old form remembered is deleted from the IDE's settings.
@@ -1081,7 +1085,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.47...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.48...HEAD
+[0.13.48]: https://github.com/crmapache/amazing-claude-code/compare/0.13.47...0.13.48
 [0.13.47]: https://github.com/crmapache/amazing-claude-code/compare/0.13.46...0.13.47
 [0.13.46]: https://github.com/crmapache/amazing-claude-code/compare/0.13.45...0.13.46
 [0.13.45]: https://github.com/crmapache/amazing-claude-code/compare/0.13.44...0.13.45
