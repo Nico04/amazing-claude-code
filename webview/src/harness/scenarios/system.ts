@@ -818,6 +818,33 @@ export const scenariosSystem: Scenario[] = [
   ]),
 
   /**
+   * The CLI's guess at the next message (see PanelState.suggestion): gray in the empty field once the turn
+   * is over, put into the field by Tab, gone with the first keystroke. The third checkpoint is the late one:
+   * a message already started the next turn, and the guess for the turn before must not show up over it.
+   */
+  scenario('prompt-suggestion', 'The next message, guessed', 'system', [
+    checkpoint('The agent answers and offers tests', [
+      user('Add a retry with backoff to the payment webhook'),
+      wait(300),
+      ...textReply('Done: the webhook now retries up to three times with exponential backoff. Want me to add tests for it?'),
+      turnResult(4200),
+      wait(300),
+    ]),
+    checkpoint('The guess waits in the field', [
+      agent({ type: 'prompt_suggestion', suggestion: 'yes, add tests for the retry' }),
+      wait(300),
+    ]),
+    checkpoint('A guess late for the next turn stays away', [
+      user('Also log every retry attempt'),
+      wait(300),
+      agent({ type: 'prompt_suggestion', suggestion: 'yes, add tests for the retry' }),
+      wait(300),
+      ...textReply('Every retry is now logged with its attempt number and delay.'),
+      turnResult(2600),
+    ]),
+  ]),
+
+  /**
    * A side question - /btw - asked while the agent works, and every way one can end. The point is the
    * second checkpoint onwards: the card stands over the field while the feed keeps moving above it, the
    * turn is never interrupted, and nothing of the thread lands in the feed.

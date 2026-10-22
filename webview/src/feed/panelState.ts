@@ -338,6 +338,21 @@ export interface PanelState {
    * no (see CarryOnRow); absent when nothing is planned. `guess`: the limit did not say when it resets.
    */
   carryOn?: { at: number; guess: boolean }
+  /**
+   * What the CLI guesses the person will type next (see PromptSuggestionEvent) - the gray text of the empty
+   * input field, put into it by Tab. Taken only while no turn runs: one that arrives after a queued message
+   * has already started the next turn answers the turn before. Gone with anything that moves the
+   * conversation on - a message, a turn starting by itself, /clear, a rewind, the process dying or replaced
+   * - and with the person's first keystroke in the field after the turn (suggestionDismissed). Kept per tab
+   * like the rest of the state, so a turn that ended in the background has its guess waiting when the tab is
+   * opened. The rules live in feed/suggestion.ts.
+   */
+  suggestion?: string
+  /**
+   * The field was touched since the last turn ended, so that turn's guess is not wanted any more - also when it
+   * had not arrived yet (see editDeclines in feed/suggestion.ts). Cleared where the next turn starts.
+   */
+  suggestionDeclined?: boolean
   /** The conversation's process has died on its own since the last turn - the tab has something to point at. */
   crashed: boolean
   /** A context compaction is running right now - the status line should name that rather than "working". */
@@ -611,6 +626,8 @@ export type PanelAction =
   | { kind: 'attentionStarted' }
   /** The decision has been taken - the waiting time goes into the current turn's pausedMs. */
   | { kind: 'attentionEnded' }
+  /** The person edited the field after the turn, Tab putting the guess in included - see PanelState.suggestionDeclined. */
+  | { kind: 'suggestionDismissed' }
 
 export const initialPanelState: PanelState = {
   items: [],

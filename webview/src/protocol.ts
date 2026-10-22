@@ -3696,6 +3696,16 @@ export interface FilesSettledEvent {
   files: { path: string; added: number; removed: number; edits?: FileEdit[] }[]
 }
 
+/**
+ * The CLI's guess at the person's next message, a second or two after a turn's result - asked for at launch
+ * (see ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG in the plugin). At most one per turn, often none. Drawn as the
+ * gray text of an empty input field (see PanelState.suggestion).
+ */
+export interface PromptSuggestionEvent {
+  type: 'prompt_suggestion'
+  suggestion: string
+}
+
 export type AgentEvent =
   | AgentSystemEvent
   | ForkSeamEvent
@@ -3705,6 +3715,7 @@ export type AgentEvent =
   | AgentResultEvent
   | AgentStreamEvent
   | AgentRateLimitEvent
+  | PromptSuggestionEvent
   /** Arrives from /clear - the conversation has started afresh, without its old history. */
   | { type: 'conversation_reset'; new_conversation_id?: string }
   | { type: 'unknown' }

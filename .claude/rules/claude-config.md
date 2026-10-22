@@ -60,6 +60,9 @@ key=value` и под ней около сорока строк `ключ=вар�
   (`settingsChangeDetector` в его коде).
 - **Группы**: «How Claude works» - что меняет работу разговоров и в панели; «Terminal only» - то, что рисует
   только терминал. `model` и `permissionMode` там же, с пометкой: в панели их решают чипы MODEL и MODE.
+- **`promptSuggestionEnabled` стоит в «How Claude works», а не в «Terminal only»**: панель рисует эти подсказки
+  серым в пустом поле, и выключает их именно эта настройка. Умолчание `true`: потоковый запуск с флагом считает
+  незаписанную настройку включённой (терминал решает это флагом эксперимента). См. prompt-suggestions.md.
 - Аккаунт не передаётся: настройки лежат в общей папке CLI, как у `claude mcp` и `claude plugin`.
 - С телефона закрыто (`askClaudeConfig`, `setClaudeConfig` в `RemoteCommands.DENIED`): машинные настройки CLI,
   и для терминала тоже.

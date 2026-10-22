@@ -65,6 +65,7 @@ paths:
 - экран без вкладок (`sessions.length === 0`, `Welcome`), `markPanelReady` на первый `auth` - welcome
 - голосовая вставка в черновик - voice
 - `hiddenIndicators`, `indicatorsSent`, `case 'indicators'`, `metersNode` - indicators
+- `suggestion` у поля разговора, `editDeclines` и `suggestionDismissed` в `changeDraft` - prompt-suggestions
 - `theme`, `setTheme`, `textSize`, `textSizeSent`, `case 'typography'`, `case 'theme'` - appearance
 - `calls`/`setCalls`, свечение в `alert`, эффект с `callsStanding`, `activeCalling`, `case 'calledAway'` - tab-calls
 - `draftsKnown`, `draftsSent`, `draftSaves`, `shellNamedTab`, `case 'drafts'`, `case 'activeTab'`, `restoreTabs` - restore-tabs
@@ -99,6 +100,7 @@ paths:
 - `activeTab`, `drafts`, `restoreTabs`, `saveDraft`, `tabShown`, `setRestoreTabs` - restore-tabs
 - `ClosedTab`, `closedTabs`, `tabReopened`, `reopenTab`, `panelTabClosed`, `TabPlace` (одно описание, `tabs.ts` его переэкспортирует), `held` у `queue` - reopen-tabs
 - `takeQueued`, `queuedTaken`, `before` у `queuePrompt` - queue-edit
+- `PromptSuggestionEvent` (`prompt_suggestion`) - prompt-suggestions
 - `previewImage`, `imagePreview`, `openPicture`, `PreviewPlace`, `tokens` у `QueuedMessage` - image-preview
 - `tool_use_result`, `ToolUseResult` (дифф правки и `type: 'create'`), `FileEdit`, `RevertOutcome`, `revertChanges`,
   `changesReverted`, `FilesSettledEvent` - changed-files; `fileMissing` - open-in-editor
@@ -131,10 +133,12 @@ paths:
 - `case 'changesReverted'` (итог отката файлов хода) - changed-files
 - `case 'files_settled'` (сверка файлов хода с диском, `settleChanges`) - changed-files
 - `queueHeld` в `case 'queue'` - reopen-tabs
+- `case 'prompt_suggestion'`, `withoutSuggestion` и сброс `suggestion`/`suggestionDeclined` в `prompt`, `status`, `/clear`, откате и смерти процесса, `suggestionDismissed` - prompt-suggestions (правила в `feed/suggestion.ts`)
 
 **`webview/src/feed/types.ts`** и **`webview/src/feed/panelState.ts`**:
 - `DraftEdit` - prompt-improver; `ErrorItem.signIn` - expired-sign-in; `ErrorItem.sampling` - setting-sources;
-  `ModelStuckItem` - models; `UserItem.auto` (подпись PANEL), `PanelState.carryOn` - accounts; `SessionInfoItem` - session-info
+  `ModelStuckItem` - models; `UserItem.auto` (подпись PANEL), `PanelState.carryOn` - accounts; `SessionInfoItem` - session-info;
+  `PanelState.suggestion`, `suggestionDeclined`, действие `suggestionDismissed` - prompt-suggestions
 - `ClosedReason`, `ToolMeta`, `CompactOutcome`, `DetailNote`, `PermItem.mode`, `LimitItem.window`,
   `MetaItem.stats` («Stopped by you» не переводится) - i18n; `movedAccount` - accounts
 - `CompactItem.startedAt`, `stintStartedAt`, `pausedMs` - turn-lifecycle; `TodoItem.replayed` - history
@@ -151,7 +155,8 @@ paths:
 `droppable` - editor-context; `registerApply`, `fillField` - prompt-improver; хвост диктовки
 `data-voice` - voice; `ContextMeter` - composer-field, calm-colors и indicators (`bar`/`figure`); проп
 `indicators` и пустые контейнеры на рельсе и в compact - indicators; сворачивание вставки - paste;
-`queueToken`, `queueKey`, `pressQueueKey`, `seenQueueToken` - panel-keys.
+`queueToken`, `queueKey`, `pressQueueKey`, `seenQueueToken` - panel-keys; проп `suggestion`, `shownSuggestion` (`shownGuess`) в
+заглушке и Tab в `handleKeyDown` - prompt-suggestions.
 
 **`webview/src/components/feed.module.css`**: `.userActions`, `.moreOpen` - message-reuse; `.taskLog` - subagents;
 `.toolHead` и его распорка `::before` - tool-cards; `.pins`, `.pinOn`, `.textWithMenu`, `.textPinned` - pins;
@@ -203,7 +208,7 @@ panel-keys; `answerClosedTabs` (зеркало полосы и закрытые 
 
 **`ClaudeSession.kt`** (подгружает turn-lifecycle): `mute`, `heard` - reopen-tabs; `rename`, `nameAfterPerson`, `namedAs`, `ownTitle` - tab-names; `setEffort`, `effort` - models; `awaitingPermission` -
 permissions; окружение в `start` - task-list; `rememberConversation` - аргументы запуска в CLAUDE.md;
-`isBusy` - idle-sleep; `forkOrigin` - accounts и fork-tabs; `context` в `userMessage` (заметка редактора отдельным блоком) -
+`isBusy` - idle-sleep; `forkOrigin` - accounts и fork-tabs; `suggestionsWanted` - prompt-suggestions; `context` в `userMessage` (заметка редактора отдельным блоком) -
 editor-context; `rewind`, `previewRewind`, `cut`, `uuid` в `userMessage` - rewind; `forkLaunch`, `origin`, «родился ли» в `start` - fork-tabs.
 
 **`ClaudeSessions.kt`** (подгружает accounts и idle-sleep): `goesOn` у `close` (процесс закрытой вкладки молчит) - reopen-tabs; `rename`, `ownTitle` - tab-names; `branchFrom` - fork-tabs; `adoptModel` - history;
@@ -231,7 +236,7 @@ models; `openFile` - open-in-editor; фидбэк и лог незнакомог
 `run`/`onStarted` и отмена - search; `--tools ""` у разовых запусков - task-list; `noSignIn` (запуск без
 чьего-либо входа) - accounts.
 
-**`ClaudeLaunch.kt`** (подгружает task-list): `PANEL_BRIEFING`, `oneLine` - аргументы запуска в CLAUDE.md;
+**`ClaudeLaunch.kt`** (подгружает task-list и prompt-suggestions): `PANEL_BRIEFING`, `oneLine` - аргументы запуска в CLAUDE.md;
 `AFTER_SCENARIO_HEAD` - scenarios; `CHECKPOINTS_VARIABLE` - rewind; `FORK_AT_FLAG`, `forkAt` - fork-tabs.
 
 **`ClaudePreferences.kt`** (подгружает models): `gaugeVivid` - calm-colors; `language` - i18n;

@@ -12,6 +12,7 @@ import {
 import { createPortal } from 'react-dom'
 import { isBashDraft } from '../feed/bash'
 import { isAsideDraft } from '../feed/side'
+import { shownGuess } from '../feed/suggestion'
 import { isLetterKey } from '../feed/fieldEdits'
 import { useT } from '../i18n'
 import { Microphone } from './Microphone'
@@ -513,6 +514,14 @@ interface ComposerProps {
    */
   placeholder?: string
   /**
+   * The CLI's guess at the next message (see PanelState.suggestion), drawn as the gray text of the empty
+   * field in place of the ordinary one. Tab puts it into the field as the person's own words, to be edited
+   * or sent with the send key; until then Enter sends nothing - nothing has been written. Not there while
+   * words are being dictated. Gone from the state with the first keystroke after the turn (App.changeDraft),
+   * so it does not come back when the field is emptied.
+   */
+  suggestion?: string
+  /**
    * Whether the words go into a conversation - the default - or to something that only reads them: a run's
    * main thread (see ScenarioRunTab). A field that is not a conversation's has nothing a conversation's field
    * offers around the words: no commands behind the slash, no shell through "!", no side question, no queue.
@@ -579,6 +588,7 @@ export const Composer = ({
   onOpenSearch,
   onOpenScenarios,
   placeholder: ownPlaceholder,
+  suggestion,
   forConversation = true,
 }: ComposerProps) => {
   const t = useT()
@@ -1543,13 +1553,22 @@ export const Composer = ({
     if (paths.length > 0) onDropFiles(paths)
   }
 
+  /** The guess as the field shows it, and so as Tab takes it - see shownGuess. */
+  const shownSuggestion = shownGuess(suggestion, {
+    empty: tokens.length === 0,
+    conversation: forConversation,
+    dictating: voiceGhost !== '',
+  })
+
   const placeholder = tokens.length
     ? ''
-    : ownPlaceholder
-      ? ownPlaceholder
-      : planMode
-        ? t.composer.placeholderPlan
-        : t.composer.placeholder
+    : shownSuggestion
+      ? shownSuggestion
+      : ownPlaceholder
+        ? ownPlaceholder
+        : planMode
+          ? t.composer.placeholderPlan
+          : t.composer.placeholder
 
   /**
    * The caret has run into a chip and stopped on it rather than stepped over: from there backspace
@@ -1673,6 +1692,15 @@ export const Composer = ({
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey && isLetterKey(event, 'y')) {
       event.preventDefault()
       redo()
+      return
+    }
+
+    // The gray guess becomes the person's words, with the caret at their end. A bare Tab only: Shift+Tab
+    // is the panel's mode switch, and the field is empty, so no hint list can be holding the key.
+    const bareKey = !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey
+    if (event.key === 'Tab' && bareKey && shownSuggestion) {
+      event.preventDefault()
+      applyTokens([{ kind: 'text', value: shownSuggestion }])
       return
     }
 

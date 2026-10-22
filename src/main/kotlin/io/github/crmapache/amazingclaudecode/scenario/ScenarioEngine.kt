@@ -593,6 +593,7 @@ internal class ScenarioEngine(
             accountId = accountId,
             briefing = if (takingOver) HeadTalk.TAKE_OVER_BRIEFING else HeadTalk.HEAD_BRIEFING,
             nameWanted = false,
+            suggestionsWanted = false,
             // Asked here as well as under the lock: the line handlers do their reading before they take it.
             onEvent = { line -> if (head === session) onHeadLine(line, session) },
             onError = { message -> onSessionError(session, head = true, message = message) },
@@ -621,6 +622,7 @@ internal class ScenarioEngine(
             // Raised for a second go at an item of a list, it is told what the first ran into (see HeadTalk.cardBriefing).
             briefing = HeadTalk.cardBriefing(step.item?.again.orEmpty()),
             nameWanted = false,
+            suggestionsWanted = false,
             onEvent = { line ->
                 if (card === session) {
                     work.read(line)

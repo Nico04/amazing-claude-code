@@ -114,6 +114,7 @@ import { askReply, EMPTY_ASK_DRAFT, type AskDraft } from './feed/askDraft'
 import { bashCommand, shellText, type ShellRun } from './feed/bash'
 import { contextOf, initialPanelState, reducePanel, type PanelState } from './feed/build'
 import { deferFollowUpForCompact } from './feed/compact'
+import { editDeclines } from './feed/suggestion'
 import { FAST_MARK, FAST_MODE, fastAsked, fastModeShown, fastModeSub, modelHasFastMode, type FastModeShown } from './feed/fastMode'
 import { waitsForTheTurn } from './feed/delivery'
 import { PASTE_COLLAPSE_DEFAULT, PASTE_COLLAPSE_NEVER, pasteCollapseLines, referenceChip } from './feed/reference'
@@ -5500,6 +5501,13 @@ export const App = () => {
     if (from !== 'renumber') {
       setImproveError(null)
       setVoiceError('')
+      // The first keystroke after a turn, Tab putting the guess in included, ends that turn's guess at the
+      // next message - also one still on its way. Asked first: said on every keystroke, it would rebuild every
+      // tab's state each time (see editDeclines).
+      const panel = panels[active]
+      if (panel && editDeclines(panel)) {
+        dispatchPanel({ session: active, action: { kind: 'suggestionDismissed' } })
+      }
     }
 
     if (!applyingImprove.current && improveSources[active]) {
@@ -6996,6 +7004,7 @@ export const App = () => {
             model={model}
             switchedFrom={panel.switchedFrom}
             stuckPick={panel.stuckPick}
+            suggestion={panel.suggestion}
             fast={fastShown}
             effort={effort}
             mode={mode}

@@ -130,6 +130,21 @@ internal object ClaudeLaunch {
     const val BRIEFING_FLAG = "--append-system-prompt"
 
     /**
+     * The CLI's guess at what the person will type next, the gray text a terminal shows under its prompt.
+     *
+     * A streaming launch makes no guesses unless asked; asked with this, it sends one `prompt_suggestion`
+     * line a second or two after a turn's `result` (see feed/build.ts). Whether it does is still the
+     * person's: the CLI reads their `promptSuggestionEnabled` setting and the
+     * CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION variable itself, the variable winning, and stays silent on its
+     * own terms too - the first turn, after an error, in plan mode, near the plan's limit, when the next
+     * step is not obvious. Read off 2.1.293.
+     *
+     * Bare and followed by another flag: the CLI takes an optional value after it, and a word standing
+     * there would be read as that value.
+     */
+    const val PROMPT_SUGGESTIONS_FLAG = "--prompt-suggestions"
+
+    /**
      * The tool for a question with answer options.
      *
      * Enabled by the same permission channel and answered over it too: the question arrives as an
@@ -283,6 +298,12 @@ internal object ClaudeLaunch {
          * [forkFrom], and passed only for a CLI that knows the flag.
          */
         forkAt: String? = null,
+        /**
+         * Whether the CLI guesses the next message - see [PROMPT_SUGGESTIONS_FLAG]. Only for a tab, where
+         * somebody sees the guess and it is worth its request, and only for a CLI that knows the flag:
+         * an unknown one stops the launch.
+         */
+        promptSuggestions: Boolean = false,
     ): List<String> = buildList {
         add("--print")
         // Without --verbose the event stream is not handed over at all; that is the CLI's own demand.
@@ -290,6 +311,10 @@ internal object ClaudeLaunch {
         addAll(listOf("--output-format", "stream-json"))
         addAll(listOf("--input-format", "stream-json"))
         add("--include-partial-messages")
+
+        // Right before the permission channel, which is always there - nothing may stand after it as
+        // its value.
+        if (promptSuggestions) add(PROMPT_SUGGESTIONS_FLAG)
 
         addAll(listOf(PERMISSION_CHANNEL_FLAG, "stdio"))
 

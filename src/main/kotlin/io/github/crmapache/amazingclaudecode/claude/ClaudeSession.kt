@@ -178,6 +178,13 @@ internal class ClaudeSession(
      */
     private val nameWanted: Boolean = true,
     /**
+     * Whether the CLI guesses this conversation's next message (see ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG).
+     *
+     * True for a tab: the guess waits as gray text in its empty field. False for a scenario's head and
+     * cards - nobody types there, and a guess is one more request after every turn.
+     */
+    private val suggestionsWanted: Boolean = true,
+    /**
      * Which of Claude Code's settings layers this project's conversations load - see [SettingSources].
      *
      * Asked at every launch rather than kept, and that is the same reason [titleWanted] is a question:
@@ -1886,6 +1893,8 @@ internal class ClaudeSession(
                     briefing = briefing,
                     settingSources = passedSources,
                     forkAt = fork.at,
+                    promptSuggestions = suggestionsWanted &&
+                        ClaudeExecutable.supportsFlag(executable, ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG),
                 ),
             )
             .withWorkingDirectory(workingDirectory?.let { Path.of(it) })

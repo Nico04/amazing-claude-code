@@ -15,6 +15,7 @@ import { parseParagraphs } from './markdown'
 import { initialPanelState, push, type PanelAction, type PanelState } from './panelState'
 import { togglePin } from './pins'
 import { applyApiRetry, closeRetry, closeRetryFor } from './retry'
+import { declineSuggestion, takeSuggestion, withoutSuggestion } from './suggestion'
 import {
   appendAgentLog,
   applyReplayedTaskNotification,
@@ -237,6 +238,10 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         stopRequestedAt: undefined,
         stoppedForAccount: undefined,
         crashed: action.status === 'running' ? false : state.crashed,
+        // A turn under way - started by the CLI itself or reconnected to - answers the guess one way or
+        // the other, and the guess after it is welcome again (see PanelState.suggestion).
+        suggestion: action.status === 'running' ? undefined : state.suggestion,
+        suggestionDeclined: action.status === 'running' ? undefined : state.suggestionDeclined,
         // Usually the turn is already marked through 'prompt' - this is only the fallback route: the
         // 'running' status caught the panel up by itself, without a local prompt (after reconnecting to a
         // background turn already under way, for instance). We do not touch what is already ticking -
@@ -326,6 +331,9 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         ? state
         : { ...state, pausedMs: state.pausedMs + (now - state.waitStartedAt), waitStartedAt: undefined }
 
+    case 'suggestionDismissed':
+      return declineSuggestion(state)
+
     case 'stopRequested':
       return { ...state, stopRequestedAt: now }
 
@@ -338,10 +346,14 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
     case 'processExited':
       // The process is gone right in the middle of a pause before a retry - there is nobody left to
       // retry, and the card has to stop waiting along with it.
-      return applyProcessExited(closeRetry(finishCompacting(state), 'stopped', now), action.exitCode, now)
+      return applyProcessExited(
+        closeRetry(finishCompacting(withoutSuggestion(state)), 'stopped', now),
+        action.exitCode,
+        now,
+      )
 
     case 'processReplaced':
-      return applyProcessReplaced(state, now)
+      return applyProcessReplaced(withoutSuggestion(state), now)
 
     case 'streamPrimed': {
       // The same identifier the first delta would have handed out, and for the same reason: the card
@@ -377,7 +389,7 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
       // and the unfinished answer it is printing right now must not be interrupted - clearing the
       // streaming fields would wipe it off the screen mid-sentence.
       if (action.steering) {
-        return { ...state, seq: state.seq + 1, items: [...state.items, message] }
+        return { ...withoutSuggestion(state), seq: state.seq + 1, items: [...state.items, message] }
       }
 
       // A turn that ended without a result to list its files (see closeChanges) has them listed here, at
@@ -412,11 +424,15 @@ export const reducePanel = (state: PanelState, action: PanelAction, now = Date.n
         // Whatever the IDE was going to carry on is spent or set aside by this turn - its own word comes after
         // (see carryOnWait), and the row must not stand over the turn in the meantime.
         carryOn: undefined,
+        // Taken or not, the guess was about the message just sent; the next turn's is welcome again.
+        suggestion: undefined,
+        suggestionDeclined: undefined,
       }
     }
 
     case 'rewound':
-      return applyRewound(state, action.uuid, action.all === true, now)
+      // The guess answered a turn that is no longer in the conversation.
+      return applyRewound(withoutSuggestion(state), action.uuid, action.all === true, now)
 
     case 'changesReverted':
       return applyChangesReverted(state, action.id, action.files, action.restore === true)
@@ -1495,11 +1511,17 @@ const applyAgentEvent = (
         waitStartedAt: undefined,
         stopRequestedAt: undefined,
         starting: false,
+        suggestion: undefined,
+        suggestionDeclined: undefined,
         items: [
           { id: `cleared-${state.seq}`, kind: 'checkpoint', chip: 'CLEAR', target: '', targetKey: 'cleared' },
         ],
       }
     }
+
+    // The CLI's guess at the next message, if it is still wanted - see takeSuggestion.
+    case 'prompt_suggestion':
+      return takeSuggestion(state, event.suggestion, replay)
 
     case 'stream_event': {
       const delta = event.event.delta

@@ -108,6 +108,10 @@ internal object ClaudeConfig {
         "thinking" to setting("alwaysThinkingEnabled", "true", Group.WORK),
         "language" to setting("language", "default", Group.WORK),
         "outputStyle" to local("outputStyle", "default", Group.WORK),
+        // The gray guess at the next message in an empty field - the panel draws it too (see
+        // ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG). Unset is on there: a launch that asks reads only a written
+        // `false` as off, while a terminal settles an unset one by a feature flag of its own.
+        "promptSuggestionEnabled" to setting("promptSuggestionEnabled", "true", Group.WORK),
         // `disableWorkflows: true` wins over everything, the way the CLI reads it.
         "workflows" to Spec(Store.SETTINGS, listOf("enableWorkflows"), null, Group.WORK, offWhen = listOf("disableWorkflows")),
         "workflowKeywordTriggerEnabled" to setting("workflowKeywordTriggerEnabled", "true", Group.WORK),
@@ -148,7 +152,6 @@ internal object ClaudeConfig {
         "verbose" to global("verbose", "false", Group.TERMINAL),
         "tips" to local("spinnerTipsEnabled", "true", Group.TERMINAL),
         "reduceMotion" to local("prefersReducedMotion", "false", Group.TERMINAL),
-        "promptSuggestionEnabled" to setting("promptSuggestionEnabled", null, Group.TERMINAL),
         "recap" to setting("awaySummaryEnabled", null, Group.TERMINAL),
         "timeFormat" to setting("timeFormat", "auto", Group.TERMINAL),
         "turnDuration" to global("showTurnDuration", "true", Group.TERMINAL),

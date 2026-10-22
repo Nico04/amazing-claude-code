@@ -17,6 +17,7 @@ class ClaudeLaunchTest {
         briefing: String = ClaudeLaunch.PANEL_BRIEFING,
         settingSources: String = SettingSources.ALL,
         forkAt: String? = null,
+        promptSuggestions: Boolean = false,
     ) = ClaudeLaunch.arguments(
         model = model,
         effort = effort,
@@ -27,6 +28,7 @@ class ClaudeLaunchTest {
         briefing = briefing,
         settingSources = settingSources,
         forkAt = forkAt,
+        promptSuggestions = promptSuggestions,
     )
 
     private fun briefingOf(args: List<String>): String = args[args.indexOf(ClaudeLaunch.BRIEFING_FLAG) + 1]
@@ -96,6 +98,22 @@ class ClaudeLaunchTest {
         assertTrue(args.containsAll(listOf("--print", "--verbose", "--include-partial-messages")))
         assertEquals("stream-json", args[args.indexOf("--output-format") + 1])
         assertEquals("stream-json", args[args.indexOf("--input-format") + 1])
+    }
+
+    // A tab asks for the guess at the next message; a scenario's head and an old CLI do not - the old one
+    // would refuse to start over a flag it does not know.
+    @Test
+    fun `the next message is guessed only when asked`() {
+        assertTrue(ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG in arguments(promptSuggestions = true))
+        assertFalse(ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG in arguments())
+    }
+
+    // The flag takes an optional value, and a word standing right after it would be read as one.
+    @Test
+    fun `the guess flag is followed by another flag, never by a value`() {
+        val args = arguments(promptSuggestions = true, model = "opus", conversationId = "conversation-1")
+        val next = args[args.indexOf(ClaudeLaunch.PROMPT_SUGGESTIONS_FLAG) + 1]
+        assertTrue(next.startsWith("--"), "stands after the guess flag: $next")
     }
 
     // The CLI takes a streaming launch for an unattended script and tells the agent as much: an MCP
