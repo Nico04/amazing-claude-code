@@ -9,6 +9,11 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.50] - 2026-10-22
+
+- Added: after Claude answers, the empty input field can show a guess at your next message in gray, the way Claude Code does in a terminal. Press Tab to put it into the field, then edit it or send it with Enter. Enter alone does not send the gray text, so nothing goes out by accident. The guess goes away as soon as you type, and each tab keeps its own, so a turn that finished in a background tab has its guess waiting when you open it. Claude Code writes the guess itself and stays silent when the next step isn't clear: on the first turn, after an error, in plan mode or close to your plan's limit. It costs one short extra request per turn on top of the conversation's cache.
+- Changed: "Prompt suggestions" in the panel's Claude Code settings moved from "Terminal only" to "How Claude works", because it now turns these guesses on and off in the panel too. If you turned it off for the terminal, the panel doesn't show them either. With nothing set, they are on.
+
 ## [0.13.49] - 2026-10-22
 
 - Fixed: the sign-in Claude Code itself has (the one you had before adding any accounts here) kept disappearing from the accounts screen, often once a day, and Claude Code in a terminal then answered "Not logged in" as well. The panel was to blame. To fill the "/" hint it asked Claude Code for the list of installed plugins once a minute in every open project, and it did so under that sign-in. Each of these runs lived for under a second, and when one of them happened to renew the sign-in's token and exited before saving the new one, the next run was turned down and Claude Code cleared the sign-in. The panel's lists of plugins and marketplaces now run with no sign-in at all, so they can't touch any of your accounts.
@@ -1091,7 +1096,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.49...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.50...HEAD
+[0.13.50]: https://github.com/crmapache/amazing-claude-code/compare/0.13.49...0.13.50
 [0.13.49]: https://github.com/crmapache/amazing-claude-code/compare/0.13.48...0.13.49
 [0.13.48]: https://github.com/crmapache/amazing-claude-code/compare/0.13.47...0.13.48
 [0.13.47]: https://github.com/crmapache/amazing-claude-code/compare/0.13.46...0.13.47
