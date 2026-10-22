@@ -9,6 +9,12 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.49] - 2026-10-22
+
+- Fixed: the sign-in Claude Code itself has (the one you had before adding any accounts here) kept disappearing from the accounts screen, often once a day, and Claude Code in a terminal then answered "Not logged in" as well. The panel was to blame. To fill the "/" hint it asked Claude Code for the list of installed plugins once a minute in every open project, and it did so under that sign-in. Each of these runs lived for under a second, and when one of them happened to renew the sign-in's token and exited before saving the new one, the next run was turned down and Claude Code cleared the sign-in. The panel's lists of plugins and marketplaces now run with no sign-in at all, so they can't touch any of your accounts.
+- Changed: a sign-in that Claude Code lost by itself now stays on the accounts screen, marked as having no stored credential, with a Sign in again button. It opens a terminal that signs that same account in again, and the card comes back by itself once you finish in the browser. Added accounts whose credential is gone get the same button: until now their card asked you to sign in again with nothing to press. Select is no longer offered on such a card, and Forget takes it off the list. Log out still removes the card, as before.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do. Signing in again happens at the desk, so the phone's card says that and offers Forget.
+
 ## [0.13.48] - 2026-10-21
 
 - Changed: the "+" for a new tab is back at the end of the tabs, right after the last one, and it never wraps onto a row by itself any more. When the row runs out, it goes down together with the last tab. Dragging tabs takes it along: while you drag, it already stands after the tab that is going to be last.
@@ -1085,7 +1091,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.48...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.49...HEAD
+[0.13.49]: https://github.com/crmapache/amazing-claude-code/compare/0.13.48...0.13.49
 [0.13.48]: https://github.com/crmapache/amazing-claude-code/compare/0.13.47...0.13.48
 [0.13.47]: https://github.com/crmapache/amazing-claude-code/compare/0.13.46...0.13.47
 [0.13.46]: https://github.com/crmapache/amazing-claude-code/compare/0.13.45...0.13.46
