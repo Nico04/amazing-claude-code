@@ -76,6 +76,46 @@ class AccountStoreTest {
         assertTrue(answer is AccountStore.Environment.Refused, "expected a refusal, got $answer")
     }
 
+    // --- A run that needs nobody's sign-in --------------------------------------
+
+    private val noSignIn = "/Users/someone/.amazing-claude-code/no-sign-in"
+
+    /**
+     * The panel's own listings of plugins ran under the ordinary sign-in, once a minute in every open
+     * project, and a short process that refreshes a credential can leave the drawer holding a retired
+     * one: the ordinary sign-in was wiped nearly every day. Pointed at a drawer nobody signs into, the
+     * run has nothing to refresh - and what outranks a drawer is emptied here too, or a key in the
+     * person's environment would hand the run a credential through the other door.
+     */
+    @Test
+    fun `a run that needs no sign-in is pointed at a drawer nobody signs into`() {
+        val answer = AccountStore.signInFreeEnvironment(base, noSignIn, remote = false)
+
+        assertTrue(answer is AccountStore.Environment.Ready, "expected a usable environment, got $answer")
+        assertEquals(noSignIn, answer.variables[AccountStore.STORE_VARIABLE])
+        AccountStore.OUTRANKING_VARIABLES.forEach { assertEquals("", answer.variables[it]) }
+    }
+
+    // An empty drawer is not "no sign-in", it is the person's real one - the very credential this exists
+    // to keep such runs away from.
+    @Test
+    fun `a run that needs no sign-in is never handed the ordinary one instead`() {
+        val answer = AccountStore.signInFreeEnvironment(base, "", remote = false)
+
+        assertTrue(answer is AccountStore.Environment.Refused, "expected a refusal, got $answer")
+    }
+
+    // Inside WSL a path from here is one relative segment, resolved against the person's repository, so
+    // nothing is named and the run goes on as it always ran.
+    @Test
+    fun `inside WSL a run that needs no sign-in keeps the environment it had`() {
+        val answer = AccountStore.signInFreeEnvironment(base, noSignIn, remote = true)
+
+        assertTrue(answer is AccountStore.Environment.Ready, "expected a usable environment, got $answer")
+        assertNull(answer.variables[AccountStore.STORE_VARIABLE])
+        assertEquals(base["PATH"], answer.variables["PATH"])
+    }
+
     // --- The default account: the machine that never touches this feature ---------
 
     @Test

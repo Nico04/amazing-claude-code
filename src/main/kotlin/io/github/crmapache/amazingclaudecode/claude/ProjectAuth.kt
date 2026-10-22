@@ -169,7 +169,18 @@ internal class ProjectAuth(
      */
     fun login() = ClaudeLogin.login(project, hub) { answer(it, expected = true) }
 
-    fun logout() = ClaudeLogin.logout(project, hub) { answer(it, expected = false) }
+    fun logout() {
+        val accounts = ClaudeAccounts.getInstance()
+        val leaving = accounts.currentId
+
+        ClaudeLogin.logout(project, hub, leaving) { outcome ->
+            // `/logout` on the CLI's ordinary sign-in is the person ending it, so its row on the accounts
+            // screen goes with it rather than staying there as "signed out, sign in again" - that row is for
+            // a sign-in the CLI lost by itself (see ClaudeAccounts.keepsSignedOutDefault).
+            if (outcome == ClaudeLogin.Outcome.OPENED && leaving.isEmpty()) accounts.dropDefault()
+            answer(outcome, expected = false)
+        }
+    }
 
     /**
      * Either the person is now in front of a terminal - and we start watching for the outcome - or they

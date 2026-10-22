@@ -1465,6 +1465,7 @@ export const zh: Dict = {
     logout: '退出登录',
     logoutConfirm: '退出 Claude Code？',
     forget: '忘记',
+    signInAgain: '重新登录',
     add: '添加账号',
     adding: '等待登录完成…',
     cancel: '取消',
@@ -1499,6 +1500,7 @@ export const zh: Dict = {
       'already-here': '该账号已经在这里了：它就是 Claude Code 自己的登录，因此未添加任何账号。',
       'logout-failed': '退出失败。请在终端中尝试。',
       'already-running': '已经有一个登录在进行中了。',
+      'no-drawer': '从这个项目访问不到这个账号，所以没有开始登录。',
       unknown: '这次没成功。',
     } as Record<string, string>,
   },
@@ -1833,6 +1835,9 @@ export const zh: Dict = {
       addNote: '添加账号和授权 Claude Design 都留在电脑上：两者都会在那台机器上打开终端和浏览器登录。',
       forgetAsk: (name) => `忘记 ${name}？它的凭据会从那台机器上删掉；账号本身不受影响，重新登录即可找回。`,
       logoutAsk: '退出 Claude Code？这会在 Anthropic 一侧吊销凭据 - 你所有机器上的登录都会失效。',
+      signInAtDesk: '没有存下来的登录凭据。重新登录需要那台机器上的终端和浏览器，所以要在电脑上完成。',
+      forgetSignedOutAsk: (name) =>
+        `把 ${name} 从列表里移除？它已经退出登录了，不会吊销任何东西；在电脑上重新登录即可找回。`,
     },
 
     newSession: {

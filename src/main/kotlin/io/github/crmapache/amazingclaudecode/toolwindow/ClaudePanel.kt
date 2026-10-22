@@ -576,18 +576,24 @@ internal class ClaudePanel(
             // than only to whoever asked: the setting is machine-wide, and a second window - or a phone -
             // left speaking the old language would be showing a setting that is no longer true.
             /*
-             * The two halves of the accounts screen that stay at this door, and the reason is no longer
-             * "a network client cannot reach it" - the rest of that screen has moved to SessionCommands,
+             * The parts of the accounts screen that stay at this door, and the reason is no longer "a
+             * network client cannot reach it" - the rest of that screen has moved to SessionCommands,
              * where a phone reaches it (see RemoteCommands).
              *
-             * These two end in a terminal window and a browser sign-in on THIS machine: adding an account
-             * runs `claude auth login` in a drawer of its own, and Claude Design is the same thing for its
-             * own credential. Neither can be finished from anywhere but the keyboard in front of them, so
-             * the door they are behind is the honest one.
+             * These end in a terminal window and a browser sign-in on THIS machine: adding an account runs
+             * `claude auth login` in a drawer of its own, signing a row in again runs it in that row's
+             * drawer, and Claude Design is the same thing for its own credential. None can be finished
+             * from anywhere but the keyboard in front of them, so the door they are behind is the honest
+             * one.
              */
             "accountAdd" -> hub.accounts.add()
 
             "accountCancel" -> hub.accounts.cancelAdd()
+
+            // Signing a row in again, and stopping the wait for it - a terminal and a browser here too.
+            "accountSignIn" -> hub.accounts.signInAgain(field("id"))
+
+            "accountSignInStop" -> hub.accounts.stopSignIn(field("id"))
 
             "designLogin" -> hub.accounts.designLogin()
 

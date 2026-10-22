@@ -74,6 +74,25 @@ class AccountsBookTest : BasePlatformTestCase() {
         assertEquals("opus", reopened.account("home")?.model)
     }
 
+    /**
+     * Letting the ordinary sign-in go is a choice made in one IDE and true in every other: the IDE next door
+     * that did not hear it would put the signed-out row back on its screen, as if the CLI had lost it.
+     * And the choice is undone by the sign-in coming back, or the next loss would read as a choice too.
+     */
+    fun testLettingTheOrdinarySignInGoSurvivesAReopenAndIsUndoneBySigningInAgain() {
+        val first = book()
+        first.rememberDefault("me@example.com")
+        assertFalse(book().defaultDropped)
+
+        first.defaultDropped = true
+        assertTrue(book().defaultDropped)
+        // What it was is kept: signing in again brings the row back with the same address and name.
+        assertEquals("me@example.com", book().defaultEmail)
+
+        first.defaultDropped = false
+        assertFalse(book().defaultDropped)
+    }
+
     fun testTheChosenAccountSurvivesAReopen() {
         val first = book()
         first.remember(account("work"))

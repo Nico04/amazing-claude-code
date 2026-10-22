@@ -1476,6 +1476,7 @@ export const de: Dict = {
     logout: 'Abmelden',
     logoutConfirm: 'Von Claude Code abmelden?',
     forget: 'Vergessen',
+    signInAgain: 'Neu anmelden',
     add: 'Konto hinzufügen',
     adding: 'Warte auf die Anmeldung…',
     cancel: 'Abbrechen',
@@ -1510,6 +1511,7 @@ export const de: Dict = {
       'already-here': 'Dieses Konto ist schon da: Es ist die Anmeldung von Claude Code selbst, daher wurde nichts hinzugefügt.',
       'logout-failed': 'Abmelden hat nicht geklappt. Versuchen Sie es im Terminal.',
       'already-running': 'Eine Anmeldung läuft bereits.',
+      'no-drawer': 'Dieses Konto ist von diesem Projekt aus nicht erreichbar, daher wurde die Anmeldung nicht gestartet.',
       unknown: 'Das hat nicht geklappt.',
     } as Record<string, string>,
   },
@@ -1842,6 +1844,9 @@ export const de: Dict = {
       addNote: 'Ein Konto hinzuzufügen und Claude Design zu autorisieren bleiben am Schreibtisch: beides öffnet dort ein Terminal und eine Browser-Anmeldung.',
       forgetAsk: (name) => `${name} vergessen? Die Anmeldedaten werden von jener Maschine entfernt - das Konto selbst bleibt unberührt, erneutes Anmelden holt es zurück.`,
       logoutAsk: 'Von Claude Code abmelden? Das widerruft die Anmeldedaten bei Anthropic - auf allen deinen Maschinen.',
+      signInAtDesk: 'Keine Zugangsdaten gespeichert. Neu anmelden braucht ein Terminal und einen Browser auf jener Maschine, also geht das nur am Schreibtisch.',
+      forgetSignedOutAsk: (name) =>
+        `${name} von der Liste nehmen? Es ist bereits abgemeldet, also wird nichts widerrufen - erneutes Anmelden am Schreibtisch holt es zurück.`,
     },
 
     newSession: {

@@ -41,6 +41,17 @@ internal object ClaudeCli {
          * the one the CLI actually uses.
          */
         accountId: String = "",
+        /**
+         * The run needs nobody's sign-in and must not hold one: it gets a drawer nobody signs into, and
+         * [accountId] is not consulted (see AccountStore.signInFreeEnvironment).
+         *
+         * For the panel's own listings of plugins and marketplaces, the ones asked on a timer in every
+         * open project. Run under the ordinary sign-in they were thousands of short processes a day
+         * holding a credential they never used - and a short process that happens to refresh that
+         * credential can leave the drawer holding a retired token, which wiped the person's ordinary
+         * sign-in nearly every day.
+         */
+        noSignIn: Boolean = false,
         onStarted: ((ProcessHandler) -> Unit)? = null,
         onError: (String) -> Unit,
         onResult: (String) -> Unit,
@@ -51,7 +62,12 @@ internal object ClaudeCli {
             return
         }
 
-        val environment = ClaudeAccounts.getInstance().variablesFor(accountId, workingDirectory)
+        val accounts = ClaudeAccounts.getInstance()
+        val environment = if (noSignIn) {
+            accounts.signInFreeVariables(workingDirectory)
+        } else {
+            accounts.variablesFor(accountId, workingDirectory)
+        }
         if (environment == null) {
             onError("That account is unavailable.")
             return

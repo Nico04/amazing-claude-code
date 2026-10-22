@@ -730,6 +730,28 @@ export const scenariosSystem: Scenario[] = [
   ]),
 
   /**
+   * The CLI wiped its own ordinary sign-in - a refresh the server turned down - while the work went on on
+   * another account. The row stays, signed out, instead of vanishing (see ClaudeAccounts.keepsSignedOutDefault):
+   * open the menu, "Claude accounts". "Sign in again" plays the terminal and the landing (every third press
+   * refuses), "Forget" takes the row off.
+   */
+  scenario('sign-in-lost', 'The ordinary sign-in was lost', 'system', [
+    checkpoint('Work runs on Personal, and the ordinary sign-in is signed out but still on the list', [
+      shell({
+        type: 'accounts',
+        capability: 'supported',
+        current: 'a2',
+        accounts: [
+          { id: '', alias: 'Main', email: 'you@company.com', plan: '', health: 'absent', isDefault: true },
+          { id: 'a2', alias: 'Personal', email: 'you@personal.com', plan: 'pro', health: 'present' },
+          { id: 'a4', alias: 'Work', email: 'you@work.com', plan: 'team', health: 'present' },
+        ],
+      }),
+      wait(500),
+    ]),
+  ]),
+
+  /**
    * Fast mode (see feed/fastMode.ts): asked for in the model menu, the CLI says at each turn's start and end
    * whether it serves. The first turn runs fast - the mark on MODEL lights up; at the second the account's
    * usage credits are off, and the feed says so once rather than at every turn. The switch is live from the

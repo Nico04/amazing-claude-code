@@ -7278,6 +7278,8 @@ export const App = () => {
               const account = accounts?.accounts.find((one) => one.id === id)
               setLoggingOut({ id, label: account?.alias.trim() || account?.email || '' })
             }}
+            onSignInAgain={(id) => send({ type: 'accountSignIn', id })}
+            onStopSignIn={(id) => send({ type: 'accountSignInStop', id })}
             onRename={(id, alias) => send({ type: 'accountRename', id, alias })}
             onDesignLogin={() => send({ type: 'designLogin' })}
           />

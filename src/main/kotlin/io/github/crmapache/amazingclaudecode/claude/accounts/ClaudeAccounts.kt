@@ -229,6 +229,30 @@ internal class ClaudeAccounts {
     val defaultAlias: String get() = state.defaultAlias
 
     /**
+     * Whether the CLI's ordinary sign-in keeps its row while it is NOT signed in - "no stored credential,
+     * sign in again" rather than no row at all.
+     *
+     * Asked for after the CLI started wiping that sign-in by itself (a refresh token the server turned
+     * down, see AccountStore.signInFreeEnvironment): the row simply went, the book still knew its name
+     * and address, and what a person saw was "my third account keeps disappearing" with nothing to press.
+     * So a sign-in this machine has known keeps its row until the person lets it go - Log out, or Forget
+     * on the signed-out row (see [dropDefault]). Known means a remembered address or a name given to it;
+     * a machine that never had one has nothing to show.
+     */
+    val keepsSignedOutDefault: Boolean
+        get() = !state.defaultDropped && (state.defaultEmail.isNotEmpty() || state.defaultAlias.isNotEmpty())
+
+    /** The person let the ordinary sign-in go here - see [keepsSignedOutDefault]. */
+    fun dropDefault() {
+        state.defaultDropped = true
+    }
+
+    /** It answered "signed in" again, so the next time it goes it is a loss again rather than a choice. */
+    fun defaultSignedIn() {
+        state.defaultDropped = false
+    }
+
+    /**
      * Who the ordinary sign-in is, as far as it can be told apart from the accounts added here.
      *
      * The CLI answers this question out of `~/.claude.json`, which every drawer shares and which names
@@ -431,6 +455,24 @@ internal class ClaudeAccounts {
             is AccountStore.Environment.Ready -> resolved.variables
             is AccountStore.Environment.Refused -> null
         }
+
+    /**
+     * The map for a one-off run that needs no sign-in at all, or null when not even that will resolve and
+     * nothing may be started. Why such a run must not simply borrow the ordinary sign-in is in
+     * [AccountStore.signInFreeEnvironment].
+     */
+    fun signInFreeVariables(workingDirectory: String?): Map<String, String>? {
+        val resolved = AccountStore.signInFreeEnvironment(
+            ClaudeExecutable.rawEnvironment(),
+            emptyDrawer = signInFreeDirectory().absolutePath,
+            remote = isRemote(workingDirectory),
+        )
+
+        return when (resolved) {
+            is AccountStore.Environment.Ready -> resolved.variables
+            is AccountStore.Environment.Refused -> null
+        }
+    }
 
     /**
      * The map for the one-off question about an account's usage: the same drawer, and a config directory
@@ -983,6 +1025,17 @@ internal class ClaudeAccounts {
      */
     private fun probeDirectory(): File =
         File(File(System.getProperty("user.home"), ".amazing-claude-code"), "probe")
+
+    /**
+     * The drawer for the runs that need no sign-in (see [signInFreeVariables]) - one fixed name, not among
+     * the real ones, and never signed into.
+     *
+     * Not the isolation probe's drawer, though both are empty by design: that one is deleted after every
+     * probe, and sharing it would tie a listing to the probe's clean-up. Never made or cleared here
+     * either: the CLI neither makes the folder nor writes into it, so there is nothing to clear.
+     */
+    private fun signInFreeDirectory(): File =
+        File(File(System.getProperty("user.home"), ".amazing-claude-code"), "no-sign-in")
 
     /** Where each identity question gets a config directory for its one question (see [identityOf]). */
     private fun identityDirectory(): File =

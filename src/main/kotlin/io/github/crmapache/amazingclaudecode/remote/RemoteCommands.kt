@@ -528,6 +528,12 @@ internal object RemoteCommands {
         "accountAdd",
         "accountCancel",
         /*
+         * Signing a row in again when its drawer has lost the credential, and stopping the wait for it. The
+         * same terminal and browser on the work machine as adding one, into that row's own drawer.
+         */
+        "accountSignIn",
+        "accountSignInStop",
+        /*
          * Authorizing Claude Design. A terminal and a browser sign-in on somebody's machine, in that
          * account's credential drawer - the same thing `accountAdd` above is denied for, and the phone
          * has no terminal to finish it in either.

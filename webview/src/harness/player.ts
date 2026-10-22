@@ -1,4 +1,5 @@
 import type {
+  AccountInfo,
   ClaudeConfigSetting,
   PaintedTerm,
   PanelKeyCommand,
@@ -190,15 +191,17 @@ const SAMPLE_REPORT = [
  * both visible. Their figures ride the ordinary `usage` messages, keyed by account, exactly as they do
  * in the plugin - which is what makes the per-account limits on the rows real here too.
  */
-let harnessAccounts = [
+let harnessAccounts: AccountInfo[] = [
   // The sign-in Claude Code already had, first and always: it is what a person who has never touched this
   // screen is actually running on, and leaving it out is what made the screen claim they had no account.
-  { id: '', alias: '', email: 'you@company.com', plan: 'max', health: 'present' as const, isDefault: true },
-  { id: 'a2', alias: 'Personal', email: 'you@personal.com', plan: 'pro', health: 'present' as const },
-  { id: 'a3', alias: 'Old client', email: 'me@client.com', plan: 'pro', health: 'absent' as const },
+  { id: '', alias: '', email: 'you@company.com', plan: 'max', health: 'present', isDefault: true },
+  { id: 'a2', alias: 'Personal', email: 'you@personal.com', plan: 'pro', health: 'present' },
+  { id: 'a3', alias: 'Old client', email: 'me@client.com', plan: 'pro', health: 'absent' },
 ]
 
 let harnessCurrent = ''
+/** How many rows have been signed in again - every third one is played as a terminal that would not open. */
+let harnessSignIns = 0
 let harnessAdds = 0
 let harnessAdding = false
 /** How many Claude Design sign-ins have been asked for - every second one is played as a refusal. */
@@ -297,6 +300,38 @@ const answerAccounts = (message: WebviewMessage): void => {
     harnessAccounts = harnessAccounts.filter((one) => one.id !== message.id)
     if (harnessCurrent === message.id) harnessCurrent = harnessAccounts[0]?.id ?? ''
 
+    sendAccounts()
+  }
+
+  /*
+   * Signing a lost row in again. In the IDE a terminal opens in that row's drawer and the drawer is asked
+   * every few seconds; here the row says "signing in" for a moment and then lands - every third press
+   * instead answers like a terminal that would not open, so the refusal line is on the screen too.
+   */
+  if (message.type === 'accountSignIn') {
+    harnessSignIns += 1
+    if (harnessSignIns % 3 === 0) {
+      window.__accReceive?.({ type: 'accountOutcome', code: 'no-terminal' })
+      return
+    }
+
+    const id = message.id
+    harnessAccounts = harnessAccounts.map((one) => (one.id === id ? { ...one, signingIn: true } : one))
+    sendAccounts()
+
+    window.setTimeout(() => {
+      // Stopped while this was in flight: the row is not waiting any more, so nothing lands.
+      if (harnessAccounts.find((one) => one.id === id)?.signingIn !== true) return
+
+      harnessAccounts = harnessAccounts.map((one) =>
+        one.id === id ? { ...one, signingIn: false, health: 'present', plan: one.plan || 'max' } : one,
+      )
+      sendAccounts()
+    }, 2_400)
+  }
+
+  if (message.type === 'accountSignInStop') {
+    harnessAccounts = harnessAccounts.map((one) => (one.id === message.id ? { ...one, signingIn: false } : one))
     sendAccounts()
   }
 
@@ -2169,6 +2204,13 @@ export class ScenarioPlayer {
 
     // A strip a scenario puts up is the strip the harness mirrors from then on (see answerClosedTabs).
     if (message.type === 'sessions') mirrorStrip(message.sessions)
+
+    // And the accounts a scenario puts up are the ones the harness holds from then on: the screen asks for
+    // the list when it opens, and an answer out of the harness's own book would undo the scenario.
+    if (message.type === 'accounts') {
+      harnessAccounts = message.accounts
+      harnessCurrent = message.current
+    }
 
     // A queue a scenario puts up is the queue the harness holds from then on (see answerQueue).
     if (message.type === 'queue') {

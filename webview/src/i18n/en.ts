@@ -1941,6 +1941,7 @@ export const en = {
     logout: 'Log out',
     logoutConfirm: 'Log out of Claude Code?',
     forget: 'Forget',
+    signInAgain: 'Sign in again',
     add: 'Add an account',
     adding: 'Waiting for the sign-in…',
     /** The way out of a wait that lasts ten minutes - see AddButton. */
@@ -1990,6 +1991,7 @@ export const en = {
       'already-here': 'That account is already here: it is the sign-in Claude Code itself has, so nothing was added.',
       'logout-failed': 'Logging out did not work. Try it in a terminal.',
       'already-running': 'A sign-in is already under way.',
+      'no-drawer': 'This account cannot be reached from this project, so the sign-in was not started.',
       unknown: 'That did not work.',
     } as Record<string, string>,
   },
@@ -2388,6 +2390,9 @@ export const en = {
         `Forget ${name}? Its credential is removed from that machine - the account itself is untouched, and signing in again brings it back.`,
       logoutAsk:
         'Sign out of Claude Code? This revokes the credential at Anthropic - every machine you are signed in on goes with it.',
+      signInAtDesk: 'No stored credential. Signing it in again takes a terminal and a browser on that machine, so it is done at the desk.',
+      forgetSignedOutAsk: (name: string): string =>
+        `Take ${name} off the list? It is signed out already, so nothing is revoked - signing in again at the desk brings it back.`,
     },
 
     newSession: {

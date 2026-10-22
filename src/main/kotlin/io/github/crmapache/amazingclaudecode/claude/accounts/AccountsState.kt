@@ -15,6 +15,7 @@ import java.nio.file.StandardCopyOption
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
@@ -79,11 +80,23 @@ internal class AccountsState(private val file: Path) {
          */
         var defaultEmail: String = ""
 
+        /**
+         * Whether the person let the CLI's ordinary sign-in go: logged it out from the panel, or forgot its
+         * row once it had stopped being signed in.
+         *
+         * It is what tells a choice from a loss. A sign-in the CLI cleared by itself - a refresh token the
+         * server turned down - keeps its row, signed out, with a way back in; one the person ended keeps
+         * nothing. Without this the two looked the same, and the loss looked like the account had vanished
+         * (see ClaudeAccounts.keepsSignedOutDefault).
+         */
+        var defaultDropped: Boolean = false
+
         fun copy(): Data = Data().also {
             it.accounts = accounts.mapTo(mutableListOf()) { account -> account.copy() }
             it.current = current
             it.defaultAlias = defaultAlias
             it.defaultEmail = defaultEmail
+            it.defaultDropped = defaultDropped
         }
     }
 
@@ -205,6 +218,13 @@ internal class AccountsState(private val file: Path) {
         set(value) = update { it.defaultAlias = value }
 
     val defaultEmail: String get() = synchronized(lock) { data.defaultEmail }
+
+    /** See [Data.defaultDropped]. Written only when it changes: every write is a file under a lock. */
+    var defaultDropped: Boolean
+        get() = synchronized(lock) { data.defaultDropped }
+        set(value) {
+            if (defaultDropped != value) update { it.defaultDropped = value }
+        }
 
     // --- Changing it ----------------------------------------------------------------
 
@@ -468,6 +488,7 @@ internal class AccountsState(private val file: Path) {
         put("current", data.current)
         put("defaultAlias", data.defaultAlias)
         put("defaultEmail", data.defaultEmail)
+        put("defaultDropped", data.defaultDropped)
         putJsonArray("accounts") {
             data.accounts.forEach { account ->
                 addJsonObject {
@@ -494,6 +515,7 @@ internal class AccountsState(private val file: Path) {
         decoded.current = root.text("current")
         decoded.defaultAlias = root.text("defaultAlias")
         decoded.defaultEmail = root.text("defaultEmail")
+        decoded.defaultDropped = runCatching { root["defaultDropped"]?.jsonPrimitive?.booleanOrNull }.getOrNull() ?: false
 
         for (element in list) {
             val one = element as? JsonObject ?: continue

@@ -156,6 +156,30 @@ internal object AccountStore {
     const val CONFIG_VARIABLE = "CLAUDE_CONFIG_DIR"
 
     /**
+     * The environment for a one-off run that needs nobody's sign-in: a drawer nobody ever signs into.
+     *
+     * Holding a sign-in is not free even for a command that never uses it. Any process that starts near
+     * the end of an access token's life refreshes it, and a refresh is a rotation: the server hands out a
+     * new refresh token and retires the one in the drawer. A short command can be done and gone before
+     * the new one is filed; the next process then presents a retired token, hears `invalid_grant`, and the
+     * CLI clears the sign-in on disk (`refreshToken: ""`, the plan and scopes left standing). Caught on
+     * this machine on 2026-10-22: the panel listed plugins once a minute in every open project, around the
+     * clock, under the ordinary sign-in - about 6,600 processes a day - and that sign-in was wiped nearly
+     * every day, while the added accounts, which no such run touches, never were. The wipe itself was
+     * written by a process that lived 0.6 seconds, at an hour when nothing else held that sign-in.
+     *
+     * An empty drawer answers every listing byte for byte as a signed-in one does (compared live for
+     * `plugin list`, `plugin list --available` and `plugin marketplace list`), and the CLI neither makes
+     * the folder nor writes into it. What it cannot do is refresh anything, which is the point.
+     *
+     * In a project inside WSL nothing is named, and the run keeps the environment it always had: a path
+     * from here is one relative segment inside the distribution, resolved against the person's repository
+     * (see [refusalFor]).
+     */
+    fun signInFreeEnvironment(base: Map<String, String>, emptyDrawer: String, remote: Boolean): Environment =
+        if (remote) environmentFor(base, storeDir = null) else environmentFor(base, emptyDrawer)
+
+    /**
      * Why this drawer may not be used, or null when it may.
      *
      * Blank is the dangerous one and the reason this function exists - see the file header. A relative

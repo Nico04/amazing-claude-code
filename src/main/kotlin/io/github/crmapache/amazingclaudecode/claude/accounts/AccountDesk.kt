@@ -4,14 +4,19 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.thisLogger
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.crmapache.amazingclaudecode.claude.ClaudeAuth
 import io.github.crmapache.amazingclaudecode.claude.ClaudeCli
+import io.github.crmapache.amazingclaudecode.claude.ClaudeLogin
 import io.github.crmapache.amazingclaudecode.claude.ClaudeSessionHub
 import io.github.crmapache.amazingclaudecode.claude.ClaudeSessions
 import io.github.crmapache.amazingclaudecode.feedback.DiagnosticsLog
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -109,6 +114,16 @@ internal class AccountDesk(
     private var checkedAt = 0L
 
     /**
+     * Rows signed in again from this screen and not landed yet, each with the watch asking its drawer -
+     * see [signInAgain]. The row says "signing in" while it is here.
+     */
+    private val awaiting = ConcurrentHashMap<String, ScheduledFuture<*>>()
+
+    init {
+        Disposer.register(parentDisposable) { awaiting.values.forEach { it.cancel(false) } }
+    }
+
+    /**
      * The list, as the screen draws it.
      *
      * Sent as a project fact so a client joining later gets it without asking (see
@@ -171,7 +186,10 @@ internal class AccountDesk(
             // In the same environment the sign-in round asks it in, so the two answer the same question.
             accounts.variablesFor("", project.basePath)
                 ?.let { runCatching { ClaudeAuth.status(it, project.basePath) }.getOrNull() }
-                ?.let { knownDefault.record(it, askedAt) }
+                ?.let { status ->
+                    knownDefault.record(status, askedAt)
+                    if (status.loggedIn) accounts.defaultSignedIn()
+                }
         }
 
         knownHealth.keys.retainAll(accounts.list().map { it.id }.toSet())
@@ -200,9 +218,10 @@ internal class AccountDesk(
      * is signing in, every few seconds.
      */
     fun heard(accountId: String, status: ClaudeAuth.Status, askedAt: Long) {
-        // The CLI's own sign-in has no health line of its own: it is a row while it is signed in and no
-        // row when it is not, so what the round would have learned about it is the whole answer.
+        // The CLI's own sign-in has no health of its own beside this answer: signed in, it is a row; not
+        // signed in, it is a signed-out row or none (see ClaudeAccounts.keepsSignedOutDefault).
         val changed = if (accountId.isEmpty()) {
+            if (status.loggedIn) accounts.defaultSignedIn()
             knownDefault.record(status, askedAt)
         } else {
             hearHealth(accountId, ClaudeAccounts.Health.of(status), askedAt)
@@ -398,23 +417,41 @@ internal class AccountDesk(
                      * Listed whenever the CLI reports a sign-in, whether or not this panel has ever added
                      * anything. Left out, the screen would deny the existence of the account paying for the
                      * conversation open next to it.
+                     *
+                     * And listed signed out, too, when the CLI lost it by itself rather than the person
+                     * ending it (see ClaudeAccounts.keepsSignedOutDefault): left out, a sign-in wiped by
+                     * a refused refresh looked like an account that had vanished.
                      */
-                    knownDefault.current?.takeIf { it.loggedIn }?.let { who ->
+                    val known = knownDefault.current
+                    if (known?.loggedIn == true) {
                         // The address and the organisation come out of a file every drawer shares, so
                         // after an account is added they may belong to the newcomer rather than to this
                         // row. What this row itself wrote down while being asked about its own usage is
                         // the straight answer; the guess by elimination stays as the fallback until such
                         // an answer exists (see ClaudeAccounts.probedIdentity and defaultIdentity). The
                         // plan needs neither: that one the CLI reads from the credential itself.
-                        val email = knownIdentity[""]?.who?.email ?: accounts.defaultIdentity(who.email)
+                        val email = knownIdentity[""]?.who?.email ?: accounts.defaultIdentity(known.email)
 
                         addJsonObject {
                             put("id", "")
                             put("alias", accounts.defaultAlias)
                             put("email", email)
-                            put("plan", who.plan)
+                            put("plan", known.plan)
                             put("isDefault", true)
                             put("health", ClaudeAccounts.Health.PRESENT.name.lowercase())
+                            if (awaiting.containsKey("")) put("signingIn", true)
+                        }
+                    } else if (known != null && accounts.keepsSignedOutDefault) {
+                        // Who it was, from the book: there is nobody in the drawer to ask. No plan - the
+                        // CLI reads that from a credential, and there is none.
+                        addJsonObject {
+                            put("id", "")
+                            put("alias", accounts.defaultAlias)
+                            put("email", accounts.defaultIdentity(""))
+                            put("plan", "")
+                            put("isDefault", true)
+                            put("health", ClaudeAccounts.Health.ABSENT.name.lowercase())
+                            if (awaiting.containsKey("")) put("signingIn", true)
                         }
                     }
 
@@ -434,6 +471,7 @@ internal class AccountDesk(
                             put("plan", account.plan)
                             put("pending", account.isPending)
                             healthOf(account.id)?.let { put("health", it.name.lowercase()) }
+                            if (awaiting.containsKey(account.id)) put("signingIn", true)
                         }
                     }
                 }
@@ -614,6 +652,9 @@ internal class AccountDesk(
                 // window alone, and the answer every screen held was "signed in".
                 val at = System.currentTimeMillis()
                 ClaudeSessionHub.everyHub { it.accounts.signedOut(id, at) }
+                // Ended on purpose, so no signed-out row is left behind for it (see
+                // ClaudeAccounts.keepsSignedOutDefault). Before the redraw below, which reads it.
+                if (id.isEmpty()) accounts.dropDefault()
 
                 val moved = id == accounts.currentId
                 if (moved) accounts.currentId = next
@@ -637,10 +678,152 @@ internal class AccountDesk(
      * it exactly as they follow the Select button.
      */
     fun forget(id: String) {
+        if (id.isEmpty()) {
+            forgetSignedOutDefault()
+            return
+        }
+
+        stopAwaiting(id)
         accounts.forget(id)
         knownHealth.remove(id)
         invalidate()
         moveEverything()
+    }
+
+    /**
+     * Take the signed-out row of the CLI's ordinary sign-in off the screen.
+     *
+     * Nothing is deleted or revoked - there is nothing left in that drawer to revoke - so it asks nothing,
+     * like Forget on an added row. It is how a person says "I ended that one myself" about a sign-out made
+     * in a terminal, which the panel cannot tell from a lost sign-in. A signed-in one is not forgotten from
+     * here: its only removal is Log out, which revokes it and asks first.
+     *
+     * Forgetting the account in force carries on somewhere else, exactly as Log out does.
+     */
+    private fun forgetSignedOutDefault() {
+        if (knownDefault.current?.loggedIn == true) {
+            sendList(withHealth = false)
+            return
+        }
+
+        stopAwaiting("")
+        accounts.dropDefault()
+
+        val next = accounts.list().firstOrNull { !it.isPending }?.id
+        if (accounts.currentId.isEmpty() && next != null) {
+            accounts.currentId = next
+            moveEverything()
+        } else {
+            ClaudeSessionHub.everyHub { it.accounts.sendList(withHealth = false) }
+        }
+    }
+
+    /**
+     * Sign a row in again, in a terminal of this project and into that row's own drawer - the way back
+     * for a sign-in the CLI has lost: the ordinary one wiped by a refused refresh, or an added one whose
+     * drawer reads empty. The screen said "Sign in again to use this account" over such a row long before
+     * there was anything on it to press.
+     *
+     * Into that drawer and no other (see ClaudeLogin): a plain terminal is the CLI's ordinary drawer, and
+     * for an added row that is the account the person is working on. Nobody tells us when the browser is
+     * done, so the drawer is asked every few seconds, as the sign-in screen asks (see ProjectAuth.poll),
+     * and the row says "signing in" meanwhile. Pressed again, it opens another terminal and the wait
+     * starts over - the first one may have been closed.
+     */
+    fun signInAgain(id: String) {
+        // A draft is a sign-in already under way, and an id the book does not hold is a row forgotten in
+        // another window while this list stood still.
+        if (id.isNotEmpty() && accounts.account(id)?.isPending != false) {
+            sendList(withHealth = false)
+            return
+        }
+
+        ClaudeLogin.login(project, parentDisposable, accountId = id) { outcome ->
+            when (outcome) {
+                ClaudeLogin.Outcome.OPENED -> awaitSignIn(id)
+                ClaudeLogin.Outcome.NO_DRAWER -> sendOutcome("no-drawer")
+                ClaudeLogin.Outcome.NO_TERMINAL -> sendOutcome("no-terminal")
+            }
+        }
+    }
+
+    /** Stop waiting for a sign-in begun with [signInAgain]. The terminal is the person's, and stays. */
+    fun stopSignIn(id: String) {
+        if (!stopAwaiting(id)) sendList(withHealth = false)
+    }
+
+    private fun awaitSignIn(id: String) {
+        val startedAt = System.currentTimeMillis()
+        val mine = AtomicReference<ScheduledFuture<*>>()
+
+        val watch = AppExecutorUtil.getAppScheduledExecutorService().scheduleWithFixedDelay(
+            {
+                val self = mine.get()
+                // A tick that throws would end the schedule without a word, and the row would say
+                // "signing in" until the IDE closed.
+                if (self != null) runCatching { checkSignIn(id, startedAt, self) }.onFailure { stopAwaiting(id, self) }
+            },
+            SIGN_IN_POLL_SECONDS,
+            SIGN_IN_POLL_SECONDS,
+            TimeUnit.SECONDS,
+        )
+        mine.set(watch)
+
+        awaiting.put(id, watch)?.cancel(false)
+        sendList(withHealth = false)
+    }
+
+    private fun checkSignIn(id: String, startedAt: Long, watch: ScheduledFuture<*>) {
+        // Superseded by a second press or stopped - this watch has nothing left to do.
+        if (awaiting[id] !== watch) {
+            watch.cancel(false)
+            return
+        }
+
+        if (System.currentTimeMillis() - startedAt > SIGN_IN_WAIT_MS) {
+            stopAwaiting(id, watch)
+            return
+        }
+
+        val variables = accounts.variablesFor(id, project.basePath)
+        if (variables == null) {
+            stopAwaiting(id, watch)
+            return
+        }
+
+        // Timed before the process: what decides between two answers is which question came later.
+        val askedAt = System.currentTimeMillis()
+        val status = ClaudeAuth.status(variables, project.basePath)
+        if (!status.loggedIn) return
+
+        stopAwaiting(id, watch, redraw = false)
+        landed(id, status, askedAt)
+    }
+
+    /**
+     * The credential is in the drawer. What follows is what an added account's landing does (see [add]),
+     * and for the same reasons: the sign-in rewrote the parts of the CLI's configuration every account
+     * shares, and every project's screen holds this row's old answer.
+     */
+    private fun landed(id: String, status: ClaudeAuth.Status, askedAt: Long) {
+        heard(id, status, askedAt)
+        (accounts.list().map { it.id } + id).toSet().forEach { hub.usage.forget(it) }
+        DiagnosticsLog.note(DiagnosticsLog.ACCOUNTS, "a row was signed in again from the accounts screen")
+
+        // `accountsChanged` asks each project's sign-in again as well, which is what lifts the sign-in
+        // screen where this was the account in force.
+        ClaudeSessionHub.everyHub {
+            it.accounts.invalidate()
+            it.accountsChanged()
+        }
+    }
+
+    /** Whether there was a wait to stop. [watch] stops only that one, not a newer wait in its place. */
+    private fun stopAwaiting(id: String, watch: ScheduledFuture<*>? = null, redraw: Boolean = true): Boolean {
+        val stopped = if (watch == null) awaiting.remove(id) else watch.takeIf { awaiting.remove(id, it) }
+        stopped?.cancel(false)
+        if (stopped != null && redraw) sendList(withHealth = false)
+        return stopped != null
     }
 
     /**
@@ -669,6 +852,12 @@ internal class AccountDesk(
 
         /** Past this a draft is not a sign-in in progress, it is what a closed IDE left behind. */
         const val STALE_DRAFT_MS = 15 * 60 * 1000L
+
+        /** How often a row signed in again is asked whether it landed - as often as the sign-in screen asks. */
+        const val SIGN_IN_POLL_SECONDS = 3L
+
+        /** And for how long: the same ten minutes a new account's sign-in is given (see AccountSignIn). */
+        const val SIGN_IN_WAIT_MS = 10 * 60 * 1000L
     }
 
     /** A code rather than a sentence: the panel speaks ten languages and this side speaks one. */

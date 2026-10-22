@@ -228,7 +228,8 @@ models; `openFile` - open-in-editor; фидбэк и лог незнакомог
 `watchKeymap`, `openKeymap` - panel-keys.
 
 **`ClaudeCli.kt`**: всё написанное человеком - в stdin (аргументы запуска в CLAUDE.md, prompt-improver);
-`run`/`onStarted` и отмена - search; `--tools ""` у разовых запусков - task-list.
+`run`/`onStarted` и отмена - search; `--tools ""` у разовых запусков - task-list; `noSignIn` (запуск без
+чьего-либо входа) - accounts.
 
 **`ClaudeLaunch.kt`** (подгружает task-list): `PANEL_BRIEFING`, `oneLine` - аргументы запуска в CLAUDE.md;
 `AFTER_SCENARIO_HEAD` - scenarios; `CHECKPOINTS_VARIABLE` - rewind; `FORK_AT_FLAG`, `forkAt` - fork-tabs.

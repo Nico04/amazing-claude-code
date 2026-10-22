@@ -1474,6 +1474,7 @@ export const es: Dict = {
     logout: 'Cerrar sesión',
     logoutConfirm: '¿Cerrar sesión en Claude Code?',
     forget: 'Olvidar',
+    signInAgain: 'Volver a iniciar sesión',
     add: 'Añadir una cuenta',
     adding: 'Esperando al inicio de sesión…',
     cancel: 'Cancelar',
@@ -1506,6 +1507,7 @@ export const es: Dict = {
       'already-here': 'Esa cuenta ya está aquí: es el inicio de sesión del propio Claude Code, así que no se añadió nada.',
       'logout-failed': 'No se pudo cerrar la sesión. Prueba en una terminal.',
       'already-running': 'Ya hay un inicio de sesión en marcha.',
+      'no-drawer': 'Desde este proyecto no se llega a esta cuenta, así que no se inició la sesión.',
       unknown: 'Eso no ha funcionado.',
     } as Record<string, string>,
   },
@@ -1838,6 +1840,9 @@ export const es: Dict = {
       addNote: 'Añadir una cuenta y autorizar Claude Design se quedan en el escritorio: ambas abren una terminal y un inicio de sesión en el navegador de esa máquina.',
       forgetAsk: (name) => `¿Olvidar ${name}? Su credencial se quita de esa máquina; la cuenta en sí no se toca y volver a entrar la recupera.`,
       logoutAsk: '¿Cerrar la sesión de Claude Code? Esto revoca la credencial en Anthropic: se cierra en todas tus máquinas.',
+      signInAtDesk: 'No hay credencial guardada. Volver a iniciar sesión necesita una terminal y un navegador en esa máquina, así que se hace en el escritorio.',
+      forgetSignedOutAsk: (name) =>
+        `¿Quitar ${name} de la lista? Ya no tiene la sesión iniciada, así que no se revoca nada; volver a entrar en el escritorio la recupera.`,
     },
 
     newSession: {

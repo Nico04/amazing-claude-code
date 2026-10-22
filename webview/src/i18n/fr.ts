@@ -1485,6 +1485,7 @@ export const fr: Dict = {
     logout: 'Se déconnecter',
     logoutConfirm: 'Se déconnecter de Claude Code ?',
     forget: 'Oublier',
+    signInAgain: 'Se reconnecter',
     add: 'Ajouter un compte',
     adding: 'En attente de la connexion…',
     cancel: 'Annuler',
@@ -1528,6 +1529,7 @@ export const fr: Dict = {
       'already-here': "Ce compte est déjà là : c'est la connexion de Claude Code lui-même, donc rien n'a été ajouté.",
       'logout-failed': 'La déconnexion a échoué. Essayez dans un terminal.',
       'already-running': 'Une connexion est déjà en cours.',
+      'no-drawer': 'Ce compte est hors de portée depuis ce projet, donc la connexion n’a pas été lancée.',
       unknown: 'Ça n’a pas marché.',
     } as Record<string, string>,
   },
@@ -1860,6 +1862,9 @@ export const fr: Dict = {
       addNote: 'Ajouter un compte et autoriser Claude Design restent au bureau : les deux ouvrent un terminal et une connexion navigateur sur cette machine.',
       forgetAsk: (name) => `Oublier ${name} ? Ses identifiants quittent cette machine ; le compte lui-même n’est pas touché et une nouvelle connexion le ramène.`,
       logoutAsk: 'Se déconnecter de Claude Code ? Cela révoque les identifiants chez Anthropic - sur toutes vos machines.',
+      signInAtDesk: 'Aucun identifiant enregistré. Se reconnecter demande un terminal et un navigateur sur cette machine, donc cela se fait au bureau.',
+      forgetSignedOutAsk: (name) =>
+        `Retirer ${name} de la liste ? Il est déjà déconnecté, donc rien n’est révoqué ; une nouvelle connexion au bureau le ramène.`,
     },
 
     newSession: {

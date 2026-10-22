@@ -1465,6 +1465,7 @@ export const ko: Dict = {
     logout: '로그아웃',
     logoutConfirm: 'Claude Code에서 로그아웃할까요?',
     forget: '지우기',
+    signInAgain: '다시 로그인',
     add: '계정 추가',
     adding: '로그인을 기다리는 중…',
     cancel: '취소',
@@ -1497,6 +1498,7 @@ export const ko: Dict = {
       'already-here': '그 계정은 이미 있습니다. Claude Code 자체의 로그인이라 아무것도 추가되지 않았습니다.',
       'logout-failed': '로그아웃하지 못했습니다. 터미널에서 시도해 보세요.',
       'already-running': '이미 로그인이 진행 중이에요.',
+      'no-drawer': '이 프로젝트에서는 이 계정에 닿을 수 없어서 로그인을 시작하지 않았어요.',
       unknown: '잘 되지 않았어요.',
     } as Record<string, string>,
   },
@@ -1826,6 +1828,9 @@ export const ko: Dict = {
       addNote: '계정 추가와 Claude Design 승인은 책상에 남습니다. 둘 다 그 기계에서 터미널과 브라우저 로그인을 엽니다.',
       forgetAsk: (name) => `${name}을(를) 잊을까요? 자격 증명이 그 기계에서 지워집니다. 계정 자체는 그대로이고 다시 로그인하면 돌아옵니다.`,
       logoutAsk: 'Claude Code에서 로그아웃할까요? Anthropic 쪽 자격 증명이 취소되어 모든 기계에서 로그아웃됩니다.',
+      signInAtDesk: '저장된 로그인 정보가 없어요. 다시 로그인하려면 그 기계의 터미널과 브라우저가 필요해서 책상에서 해야 해요.',
+      forgetSignedOutAsk: (name) =>
+        `${name}을(를) 목록에서 뺄까요? 이미 로그아웃된 상태라 아무것도 취소되지 않아요. 책상에서 다시 로그인하면 돌아옵니다.`,
     },
 
     newSession: {

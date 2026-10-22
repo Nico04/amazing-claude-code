@@ -43,28 +43,37 @@ internal object ClaudeLogin {
     }
 
     fun login(project: Project, parentDisposable: Disposable, onOutcome: (Outcome) -> Unit) =
-        openTerminal(project, parentDisposable, "login", onOutcome)
+        openTerminal(project, parentDisposable, "login", ClaudeAccounts.getInstance().currentId, onOutcome)
+
+    /**
+     * The same sign-in into one row's own drawer - "Sign in again" on the accounts screen, for a row
+     * whose drawer has lost its credential (see AccountDesk.signInAgain). Empty is the CLI's ordinary
+     * sign-in, which is the drawer a plain terminal would have opened anyway.
+     */
+    fun login(project: Project, parentDisposable: Disposable, accountId: String, onOutcome: (Outcome) -> Unit) =
+        openTerminal(project, parentDisposable, "login", accountId, onOutcome)
 
     /**
      * Signing out goes into the terminal too. The panel should not wipe the authorization with its own
      * hands: there are several ways to sign in, and only the CLI knows about them.
      *
-     * Under the current account's drawer for a sharper reason than the sign-in's: a logout REVOKES the
+     * Under the drawer of the account in force, which the caller names - it also has to know which one was
+     * left (see ProjectAuth.logout). For a sharper reason than the sign-in's: a logout REVOKES the
      * credential on Anthropic's side. Run in a plain shell it would end the session of whichever account
      * the CLI signs in by default - that is, sign the person out of an account they never named, on
      * every machine they have.
      */
-    fun logout(project: Project, parentDisposable: Disposable, onOutcome: (Outcome) -> Unit) =
-        openTerminal(project, parentDisposable, "logout", onOutcome)
+    fun logout(project: Project, parentDisposable: Disposable, accountId: String, onOutcome: (Outcome) -> Unit) =
+        openTerminal(project, parentDisposable, "logout", accountId, onOutcome)
 
     private fun openTerminal(
         project: Project,
         parentDisposable: Disposable,
         verb: String,
+        accountId: String,
         onOutcome: (Outcome) -> Unit,
     ) {
-        val accounts = ClaudeAccounts.getInstance()
-        val variables = accounts.variablesFor(accounts.currentId, project.basePath)
+        val variables = ClaudeAccounts.getInstance().variablesFor(accountId, project.basePath)
 
         if (variables == null) {
             DiagnosticsLog.note(DiagnosticsLog.ACCOUNTS, "a sign-in had no drawer to go into")

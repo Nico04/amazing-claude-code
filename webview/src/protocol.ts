@@ -318,6 +318,14 @@ export interface AccountInfo {
    * spending it proves anything, which is what the figures beside the row do.
    */
   health?: 'present' | 'absent' | 'unknown'
+  /**
+   * Signed in again from the accounts screen and not landed yet: a terminal is open for it, and the IDE
+   * is asking its drawer every few seconds (see AccountDesk.signInAgain).
+   *
+   * A row the CLI lost by itself stays on the list for exactly this - the ordinary sign-in included, which
+   * used to vanish from the screen once a refused refresh had wiped it.
+   */
+  signingIn?: boolean
 }
 
 /** An installed plugin: the id already holds the marketplace - "name@marketplace". */
@@ -2809,6 +2817,18 @@ export type WebviewMessage =
    * person's window to close.
    */
   | { type: 'accountCancel' }
+  /**
+   * Sign a row in again: a terminal opens with `claude auth login` in THAT row's own drawer, for a row
+   * whose credential is gone - the ordinary sign-in wiped by a refused refresh, or an added account whose
+   * drawer reads empty. The row says `signingIn` until the credential lands or the wait runs out.
+   */
+  | { type: 'accountSignIn'; id: string }
+  /** Stop waiting for that sign-in. The terminal stays where it is: it is the person's. */
+  | { type: 'accountSignInStop'; id: string }
+  /**
+   * Drop an added account from this machine. On the ordinary sign-in (empty id) it only takes its
+   * signed-out row off the screen: there is no drawer to drop, and nothing left in it to revoke.
+   */
   | { type: 'accountForget'; id: string }
   /**
    * Sign out of Claude Code entirely, and move to another account if one is signed in here.

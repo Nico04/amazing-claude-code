@@ -1468,6 +1468,7 @@ export const ja: Dict = {
     logout: 'ログアウト',
     logoutConfirm: 'Claude Code からログアウトしますか？',
     forget: '削除',
+    signInAgain: 'もう一度サインイン',
     add: 'アカウントを追加',
     adding: 'サインインを待っています…',
     cancel: 'キャンセル',
@@ -1514,6 +1515,7 @@ export const ja: Dict = {
       'already-here': 'そのアカウントはすでにあります。Claude Code 自身のサインインなので、何も追加されませんでした。',
       'logout-failed': 'ログアウトできませんでした。ターミナルで試してください。',
       'already-running': 'すでにサインインが進んでいます。',
+      'no-drawer': 'このプロジェクトからはこのアカウントに届かないため、サインインは始めていません。',
       unknown: 'うまくいきませんでした。',
     } as Record<string, string>,
   },
@@ -1843,6 +1845,9 @@ export const ja: Dict = {
       addNote: 'アカウントの追加と Claude Design の認可は机の上のままです。どちらもそのマシンでターミナルとブラウザのサインインを開きます。',
       forgetAsk: (name) => `${name} を削除しますか？資格情報はそのマシンから消えます。アカウント自体はそのままで、入り直せば戻ります。`,
       logoutAsk: 'Claude Code からサインアウトしますか？Anthropic 側で資格情報が失効し、すべての端末でサインアウトされます。',
+      signInAtDesk: '認証情報が保存されていません。もう一度サインインするには、そのマシンのターミナルとブラウザが必要なので、机の上で行います。',
+      forgetSignedOutAsk: (name) =>
+        `${name} を一覧から外しますか？すでにサインアウトしているので何も失効しません。机の上で入り直せば戻ります。`,
     },
 
     newSession: {

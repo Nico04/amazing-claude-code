@@ -43,6 +43,11 @@ internal data class PluginMarketplace(
  * `list` also pulls the catalogue of plugins available in the connected marketplaces (`--available`) -
  * a real search across 200+ plugins, which for MCP servers does not exist at all (there is no public
  * registry there).
+ *
+ * The three listings run with no sign-in at all (`noSignIn`): `installed` is asked once a minute in every
+ * open project, and under the ordinary sign-in those runs were what kept wiping it (see
+ * AccountStore.signInFreeEnvironment). The actions stay where they were - a person starts them, rarely,
+ * and whatever the CLI enforces on an install under a sign-in is not ours to switch off.
  */
 internal object ClaudePlugin {
 
@@ -58,6 +63,7 @@ internal object ClaudePlugin {
             workingDirectory,
             listOf("plugin", "list", "--available", "--json"),
             timeoutMs = LIST_TIMEOUT_MS,
+            noSignIn = true,
             onError = onError,
         ) { output ->
             val parsed = runCatching { Json.parseToJsonElement(output).jsonObject }.getOrNull()
@@ -92,7 +98,7 @@ internal object ClaudePlugin {
         onResult: (List<InstalledPlugin>) -> Unit,
         onError: (String) -> Unit,
     ) {
-        ClaudeCli.run(workingDirectory, listOf("plugin", "list", "--json"), onError = onError) { output ->
+        ClaudeCli.run(workingDirectory, listOf("plugin", "list", "--json"), noSignIn = true, onError = onError) { output ->
             val parsed = runCatching { Json.parseToJsonElement(output).jsonArray }.getOrNull()
             if (parsed == null) {
                 onError("Couldn't parse the plugin list.")
@@ -125,7 +131,12 @@ internal object ClaudePlugin {
         onResult: (List<PluginMarketplace>) -> Unit,
         onError: (String) -> Unit,
     ) {
-        ClaudeCli.run(workingDirectory, listOf("plugin", "marketplace", "list", "--json"), onError = onError) { output ->
+        ClaudeCli.run(
+            workingDirectory,
+            listOf("plugin", "marketplace", "list", "--json"),
+            noSignIn = true,
+            onError = onError,
+        ) { output ->
             val parsed = runCatching { Json.parseToJsonElement(output).jsonArray }.getOrNull()
             if (parsed == null) {
                 onError("Couldn't parse the marketplace list.")

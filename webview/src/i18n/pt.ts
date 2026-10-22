@@ -1474,6 +1474,7 @@ export const pt: Dict = {
     logout: 'Sair',
     logoutConfirm: 'Sair do Claude Code?',
     forget: 'Esquecer',
+    signInAgain: 'Entrar de novo',
     add: 'Adicionar uma conta',
     adding: 'Esperando o login…',
     cancel: 'Cancelar',
@@ -1506,6 +1507,7 @@ export const pt: Dict = {
       'already-here': 'Essa conta já está aqui: é o login do próprio Claude Code, então nada foi adicionado.',
       'logout-failed': 'Não foi possível sair. Tente em um terminal.',
       'already-running': 'Já tem um login em andamento.',
+      'no-drawer': 'Deste projeto não dá para chegar a esta conta, então o login não foi iniciado.',
       unknown: 'Isso não funcionou.',
     } as Record<string, string>,
   },
@@ -1838,6 +1840,9 @@ export const pt: Dict = {
       addNote: 'Adicionar uma conta e autorizar o Claude Design continuam na mesa: os dois abrem um terminal e um login de navegador naquela máquina.',
       forgetAsk: (name) => `Esquecer ${name}? A credencial sai daquela máquina; a conta em si fica intacta e entrar de novo a traz de volta.`,
       logoutAsk: 'Sair do Claude Code? Isso revoga a credencial na Anthropic - você sai em todas as suas máquinas.',
+      signInAtDesk: 'Nenhuma credencial guardada. Entrar de novo precisa de um terminal e um navegador naquela máquina, então isso fica na mesa.',
+      forgetSignedOutAsk: (name) =>
+        `Tirar ${name} da lista? Ela já está sem login, então nada é revogado; entrar de novo na mesa a traz de volta.`,
     },
 
     newSession: {
