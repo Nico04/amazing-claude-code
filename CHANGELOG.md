@@ -9,6 +9,14 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.51] - 2026-10-23
+
+- Changed: the statistics tab measures your work in tokens instead of time. Time in the panel said more about a window left open all day than about the work, so the time tile, both cards of hours, the hours by project, "Average reply" and "Longest session" are gone. In their place, the first tile shows the tokens of the range and the change against the stretch before it, the calendar of working days is painted by each day's tokens, and the list by project became "Where the tokens went".
+- Changed: the tokens are drawn as bars for every range instead of a line through the days. Today is 24 bars and the last 7 days are 168, one bar an hour, and in a narrow panel the bars get thinner instead of spilling over. For 30 days and all time a bar holds as little time as the width allows, from an hour up to a month, and the card's title says how much one bar is. Saturdays and Sundays get a faint band so the week is easy to read, and the busiest bar is lit.
+- Added: where the tokens went, by project. Every answer in Claude Code's transcripts is put down to the project it was spent in, including a project's subfolders and repositories you only ever opened in a terminal. The first start after the update reads every transcript still on disk once, so the history by project goes back as far as they do, not just to the day you updated.
+- Changed: large token figures are written in billions with three figures, like 57.7B instead of 57 673M.
+- Removed: the four achievements about time in the panel (Old timer, Deep work, Marathon, Full day) went with the time itself, together with the tiers earned on them. The three left about how replies ran are now grouped under Pace.
+
 ## [0.13.50] - 2026-10-22
 
 - Added: after Claude answers, the empty input field can show a guess at your next message in gray, the way Claude Code does in a terminal. Press Tab to put it into the field, then edit it or send it with Enter. Enter alone does not send the gray text, so nothing goes out by accident. The guess goes away as soon as you type, and each tab keeps its own, so a turn that finished in a background tab has its guess waiting when you open it. Claude Code writes the guess itself and stays silent when the next step isn't clear: on the first turn, after an error, in plan mode or close to your plan's limit. It costs one short extra request per turn on top of the conversation's cache.
@@ -1096,7 +1104,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.50...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.51...HEAD
+[0.13.51]: https://github.com/crmapache/amazing-claude-code/compare/0.13.50...0.13.51
 [0.13.50]: https://github.com/crmapache/amazing-claude-code/compare/0.13.49...0.13.50
 [0.13.49]: https://github.com/crmapache/amazing-claude-code/compare/0.13.48...0.13.49
 [0.13.48]: https://github.com/crmapache/amazing-claude-code/compare/0.13.47...0.13.48
