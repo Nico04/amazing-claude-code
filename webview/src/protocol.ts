@@ -2161,9 +2161,11 @@ type ShellMessageBody =
 export interface StatisticsDay {
   /** "2026-08-26" - the calendar day in the IDE's own time zone. */
   date: string
-  /** Minutes with something going on in the panel, and how they fall by hour of the day. */
+  /**
+   * Minutes with something going on in the panel. Not shown as time any more (the tab measures the work in
+   * tokens), but a day with any of them is a day at work.
+   */
   minutes: number
-  hours: number[]
   turns?: number
   prompts?: number
   sessions?: number
@@ -2206,7 +2208,6 @@ export interface StatisticsDay {
   mcpConnected?: number
   plugins?: number
   longestSession?: number
-  longestStretch?: number
   maxForksInTree?: number
   maxDepth?: number
 }
@@ -2248,8 +2249,12 @@ export interface StatisticsData {
   ide: string
   devicesPaired: number
   project: { key: string; name: string }
-  /** Every project the ledger knows, this one included: its name and its minutes by day. */
-  projects: { key: string; name: string; minutes: Record<string, number> }[]
+  /**
+   * Every project the ledger knows, this one included, and every other place the CLI spent tokens in (a
+   * repository only ever worked on from a terminal): its name and its tokens by day, out of the transcripts
+   * like `tokens` below (see TranscriptTokens.projectOf).
+   */
+  projects: { key: string; name: string; tokens: Record<string, number> }[]
   /**
    * The days, in full, with every project's own day of that date folded into one.
    *

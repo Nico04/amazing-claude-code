@@ -46,18 +46,42 @@ internal object ClaudeTokenUsage {
      * the first of them is short of most of the output; the last one is the answer's whole cost. Both
      * are taken the same way whichever copy turns up first, so a reading spread over threads comes out
      * the same as one on a single thread.
+     *
+     * The directory goes with the earliest copy, and on a tie with the smaller name - by the same rule:
+     * a copy of a conversation resumed elsewhere must not move its answers to another project depending
+     * on which file a thread happened to open first.
      */
-    private class Answer(val at: Long, val tokens: Long) {
-        fun with(other: Answer): Answer = Answer(minOf(at, other.at), maxOf(tokens, other.tokens))
+    private class Answer(val at: Long, val tokens: Long, val directory: String) {
+        fun with(other: Answer): Answer {
+            val first = when {
+                at != other.at -> if (at < other.at) this else other
+                else -> if (directory <= other.directory) this else other
+            }
+            return Answer(first.at, maxOf(tokens, other.tokens), first.directory)
+        }
     }
+
+    /**
+     * What one reading found: the tokens by the hour, and the same tokens again by the directory the CLI
+     * was working in when it spent them - the `cwd` every line of a transcript carries, in the CLI's own
+     * spelling of it (a Linux path inside WSL). Which project a directory belongs to is the statistics'
+     * business, not the reader's (see stats/TranscriptTokens).
+     */
+    class Reading(
+        /** Hour since the epoch -> tokens, every directory together. */
+        val hours: Map<Long, Long>,
+        /** Directory -> hour since the epoch -> tokens. An answer without a directory is in [hours] only. */
+        val directories: Map<String, Map<Long, Long>>,
+    )
 
     /**
      * The tokens of every transcript under [root] changed at or after [since] (epoch millis, zero for all
      * of them), by the hour each answer was written in - an hour counted from the epoch, so that the
-     * figure means the same in every time zone (see stats/TokenHome). Null if the folder could not be
-     * walked at all; a single file that could not be read is left out and logged, the rest still count.
+     * figure means the same in every time zone (see stats/TokenHome) - and by the directory it was spent
+     * in. Null if the folder could not be walked at all; a single file that could not be read is left out
+     * and logged, the rest still count.
      */
-    fun read(root: File, since: Long): Map<Long, Long>? {
+    fun read(root: File, since: Long): Reading? {
         val files = runCatching {
             root.walkTopDown()
                 .maxDepth(MAX_DEPTH)
@@ -86,8 +110,15 @@ internal object ClaudeTokenUsage {
         }
 
         val hours = HashMap<Long, Long>()
-        for (answer in answers.values) hours.merge(Math.floorDiv(answer.at, HOUR_MS), answer.tokens, Long::plus)
-        return hours
+        val directories = HashMap<String, HashMap<Long, Long>>()
+        for (answer in answers.values) {
+            val hour = Math.floorDiv(answer.at, HOUR_MS)
+            hours.merge(hour, answer.tokens, Long::plus)
+            if (answer.directory.isNotEmpty()) {
+                directories.getOrPut(answer.directory) { HashMap() }.merge(hour, answer.tokens, Long::plus)
+            }
+        }
+        return Reading(hours, directories)
     }
 
     /**
@@ -97,18 +128,25 @@ internal object ClaudeTokenUsage {
     fun millions(tokens: Long): String = String.format(Locale.ROOT, "%.1fM", tokens / 1_000_000.0)
 
     private fun scanFile(file: File, answers: ConcurrentHashMap<Long, Answer>) {
+        // One string per directory per file rather than one per line: a first reading keeps hundreds of
+        // thousands of answers, and nearly all of a file's answers were spent in the same directory.
+        val directories = HashMap<String, String>()
         runCatching {
             file.useLines { lines ->
                 for (line in lines) {
                     // Most of a transcript's bytes are tool output; only an answer carries a usage.
                     if (!line.startsWith("{") || !line.contains("\"usage\"")) continue
-                    countLine(line, answers)
+                    countLine(line, answers, directories)
                 }
             }
         }.onFailure { thisLogger().warn("Failed to scan $file for token usage", it) }
     }
 
-    private fun countLine(line: String, answers: ConcurrentHashMap<Long, Answer>) {
+    private fun countLine(
+        line: String,
+        answers: ConcurrentHashMap<Long, Answer>,
+        directories: HashMap<String, String>,
+    ) {
         val payload = runCatching { Json.parseToJsonElement(line).jsonObject }.getOrNull() ?: return
         val message = payload["message"] as? JsonObject ?: return
         val usage = message["usage"] as? JsonObject ?: return
@@ -125,7 +163,8 @@ internal object ClaudeTokenUsage {
         val messageId = message["id"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val requestId = payload["requestId"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val key = (messageId.hashCode().toLong() shl 32) or (requestId.hashCode().toLong() and 0xffffffffL)
-        answers.merge(key, Answer(at, tokens), Answer::with)
+        val directory = payload["cwd"]?.jsonPrimitive?.contentOrNull.orEmpty().let { directories.getOrPut(it) { it } }
+        answers.merge(key, Answer(at, tokens, directory), Answer::with)
     }
 
     private fun field(usage: JsonObject, name: String): Long =
