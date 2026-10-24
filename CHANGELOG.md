@@ -9,6 +9,13 @@ commits.
 
 ## [Unreleased]
 
+## [0.13.52] - 2026-10-24
+
+- Fixed: the list of changed files under a turn showed a handful of files while the turn had changed far more. In one reported case the IDE's commit window counted 179 changed and new files and the list showed five, all from one hour-long turn. Claude often edits files with its own scripts and sed through Bash, and subagents' edits reach the panel without their diff, so the list never saw either. Now the IDE takes a snapshot of the project when you send a message and again when the turn ends, and the list shows every file that differs between the two, with its real line counts and a working revert, whatever changed it. Files you saved yourself in the IDE while the turn ran, and files another tab's agent edited, are left out, so Revert all never takes your own work back. The snapshot is kept apart from your repository and never touches its index, stash or history. It works in projects inside a git repository; elsewhere the list is built the way it was.
+- Added: the total over the list - how many files the turn changed and how many lines were added and removed across all of them, shown above the rows as soon as there is more than one file, so a long folded list still tells you the size of the turn at a glance.
+- Added: a file the turn deleted is now in the list, marked Deleted and showing only the lines it lost, and its revert puts the file back as it was.
+- Note for phones: reload the page in your browser after this one - the phone keeps the previous client until you do.
+
 ## [0.13.51] - 2026-10-23
 
 - Changed: the statistics tab measures your work in tokens instead of time. Time in the panel said more about a window left open all day than about the work, so the time tile, both cards of hours, the hours by project, "Average reply" and "Longest session" are gone. In their place, the first tile shows the tokens of the range and the change against the stretch before it, the calendar of working days is painted by each day's tokens, and the list by project became "Where the tokens went".
@@ -1104,7 +1111,8 @@ commits.
 
 - First public release.
 
-[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.51...HEAD
+[Unreleased]: https://github.com/crmapache/amazing-claude-code/compare/0.13.52...HEAD
+[0.13.52]: https://github.com/crmapache/amazing-claude-code/compare/0.13.51...0.13.52
 [0.13.51]: https://github.com/crmapache/amazing-claude-code/compare/0.13.50...0.13.51
 [0.13.50]: https://github.com/crmapache/amazing-claude-code/compare/0.13.49...0.13.50
 [0.13.49]: https://github.com/crmapache/amazing-claude-code/compare/0.13.48...0.13.49
