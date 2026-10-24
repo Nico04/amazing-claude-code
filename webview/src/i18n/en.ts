@@ -1801,6 +1801,7 @@ export const en = {
     changes: {
       all: (n: number): string => `Show all (${n})`,
       fewer: 'Show fewer',
+      files: (n: number): string => (n === 1 ? '1 file' : `${n} files`),
       revert: 'Revert this file',
       revertAll: 'Revert all',
       reverting: 'Reverting…',
@@ -1808,6 +1809,7 @@ export const en = {
       restoreAll: 'Bring all back',
       restoring: 'Bringing back…',
       reverted: 'Reverted',
+      deleted: 'Deleted',
       changed: 'Changed since, left as is',
       missing: 'The file is gone',
       failed: "Couldn't write the file",

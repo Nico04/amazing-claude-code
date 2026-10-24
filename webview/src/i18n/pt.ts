@@ -1364,6 +1364,7 @@ export const pt: Dict = {
     changes: {
       all: (n) => `Mostrar todos (${n})`,
       fewer: 'Mostrar menos',
+      files: (n) => (n === 1 ? '1 arquivo' : `${n} arquivos`),
       revert: 'Reverter este arquivo',
       revertAll: 'Reverter tudo',
       reverting: 'Revertendo…',
@@ -1371,6 +1372,7 @@ export const pt: Dict = {
       restoreAll: 'Trazer tudo de volta',
       restoring: 'Trazendo de volta…',
       reverted: 'Revertido',
+      deleted: 'Excluído',
       changed: 'Alterado depois, deixado como está',
       missing: 'O arquivo não existe mais',
       failed: 'Não foi possível gravar o arquivo',

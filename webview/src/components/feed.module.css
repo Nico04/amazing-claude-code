@@ -2470,6 +2470,23 @@
   color: var(--acc-fg-soft);
 }
 
+/* The turn's whole change over its rows (see ChangesRow): how many files, and the lines added and removed across
+   all of them, the figures in the rows' own column. A rule under it keeps it from reading as one more file. */
+.changesHead {
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--acc-line);
+}
+
+.changesCount {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--acc-fg-faint);
+}
+
 /* A row and its revert button side by side; the button stays out of the row so a click on it never opens
    the file. */
 .changeLine {
@@ -2645,6 +2662,11 @@
   padding-left: 8px;
   font-variant-numeric: tabular-nums;
   color: var(--acc-bad-light);
+}
+
+.changeRemovedAlone {
+  margin-left: auto;
+  padding-left: 12px;
 }
 
 /* A mod's line in the transcript (see ModLogRow): the turn's own result row's quiet, with the mod's name

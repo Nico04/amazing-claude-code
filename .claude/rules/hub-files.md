@@ -204,6 +204,8 @@ panel-keys; `answerClosedTabs` (зеркало полосы и закрытые 
 - `revertChanges` (откат файлов хода по его диффам) - changed-files
 - `undiffed` в `onAgentLine` (дифф большой правки, который CLI не прислал) - changed-files
 - `undiffed.settle` на `result` в подписчике строк (`files_settled` - что ход на деле сделал с файлами) - changed-files
+- `footprint`: `begin` в `deliverPrompt`, `end` на `result` (вместе со сверкой), `noteLine` в `onAgentLine`, `turnOver`/`drop`,
+  подписка `VFS_CHANGES` (записи самой IDE) - changed-files
 - `replayFork`, `forkOpenings` (ожидание в `deliverPrompt`), `unbornFork`, `bringBackFork`, форк в `restoreTabs` - fork-tabs
 
 **`ClaudeSession.kt`** (подгружает turn-lifecycle): `mute`, `heard` - reopen-tabs; `rename`, `nameAfterPerson`, `namedAs`, `ownTitle` - tab-names; `setEffort`, `effort` - models; `awaitingPermission` -

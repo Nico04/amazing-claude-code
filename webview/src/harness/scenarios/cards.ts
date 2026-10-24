@@ -382,6 +382,70 @@ export const scenariosCards: Scenario[] = [
       ...textReply('The greeting takes the first name, and the preview shows it.'),
       turnResult(3900),
     ]),
+    // A turn that changed most of its files by a script, not by edit calls: the IDE, holding the project against the
+    // turn's start, names every one of them right before the result (see TurnFootprint) - a created one, a removed
+    // one, a picture without figures. More than twelve rows, so the list stands folded, its total over the rows.
+    checkpoint('Files changed by a script, found on the disk - the whole turn summed over the rows', [
+      wait(400),
+      user('Move the API models to the new package and drop the old adapters'),
+      wait(300),
+      toolUse(
+        'Bash',
+        { command: "python3 scripts/move_models.py --from com.example.api --to com.example.net", description: 'Move the models with the script' },
+        'cf-8',
+      ),
+      toolResult('cf-8', 'Moved 9 models, rewrote 11 imports'),
+      toolUse(
+        'Edit',
+        {
+          file_path: '/Users/you/demo-project/app/proguard-rules.pro',
+          old_string: '-keep class com.example.api.** { *; }',
+          new_string: '-keep class com.example.net.** { *; }',
+        },
+        'cf-9',
+      ),
+      toolResult('cf-9', 'The file has been updated successfully.', false, {
+        filePath: '/Users/you/demo-project/app/proguard-rules.pro',
+        structuredPatch: [
+          { oldStart: 5, oldLines: 1, newStart: 5, newLines: 1, lines: ['-keep class com.example.api.** { *; }', '+-keep class com.example.net.** { *; }'] },
+        ],
+      }),
+      agent({
+        type: 'files_settled',
+        turn: 'harness-moved-models',
+        files: [
+          ...['Account', 'Address', 'Card', 'Cart', 'Order', 'Payment', 'Price', 'Product', 'User'].map((name, index) => ({
+            path: `/Users/you/demo-project/app/src/main/java/com/example/net/${name}.kt`,
+            added: 4 + index,
+            removed: 0,
+            created: true,
+            edits: [
+              { kind: 'create' as const, content: '' },
+              { kind: 'patch' as const, hunks: [{ oldStart: 0, newStart: 1, lines: Array.from({ length: 4 + index }, (_, line) => `+line ${line}`) }] },
+            ],
+          })),
+          ...['CheckoutViewModel', 'OrdersRepository', 'ProfileScreen'].map((name, index) => ({
+            path: `/Users/you/demo-project/app/src/main/java/com/example/ui/${name}.kt`,
+            added: 2 + index,
+            removed: 2 + index,
+            edits: [{ kind: 'patch' as const, hunks: [{ oldStart: 3, newStart: 3, lines: ['-import com.example.api.Model', '+import com.example.net.Model'] }] }],
+          })),
+          {
+            path: '/Users/you/demo-project/app/src/main/java/com/example/api/MoshiAdapters.kt',
+            added: 0,
+            removed: 38,
+            deleted: true,
+            edits: [
+              { kind: 'patch' as const, hunks: [{ oldStart: 1, newStart: 0, lines: Array.from({ length: 38 }, (_, line) => `-adapter ${line}`) }] },
+              { kind: 'remove' as const },
+            ],
+          },
+          { path: '/Users/you/demo-project/app/src/main/res/drawable/net_badge.png', added: 0, removed: 0, created: true, uncounted: true },
+        ],
+      }),
+      ...textReply('Moved: the nine models live in com.example.net now, the screens import them from there, and the old adapters are gone.'),
+      turnResult(48000),
+    ]),
   ]),
 
   scenario('editor-context', 'The editor beside the panel', 'cards', [

@@ -710,6 +710,8 @@ export interface FileChange {
   removed: number
   /** The turn created the file: there was nothing in it before, so nothing was removed from it either. */
   created: boolean
+  /** The turn took the file away: everything in it was removed, and the row says so. */
+  deleted?: true
   /**
    * The file changed by an amount nobody could count: a big edit the CLI reported without its diff, and nothing
    * on this side to work one out from (see changeOf). The row says so instead of showing figures.
@@ -741,7 +743,8 @@ export interface FileChange {
  * Asked for by a person who read the end of an answer for the list of what had been touched: the cards
  * that did the editing stand far up the feed, folded into groups, and an answer names the files only when
  * the model happens to. Here the list is the same at the end of every turn, drawn from the calls rather than
- * from what the model chose to say. Subagents' edits are in it too (see noteChanges).
+ * from what the model chose to say - and, at the turn's end, from the disk: the IDE adds every file the turn changed
+ * that no call reported, by Bash or by a subagent (see settleChanges).
  */
 export interface ChangesItem {
   id: string

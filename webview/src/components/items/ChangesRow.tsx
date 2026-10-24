@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { projectRelative } from '../../feed/changes'
+import { countsShown, projectRelative, totalOf } from '../../feed/changes'
 import type { ChangesItem, FileChange } from '../../feed/types'
 import { useMissingFiles, useOpenFile } from '../../hooks/useOpenFile'
 import { useT } from '../../i18n'
@@ -106,6 +106,7 @@ export const ChangesRow = ({
   const [unfolded, setUnfolded] = useState(false)
   const shownFiles = foldable && !unfolded ? item.files.slice(0, FOLDED_ROWS) : item.files
   const footed = foldable || (onRevert !== undefined && item.files.filter((file) => file.edits !== undefined).length > 1)
+  const total = totalOf(item.files)
 
   const act = (files: FileChange[], restore: boolean) => {
     if (!onRevert || files.length === 0) return
@@ -116,6 +117,19 @@ export const ChangesRow = ({
 
   return (
     <div className={s.changes}>
+      {/* The whole turn at a glance, over the rows: asked for when a turn of a hundred and eighty files stood
+          folded to ten, and nothing on screen said how much had changed. Laid out as a row, so its figures
+          stand in the rows' column. */}
+      {item.files.length > 1 ? (
+        <div className={`${s.changeLine} ${s.changesHead}`}>
+          <div className={s.changeRow}>
+            <span className={s.changesCount}>{t.feed.changes.files(item.files.length)}</span>
+            <span className={s.changeAdded}>+{total.added}</span>
+            <span className={s.changeRemoved}>−{total.removed}</span>
+          </div>
+          {onRevert !== undefined ? <span className={s.changeRevertSlot} /> : null}
+        </div>
+      ) : null}
       {shownFiles.map((file) => (
         <ChangedFile
           key={file.path}
@@ -219,9 +233,12 @@ const ChangedFile = ({
               ? t.feed.changes.missing
               : reverted
                 ? t.feed.changes.reverted
-                : ''
+                : file.deleted
+                  ? t.feed.changes.deleted
+                  : ''
   const refused = pending === undefined && (refusal === 'changed' || refusal === 'missing' || refusal === 'failed' || gone)
 
+  const shownCounts = countsShown(file)
   const content = (
     <>
       {/* Cut from its start rather than its end: the folder next to the file says more than the root. */}
@@ -234,8 +251,10 @@ const ChangedFile = ({
         <span className={s.changeUncounted}>±</span>
       ) : (
         <>
-          <span className={s.changeAdded}>+{file.created ? Math.max(file.added - file.removed, 0) : file.added}</span>
-          {file.created ? null : <span className={s.changeRemoved}>−{file.removed}</span>}
+          {/* A file the turn removed shows only what it lost, as a created one shows only what it gained. The red
+              figure stands at the right edge then, where the green one would have. */}
+          {file.deleted ? null : <span className={s.changeAdded}>+{shownCounts.added}</span>}
+          {file.created ? null : <span className={file.deleted ? `${s.changeRemoved} ${s.changeRemovedAlone}` : s.changeRemoved}>−{shownCounts.removed}</span>}
         </>
       )}
     </>

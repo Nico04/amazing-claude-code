@@ -1433,11 +1433,11 @@ const applyAgentEvent = (
       }))
 
     /**
-     * What the turn really did to the files its diffs do not account for - said by the IDE right before the
-     * result that closes their list (see settleChanges).
+     * What the turn really did to its files - the ones its diffs do not account for, and the ones no call reported
+     * at all - said by the IDE right before the result that closes their list (see settleChanges).
      */
     case 'files_settled':
-      return settleChanges(state, event.files)
+      return settleChanges(state, event)
 
     /**
      * The subscription limit. The event arrives in ordinary life too - with a "let through" status - and

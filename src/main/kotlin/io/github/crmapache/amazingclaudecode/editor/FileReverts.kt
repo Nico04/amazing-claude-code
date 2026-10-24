@@ -36,12 +36,17 @@ internal object FileReverts {
         val created = edits.firstOrNull() is ChangeRevert.Edit.Create
 
         val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(nio)
+        if (ChangeRevert.removes(edits)) return removed(project, nio, file, edits, restore)
         if (file == null || !file.isValid || file.isDirectory) {
             return when {
                 // A file the turn created and somebody has since removed is already what a revert would make it.
                 !restore -> if (created) ChangeRevert.Outcome.REVERTED else ChangeRevert.Outcome.MISSING
                 // And bringing it back is writing it anew.
-                created -> onEventThread(project, ChangeRevert.Outcome.RESTORED) { recreate(project, nio, edits) }
+                created -> onEventThread(project, ChangeRevert.Outcome.RESTORED) {
+                    val made = ChangeRevert.redo(null, edits) as? ChangeRevert.Result.Text ?: return@onEventThread ChangeRevert.Outcome.CHANGED
+                    recreate(project, nio, made.text, RESTORE)
+                    ChangeRevert.Outcome.RESTORED
+                }
                 else -> ChangeRevert.Outcome.MISSING
             }
         }
@@ -104,16 +109,50 @@ internal object FileReverts {
         }
     }
 
-    /** A created file the revert deleted, written again as the turn left it - its folders too, if they went with it. */
-    private fun recreate(project: Project, path: Path, edits: List<ChangeRevert.Edit>): ChangeRevert.Outcome {
-        val made = ChangeRevert.redo(null, edits) as? ChangeRevert.Result.Text ?: return ChangeRevert.Outcome.CHANGED
-        val parent = path.parent ?: return ChangeRevert.Outcome.FAILED
+    /**
+     * A file the turn removed. Put back, it is written again as it was before the turn - unless something stands at its
+     * path already: that is somebody's file, or the very one, already back. Brought back, it is removed again, but only
+     * while it reads exactly as the turn found it.
+     */
+    private fun removed(
+        project: Project,
+        path: Path,
+        file: VirtualFile?,
+        edits: List<ChangeRevert.Edit>,
+        restore: Boolean,
+    ): ChangeRevert.Outcome {
+        val was = (ChangeRevert.unremove(edits) as? ChangeRevert.Result.Text)?.text ?: return ChangeRevert.Outcome.FAILED
+        val there = file != null && file.isValid && !file.isDirectory
+        if (!there) {
+            if (restore) return ChangeRevert.Outcome.RESTORED
+            return onEventThread(project, ChangeRevert.Outcome.REVERTED) {
+                recreate(project, path, was, REVERT)
+                ChangeRevert.Outcome.REVERTED
+            }
+        }
+        file!!.refresh(false, false)
+        return onEventThread(project, if (restore) ChangeRevert.Outcome.RESTORED else ChangeRevert.Outcome.REVERTED) {
+            val document = FileDocumentManager.getInstance().getDocument(file) ?: return@onEventThread ChangeRevert.Outcome.FAILED
+            val same = document.text.replace("\r\n", "\n") == was.replace("\r\n", "\n")
+            when {
+                !same -> ChangeRevert.Outcome.CHANGED
+                // Back already, exactly as it was: nothing to write.
+                !restore -> ChangeRevert.Outcome.REVERTED
+                else -> {
+                    WriteCommandAction.writeCommandAction(project).withName(RESTORE).run<Throwable> { file.delete(this) }
+                    ChangeRevert.Outcome.RESTORED
+                }
+            }
+        }
+    }
 
-        WriteCommandAction.writeCommandAction(project).withName(RESTORE).run<Throwable> {
+    /** A file written anew with [text] - a created one the revert deleted, a removed one put back - its folders too. */
+    private fun recreate(project: Project, path: Path, text: String, name: String) {
+        val parent = path.parent ?: error("no folder")
+        WriteCommandAction.writeCommandAction(project).withName(name).run<Throwable> {
             val folder = VfsUtil.createDirectoryIfMissing(parent.toString()) ?: error("no folder")
             val file = folder.findChild(path.fileName.toString()) ?: folder.createChildData(this, path.fileName.toString())
-            VfsUtil.saveText(file, made.text)
+            VfsUtil.saveText(file, text)
         }
-        return ChangeRevert.Outcome.RESTORED
     }
 }

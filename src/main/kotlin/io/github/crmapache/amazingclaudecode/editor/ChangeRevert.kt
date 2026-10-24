@@ -27,7 +27,8 @@ import kotlinx.serialization.json.putJsonArray
  * lines the turn replaced have to be there as they were, or nothing is written.
  *
  * A file the turn created is deleted - but only if what is in it is still exactly what the turn left there -
- * and brought back by writing it anew.
+ * and brought back by writing it anew. A file the turn removed is the other way round: written again as it was,
+ * and removed again only while it still is exactly that (see [unremove]).
  */
 internal object ChangeRevert {
 
@@ -38,6 +39,12 @@ internal object ChangeRevert {
 
         /** The hunks the CLI applied, as it reported them. */
         data class Patch(val hunks: List<Hunk>) : Edit
+
+        /**
+         * The file was removed, after the patches before this had taken every line out of it - so the file a revert
+         * writes back is those patches undone over nothing, and its text travels as short lines (see TurnFootprint).
+         */
+        data object Remove : Edit
     }
 
     /**
@@ -88,6 +95,8 @@ internal object ChangeRevert {
             text = when (edit) {
                 is Edit.Create -> return if (text.lines == Lines.of(edit.content).lines) Result.Delete else Result.Changed
                 is Edit.Patch -> apply(text, edit, forward = false, anchored) ?: return Result.Changed
+                // A file stands where the turn removed one: whatever it is, it is not the turn's to undo (see [unremove]).
+                Edit.Remove -> return Result.Changed
             }
         }
         return Result.Text(text.toString())
@@ -119,6 +128,7 @@ internal object ChangeRevert {
                 // A second creation in one turn would mean the file was replaced whole - not a change to redo line by line.
                 is Edit.Create -> return Result.Changed
                 is Edit.Patch -> apply(text, edit, forward = true, anchored) ?: return Result.Changed
+                Edit.Remove -> return if (text.lines.isEmpty()) Result.Delete else Result.Changed
             }
         }
         return Result.Text(text.toString())
@@ -144,6 +154,15 @@ internal object ChangeRevert {
         if (edits.firstOrNull() is Edit.Create) return Result.Changed
         return if (redo(current, edits, anchored = true) is Result.Text) Result.Text(current) else Result.Changed
     }
+
+    /** Whether the turn's last change of the file took it away. */
+    fun removes(edits: List<Edit>): Boolean = edits.lastOrNull() == Edit.Remove
+
+    /**
+     * The file a removal took away, as it was before the turn: the patches that emptied it, undone over nothing. A
+     * revert writes it back; bringing the changes back removes it again only while it still reads exactly so.
+     */
+    fun unremove(edits: List<Edit>): Result = undo("", edits.dropLast(1))
 
     /** [revert]'s other way: [redo], or the file as it is when the turn's changes stand in it already. */
     fun bringBack(current: String?, edits: List<Edit>): Result {
@@ -306,6 +325,7 @@ internal object ChangeRevert {
         val edit = element as? JsonObject ?: return null
         return when (edit.text("kind")) {
             "create" -> Edit.Create(edit.text("content"))
+            "remove" -> Edit.Remove
             "patch" -> {
                 val hunks = (edit["hunks"] as? JsonArray)?.map { hunk ->
                     val fields = hunk as? JsonObject ?: return null

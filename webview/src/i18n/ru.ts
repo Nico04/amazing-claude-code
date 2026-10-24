@@ -1517,6 +1517,14 @@ export const ru: Dict = {
     changes: {
       all: (n) => `Показать все (${n})`,
       fewer: 'Свернуть',
+      files: (n) => {
+        const rest = n % 100
+        const last = n % 10
+        if (rest >= 11 && rest <= 14) return `${n} файлов`
+        if (last === 1) return `${n} файл`
+        if (last >= 2 && last <= 4) return `${n} файла`
+        return `${n} файлов`
+      },
       revert: 'Откатить этот файл',
       revertAll: 'Откатить все',
       reverting: 'Откатываю…',
@@ -1524,6 +1532,7 @@ export const ru: Dict = {
       restoreAll: 'Вернуть все',
       restoring: 'Возвращаю…',
       reverted: 'Откачен',
+      deleted: 'Удалён',
       changed: 'Изменён после, оставлен как есть',
       missing: 'Файла больше нет',
       failed: 'Не удалось записать файл',

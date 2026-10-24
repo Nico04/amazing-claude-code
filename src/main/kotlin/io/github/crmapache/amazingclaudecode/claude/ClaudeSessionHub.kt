@@ -2,6 +2,7 @@ package io.github.crmapache.amazingclaudecode.claude
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.thisLogger
@@ -9,6 +10,11 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.openapi.vfs.VirtualFileManager
+import com.intellij.openapi.vfs.newvfs.BulkFileListener
+import com.intellij.openapi.vfs.newvfs.events.VFileEvent
+import com.intellij.openapi.vfs.newvfs.events.VFileMoveEvent
+import com.intellij.openapi.vfs.newvfs.events.VFilePropertyChangeEvent
 import com.intellij.util.concurrency.AppExecutorUtil
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountDesk
 import io.github.crmapache.amazingclaudecode.claude.accounts.AccountsWatch
@@ -18,8 +24,10 @@ import io.github.crmapache.amazingclaudecode.editor.DiskRefresh
 import io.github.crmapache.amazingclaudecode.editor.EditorContext
 import io.github.crmapache.amazingclaudecode.editor.FileReverts
 import io.github.crmapache.amazingclaudecode.editor.OpenInEditor
+import io.github.crmapache.amazingclaudecode.editor.TurnFootprint
 import io.github.crmapache.amazingclaudecode.editor.UndiffedEdits
 import io.github.crmapache.amazingclaudecode.editor.UnsavedEdits
+import io.github.crmapache.amazingclaudecode.editor.WorkTreeSnapshots
 import io.github.crmapache.amazingclaudecode.feedback.DiagnosticsLog
 import io.github.crmapache.amazingclaudecode.remote.LocalBridgeServer
 import io.github.crmapache.amazingclaudecode.remote.NotificationReasons
@@ -91,6 +99,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
                 letModsGo(sessionId)
                 // A turn the process took with it ends here, with no result to settle its files by.
                 undiffed.turnOver(conversations.conversationIdOf(sessionId))
+                footprint.drop(sessionId)
                 sendStatus(sessionId, SessionSnapshot.STATUS_IDLE)
             },
             onCrashed = { sessionId, exitCode -> sendProcessExited(sessionId, exitCode) },
@@ -114,6 +123,7 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
                 // A turn may end with no result to settle its files by - stopped, cut back by a rewind - and nothing of it
                 // is to be built on after (see UndiffedEdits.turnOver). After a result this has nothing left to do.
                 undiffed.turnOver(conversations.conversationIdOf(sessionId))
+                footprint.turnOver(sessionId)
                 // Before the status goes out, and the order is load-bearing twice over. The status is
                 // what drains this tab's queue (see runQueued), and a message queued while the turn ran
                 // must go into the process the person's choice named rather than into the one it
@@ -268,6 +278,16 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
      * takes the editor's text to the agent, the other brings the agent's text to the editor.
      */
     private val disk: DiskRefresh = DiskRefresh(project.basePath, this)
+
+    /**
+     * Every file a turn changed, found on the disk: its edits, its scripts and `sed`, its subagents (see TurnFootprint).
+     * The stores live with the IDE's caches - they are a snapshot of the moment, not anything anybody keeps.
+     */
+    private val footprint = TurnFootprint(
+        root = { project.basePath?.let(::File) },
+        snapshots = WorkTreeSnapshots(File(PathManager.getSystemPath(), "amazing-claude-code/turn-snapshots")),
+        say = { text -> DiagnosticsLog.note("editor", text) },
+    )
 
     /** The diffs the CLI leaves out of big edits, worked out before the line goes anywhere (see UndiffedEdits). */
     private val undiffed = UndiffedEdits(
@@ -428,6 +448,24 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         onPermissionRequest { sessionId, request -> permissions.ask(sessionId, request) }
         // A lost sign-in is reported past the event stream, before the first answer.
         onDiagnostic { _, text -> auth.noteLoggedOut(text) }
+        // What the IDE writes itself - an editor saved, a refactoring, a revert - is the person's, never a turn's: the
+        // footprint leaves such a file out of the list, so "Revert all" cannot take it away (see TurnFootprint).
+        project.messageBus.connect(this).subscribe(
+            VirtualFileManager.VFS_CHANGES,
+            object : BulkFileListener {
+                override fun after(events: List<VFileEvent>) {
+                    for (event in events) {
+                        if (event.isFromRefresh) continue
+                        footprint.noteIdeWrite(event.path)
+                        when (event) {
+                            is VFileMoveEvent -> footprint.noteIdeWrite(event.oldPath)
+                            is VFilePropertyChangeEvent -> if (event.isRename) footprint.noteIdeWrite(event.oldPath)
+                            else -> Unit
+                        }
+                    }
+                }
+            },
+        )
         onRawLine { sessionId, line, replay ->
             auth.noteLoggedOut(line)
 
@@ -467,9 +505,16 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
                 // What the turn really did to its files, said before its result goes out and closes their list
                 // (see UndiffedEdits.settle). The result itself, not the marker: a tool's output may hold the same
                 // words, and settling mid-turn would let go of the edits the rest of the turn is built on.
+                //
+                // The footprint has the last word on every file it found: it measured the whole turn on the disk, where
+                // the settling knows only the files the edit calls named (see TurnFootprint).
                 if (!replay && AgentStream.isTurnResult(line)) {
-                    undiffed.settle(conversations.conversationIdOf(sessionId))
-                        ?.let { settled -> broadcast(sessionId, agentEnvelope(sessionId, settled)) }
+                    val settled = undiffed.settle(conversations.conversationIdOf(sessionId))
+                    val found = runCatching { footprint.end(sessionId) }
+                        .onFailure { thisLogger().warn("Couldn't measure the turn's files on the disk", it) }
+                        .getOrDefault(emptyList())
+                    TurnFootprint.settledEvent(settled, found, UUID.randomUUID().toString())
+                        ?.let { event -> broadcast(sessionId, agentEnvelope(sessionId, event)) }
                 }
                 if (!replay) {
                     // The subscription usage: the turn has just cost some of the limit, and the freshest
@@ -955,6 +1000,9 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         // A big edit the CLI reported without its diff gets one worked out here, before anybody sees the line
         // (see UndiffedEdits). Only live: a transcript is read long after the copies it would need moved on.
         val line = if (replay) incoming else undiffed.fill(incoming, conversations.conversationIdOf(sessionId))
+        // The files the agent's edit calls name, its subagents' too: a file another tab's agent named is that tab's (see
+        // TurnFootprint).
+        if (!replay) footprint.noteLine(sessionId, line)
 
         // A mod speaking to a surface: decided before anything else here, because what it says most often -
         // "draw me again", up to ten times a second - must never reach the journal (see ModLines). Only a
@@ -1985,6 +2033,14 @@ internal class ClaudeSessionHub(private val project: Project) : Disposable {
         // panel, a phone, a queued message and an answer to a question all arrive here, so saving in
         // this one place covers the lot.
         UnsavedEdits.flush(project)
+        // The project as the turn finds it - the editors saved, the agent not told yet (see TurnFootprint). A message
+        // into a running turn is part of that turn; one written while a background agent of the last turn still works
+        // keeps that turn's start, so what the agent changes meanwhile is reported too. Never on the interface thread:
+        // git takes a tenth of a second at best, and a turn without a start is only a list as it was before.
+        if (!steering && !ApplicationManager.getApplication().isDispatchThread) {
+            runCatching { footprint.begin(sessionId, carryOn = snapshot(sessionId).get().pendingAgents.isNotEmpty()) }
+                .onFailure { thisLogger().warn("Couldn't write the project down before the turn", it) }
+        }
         conversations.prompt(sessionId, text, images, context, uuid)
     }
 

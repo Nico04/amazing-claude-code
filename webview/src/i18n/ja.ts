@@ -1358,6 +1358,7 @@ export const ja: Dict = {
     changes: {
       all: (n) => `すべて表示（${n}）`,
       fewer: '折りたたむ',
+      files: (n) => `${n} ファイル`,
       revert: 'このファイルを元に戻す',
       revertAll: 'すべて元に戻す',
       reverting: '元に戻しています…',
@@ -1365,6 +1366,7 @@ export const ja: Dict = {
       restoreAll: 'すべて戻す',
       restoring: '戻しています…',
       reverted: '元に戻しました',
+      deleted: '削除',
       changed: 'その後に変更されたため、そのままです',
       missing: 'ファイルがもうありません',
       failed: 'ファイルを書き込めませんでした',

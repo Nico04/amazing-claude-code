@@ -1356,6 +1356,7 @@ export const zh: Dict = {
     changes: {
       all: (n) => `全部显示（${n}）`,
       fewer: '收起',
+      files: (n) => `${n} 个文件`,
       revert: '撤销此文件的改动',
       revertAll: '全部撤销',
       reverting: '正在撤销…',
@@ -1363,6 +1364,7 @@ export const zh: Dict = {
       restoreAll: '全部恢复',
       restoring: '正在恢复…',
       reverted: '已撤销',
+      deleted: '已删除',
       changed: '之后又被改过，保持原样',
       missing: '文件已不存在',
       failed: '无法写入文件',

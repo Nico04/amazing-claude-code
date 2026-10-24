@@ -1539,6 +1539,14 @@ export const uk: Dict = {
     changes: {
       all: (n) => `Показати всі (${n})`,
       fewer: 'Згорнути',
+      files: (n) => {
+        const rest = n % 100
+        const last = n % 10
+        if (rest >= 11 && rest <= 14) return `${n} файлів`
+        if (last === 1) return `${n} файл`
+        if (last >= 2 && last <= 4) return `${n} файли`
+        return `${n} файлів`
+      },
       revert: 'Відкотити цей файл',
       revertAll: 'Відкотити все',
       reverting: 'Відкочую…',
@@ -1546,6 +1554,7 @@ export const uk: Dict = {
       restoreAll: 'Повернути все',
       restoring: 'Повертаю…',
       reverted: 'Відкочено',
+      deleted: 'Видалено',
       changed: 'Змінено пізніше, залишено як є',
       missing: 'Файлу більше немає',
       failed: 'Не вдалося записати файл',

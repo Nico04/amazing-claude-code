@@ -3551,11 +3551,13 @@ export interface AgentUserEvent {
 
 /**
  * One change a turn made to a file, as the IDE needs it to put the change back: the text a Write created the
- * file with, or the hunks the CLI applied (starts 1-based, lines marked `+`, `-` or ` `).
+ * file with, the hunks the CLI applied (starts 1-based, lines marked `+`, `-` or ` `) - or, after hunks that
+ * emptied it, the file taken away (see TurnFootprint in the plugin).
  */
 export type FileEdit =
   | { kind: 'create'; content: string }
   | { kind: 'patch'; hunks: { oldStart: number; newStart: number; lines: string[] }[] }
+  | { kind: 'remove' }
 
 /**
  * What putting a file back - or bringing it back after that - came to: done either way, refused because the
@@ -3690,15 +3692,29 @@ export interface ForkSeamEvent {
 }
 
 /**
- * What a turn really did to the files whose diffs do not say it - a line of the panel's own, sent by the IDE right
- * before the turn's result (see UndiffedEdits.settle in the plugin). A formatter run after each edit, the agent's
- * own script, the CLI itself adding to a memory file: each leaves a file other than its edits say. The figures and
- * the edits are the file's whole change in the turn, from what the turn found to what it left. The phone gets the
- * figures alone when the edits would not fit its frame.
+ * What a turn really did to its files - a line of the panel's own, sent by the IDE right before the turn's result
+ * (see UndiffedEdits.settle and TurnFootprint in the plugin). The IDE holds the whole project against the moment the
+ * turn began, so this names every file the turn changed: the ones its edit calls named, whose diffs a formatter or
+ * the agent's own script may have outrun, and the ones nothing reported at all - changed by Bash, by a subagent. The
+ * figures and the edits are the file's whole change in the turn, from what the turn found to what it left. The phone
+ * gets the figures alone when the edits would not fit its frame.
  */
 export interface FilesSettledEvent {
   type: 'files_settled'
-  files: { path: string; added: number; removed: number; edits?: FileEdit[] }[]
+  /** Names the event - and the turn's list, when no edit call of the turn named a file (see closeChanges). */
+  turn?: string
+  files: {
+    path: string
+    added: number
+    removed: number
+    edits?: FileEdit[]
+    /** The turn brought the file into being. */
+    created?: boolean
+    /** The turn took the file away. */
+    deleted?: boolean
+    /** Not text, or too big to diff: changed, by an amount nobody counted. */
+    uncounted?: boolean
+  }[]
 }
 
 /**

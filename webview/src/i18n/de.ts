@@ -1367,6 +1367,7 @@ export const de: Dict = {
     changes: {
       all: (n) => `Alle anzeigen (${n})`,
       fewer: 'Weniger anzeigen',
+      files: (n) => (n === 1 ? '1 Datei' : `${n} Dateien`),
       revert: 'Diese Datei zurücksetzen',
       revertAll: 'Alle zurücksetzen',
       reverting: 'Wird zurückgesetzt…',
@@ -1374,6 +1375,7 @@ export const de: Dict = {
       restoreAll: 'Alle wiederherstellen',
       restoring: 'Wird wiederhergestellt…',
       reverted: 'Zurückgesetzt',
+      deleted: 'Gelöscht',
       changed: 'Seitdem geändert, so gelassen',
       missing: 'Die Datei gibt es nicht mehr',
       failed: 'Die Datei ließ sich nicht schreiben',
